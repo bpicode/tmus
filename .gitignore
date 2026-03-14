@@ -1,0 +1,38 @@
+# Binaries
+/tmus
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Build and test artifacts
+*.test
+*.out
+*.prof
+*.coverprofile
+/coverage.out
+
+# Generated icons
+/packaging/icons/hicolor/*/apps/*.png
+
+# Go build cache directories (local)
+/bin/
+/pkg/
+
+# IDE/editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+/tmp/
+/.codex/config.toml

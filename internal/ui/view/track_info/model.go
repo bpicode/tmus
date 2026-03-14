@@ -1,0 +1,374 @@
+package track_info
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"github.com/bpicode/tmus/internal/app/core"
+	"github.com/bpicode/tmus/internal/config"
+	"github.com/bpicode/tmus/internal/ui/components/terminal_image"
+	"github.com/charmbracelet/x/ansi"
+)
+
+const defaultArtworkAspect = 2.0
+
+type Model struct {
+	show      bool
+	width     int
+	height    int
+	trackID   uint64
+	trackPath string
+	loading   bool
+	err       string
+	viewport  viewport.Model
+	artwork   terminal_image.Model
+	data      core.Metadata
+	app       *core.App
+}
+
+func NewModel(cfg config.TUIConfig, app *core.App) *Model {
+	artworkAspect := cfg.ArtworkAspect
+	if artworkAspect <= 0 {
+		artworkAspect = defaultArtworkAspect
+	}
+	vp := viewport.New()
+	vp.LeftGutterFunc = viewport.NoGutter
+	return &Model{
+		viewport: vp,
+		artwork:  terminal_image.NewModel(artworkAspect, "No artwork"),
+		app:      app,
+	}
+}
+
+func (m *Model) Init() tea.Cmd {
+	return nil
+}
+
+func (m *Model) UpdateSize(message tea.WindowSizeMsg) {
+	m.width = message.Width
+	m.height = message.Height
+}
+
+func (m *Model) HandleKey(msg tea.KeyMsg) (tea.Cmd, bool) {
+	if !m.show {
+		return nil, false
+	}
+	switch msg.String() {
+	case "q", "esc", "i":
+		m.Show(false)
+		return nil, true
+	case "up", "k":
+		m.viewport.ScrollUp(1)
+		return nil, true
+	case "down", "j":
+		m.viewport.ScrollDown(1)
+		return nil, true
+	case "pgup", "pageup":
+		m.viewport.PageUp()
+		return nil, true
+	case "pgdown", "pagedown":
+		m.viewport.PageDown()
+		return nil, true
+	case "home", "pos1":
+		m.viewport.GotoTop()
+		return nil, true
+	case "end":
+		m.viewport.GotoBottom()
+		return nil, true
+	default:
+		return nil, false
+	}
+}
+
+func (m *Model) HandleEvent(event core.TrackMetadataEvent) {
+	if !m.show {
+		return
+	}
+	if event.TrackID != m.trackID {
+		return
+	}
+	if event.Path != m.trackPath {
+		return
+	}
+	if event.Scope != core.MetadataExtended {
+		return
+	}
+	m.loading = false
+	if event.Err != nil {
+		m.err = event.Err.Error()
+		return
+	}
+	m.err = ""
+	m.data = event.Metadata
+}
+
+func (m *Model) Show(show bool) {
+	if show {
+		state := m.app.State()
+		if len(state.Playlist) == 0 {
+			return
+		}
+		cursor := state.Playing
+		if state.Cursor != -1 {
+			cursor = state.Cursor
+		}
+		if cursor < 0 || cursor >= len(state.Playlist) {
+			return
+		}
+		track := state.Playlist[cursor]
+		if track.ID == 0 || track.Path == "" {
+			return
+		}
+
+		m.show = true
+		m.trackID = track.ID
+		m.trackPath = track.Path
+		m.loading = true
+		m.err = ""
+		m.viewport.GotoTop()
+		m.data = core.Metadata{}
+		_ = m.app.Dispatch(core.Command{
+			Type:    core.CmdRequestMetadata,
+			TrackID: track.ID,
+			Path:    track.Path,
+			Scope:   core.MetadataExtended,
+		})
+	} else {
+		m.show = false
+		m.trackID = 0
+		m.trackPath = ""
+		m.loading = false
+		m.err = ""
+		m.viewport.GotoTop()
+		m.data = core.Metadata{}
+	}
+}
+
+func (m *Model) Visible() bool {
+	return m.show
+}
+
+func (m *Model) View() string {
+	if m.width < 1 || m.height < 1 {
+		return ""
+	}
+	contentWidth, contentHeight := m.innerSize()
+	if contentHeight < 1 || contentWidth < 1 {
+		return styleOverlay.Width(m.width).Height(m.height).Render("")
+	}
+
+	header := m.headerLines(contentWidth)
+	headerHeight := min(len(header), contentHeight)
+	header = header[:headerHeight]
+	headerBlock := lipgloss.NewStyle().Width(contentWidth).Height(headerHeight).Render(strings.Join(header, "\n"))
+	if contentHeight <= headerHeight {
+		return styleOverlay.Width(m.width).Height(m.height).Render(headerBlock)
+	}
+
+	areaHeight := contentHeight - headerHeight
+	fields := metadataFields(m.data)
+	leftWidth, rightWidth, gap := metadataColumnWidths(contentWidth, areaHeight, fields, m.artwork.Aspect())
+
+	rightLines := m.rightLines(rightWidth, fields)
+	m.viewport.SetWidth(max(rightWidth, 0))
+	m.viewport.SetHeight(max(areaHeight, 0))
+	m.viewport.SetContentLines(rightLines)
+
+	styleRight := styleArtwork.Width(leftWidth).Height(areaHeight)
+	artworkWidth := leftWidth - styleArtwork.GetHorizontalFrameSize()
+	artworkHeight := areaHeight - styleArtwork.GetVerticalFrameSize()
+	m.artwork.SetSize(artworkWidth, artworkHeight)
+	if m.data.Picture != nil {
+		m.artwork.SetImage(&terminal_image.ImageData{Data: m.data.Picture.Data})
+	} else {
+		m.artwork.SetImage(nil)
+	}
+
+	leftBlock := ""
+	if leftWidth > 0 {
+		leftBlock = styleRight.Render(m.artwork.View())
+	}
+	rightBlock := ""
+	if rightWidth > 0 {
+		rightBlock = lipgloss.NewStyle().Width(rightWidth).Height(areaHeight).Render(m.viewport.View())
+	}
+	gapBlock := ""
+	if gap > 0 {
+		gapBlock = lipgloss.NewStyle().Width(gap).Height(areaHeight).Render("")
+	}
+
+	body := leftBlock
+	if rightWidth > 0 {
+		if gapBlock != "" {
+			body = lipgloss.JoinHorizontal(lipgloss.Top, leftBlock, gapBlock, rightBlock)
+		} else {
+			body = lipgloss.JoinHorizontal(lipgloss.Top, leftBlock, rightBlock)
+		}
+	}
+
+	inner := lipgloss.JoinVertical(lipgloss.Left, headerBlock, body)
+	return styleOverlay.Width(m.width).Height(m.height).Render(inner)
+}
+
+func (m *Model) innerSize() (int, int) {
+	contentWidth := max(m.width-styleOverlay.GetHorizontalFrameSize(), 0)
+	contentHeight := max(m.height-styleOverlay.GetVerticalFrameSize(), 0)
+	return contentWidth, contentHeight
+}
+
+func (m *Model) headerLines(maxWidth int) []string {
+	lines := make([]string, 0, 3)
+	lines = append(lines, styleTitle.Render(ansi.Truncate("🎵 Track info", maxWidth, "…")))
+	if m.trackPath != "" {
+		lines = append(lines, styleSubtitle.Render(ansi.Truncate(m.trackPath, maxWidth, "…")))
+	}
+	lines = append(lines, "")
+	return lines
+}
+
+func (m *Model) rightLines(maxWidth int, fields []field) []string {
+	if maxWidth < 1 {
+		return nil
+	}
+	switch {
+	case m.loading:
+		return []string{styleSubtitle.Render(ansi.Truncate("Loading...", maxWidth, "…"))}
+	case m.err != "":
+		return []string{styleError.Render(ansi.Truncate(m.err, maxWidth, "…"))}
+	default:
+		return metadataFieldLines(fields, maxWidth)
+	}
+}
+
+func formatYear(year int) string {
+	if year == 0 {
+		return ""
+	}
+	return strconv.Itoa(year)
+}
+
+func formatPicture(pic *core.Picture) string {
+	if pic == nil {
+		return ""
+	}
+	label := pic.MIMEType
+	if label == "" {
+		label = "embedded"
+	}
+	if pic.Description != "" {
+		label = label + " - " + pic.Description
+	}
+	return fmt.Sprintf("%s (%d bytes)", label, len(pic.Data))
+}
+
+func normalizeMetadataValue(value string) string {
+	if value == "" {
+		return ""
+	}
+	return strings.Join(strings.Fields(value), " ")
+}
+
+type field struct {
+	label string
+	value string
+}
+
+func metadataFields(meta core.Metadata) []field {
+	return []field{
+		{label: "Title", value: meta.Title},
+		{label: "Artist", value: meta.Artist},
+		{label: "Album", value: meta.Album},
+		{label: "Album artist", value: meta.AlbumArtist},
+		{label: "Composer", value: meta.Composer},
+		{label: "Genre", value: meta.Genre},
+		{label: "Year", value: formatYear(meta.Year)},
+		{label: "Picture", value: formatPicture(meta.Picture)},
+	}
+}
+
+func metadataFieldLines(fields []field, maxWidth int) []string {
+	if maxWidth < 1 {
+		return nil
+	}
+	keyWidth := metadataKeyWidth(fields)
+	if maxWidth < 2 {
+		lines := make([]string, 0, len(fields))
+		for _, f := range fields {
+			label := f.label + ":"
+			lines = append(lines, ansi.Truncate(label, maxWidth, "…"))
+		}
+		return lines
+	}
+	if keyWidth > maxWidth-2 {
+		keyWidth = maxWidth - 2
+	}
+	lines := make([]string, 0, len(fields))
+	for _, f := range fields {
+		label := f.label + ":"
+		if len(label) > keyWidth {
+			label = ansi.Truncate(label, keyWidth, "…")
+		} else {
+			label = label + strings.Repeat(" ", max(keyWidth-len(label), 0))
+		}
+
+		value := normalizeMetadataValue(f.value)
+		if value == "" {
+			value = "-"
+		}
+		avail := max(maxWidth-keyWidth-1, 1)
+		value = ansi.Truncate(value, avail, "…")
+		lines = append(lines, styleMetadataKey.Render(label)+" "+value)
+	}
+	return lines
+}
+
+func metadataKeyWidth(fields []field) int {
+	keyWidth := 0
+	for _, f := range fields {
+		label := f.label + ":"
+		if len(label) > keyWidth {
+			keyWidth = len(label)
+		}
+	}
+	return keyWidth
+}
+
+func metadataColumnWidths(contentWidth, areaHeight int, fields []field, aspect float64) (leftWidth, rightWidth, gap int) {
+	if contentWidth < 1 {
+		return 0, 0, 0
+	}
+	gap = 2
+	if contentWidth <= gap+1 {
+		return contentWidth, 0, 0
+	}
+	available := contentWidth - gap
+	leftMin := 10
+	minValue := 8
+	rightMin := max(20, metadataKeyWidth(fields)+1+minValue)
+
+	leftWidth = max(available-rightMin, leftMin)
+	if areaHeight > 0 {
+		maxLeft := max(1, int(float64(areaHeight)*aspect))
+		leftWidth = min(leftWidth, maxLeft)
+	}
+	if leftWidth > available-1 {
+		leftWidth = available - 1
+	}
+	if leftWidth < 1 {
+		leftWidth = 0
+		rightWidth = contentWidth
+		gap = 0
+		return leftWidth, rightWidth, gap
+	}
+
+	rightWidth = available - leftWidth
+	if rightWidth < 1 {
+		rightWidth = 1
+		leftWidth = available - rightWidth
+	}
+	return leftWidth, rightWidth, gap
+}

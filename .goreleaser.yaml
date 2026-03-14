@@ -1,0 +1,46 @@
+version: 2
+
+builds:
+  - id: linux
+    main: .
+    binary: tmus
+    goos:
+      - linux
+    goarch:
+      - amd64
+    ldflags:
+      - -s -w
+  - id: darwin
+    main: .
+    binary: tmus
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+  - id: windows
+    main: .
+    binary: tmus
+    goos:
+      - windows
+    goarch:
+      - amd64
+    ldflags:
+      - -s -w
+nfpms:
+  - id: linux-packages
+    package_name: tmus
+    maintainer: bpicode <bpicode@github>
+    vendor: bpicode
+    homepage: https://github.com/bpicode/tmus
+    description: Terminal Music Player
+    license: GPL-3.0
+    formats:
+      - deb
+      - rpm
+    dependencies:
+      - libasound2
+checksum:
+  name_template: "checksums.txt"

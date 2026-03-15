@@ -24,6 +24,10 @@ jobs:
           echo "${{ secrets.MAINTAINER_PUBLIC_KEY }}" | gpg --import
       - name: Verify tag signature
         run: |
+          echo "Ref: $GITHUB_REF"
+          echo "Ref type: $GITHUB_REF_TYPE"
+          echo "Ref name: $GITHUB_REF_NAME"
+          git show-ref
           git log --show-signature -1
           git verify-tag ${{ github.ref_name }}
       - name: Install dependencies

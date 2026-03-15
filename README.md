@@ -16,17 +16,19 @@
 
 ## Installation
 
-Requires Go 1.25.5 or newer.
+### Binaries
+
+Pre-compiled binaries for various platforms are available on the [Releases](https://github.com/bpicode/tmus/releases) page.
+
+### Quick install from source (cross-platform)
 
 Linux build/runtime note: you need `pkg-config` and ALSA development headers (`alsa.pc`, usually from `libasound2-dev`).
-
-### Quick Install (Cross-Platform)
 
 ```bash
 go install github.com/bpicode/tmus@latest
 ```
 
-### Full Install (Linux)
+### Full install from source (Linux)
 
 For Linux environments, a `Makefile` is provided. This installs the binary to `~/.local/bin` and adds a `.desktop` file and icons for launcher integration.
 

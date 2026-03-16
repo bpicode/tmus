@@ -40,6 +40,15 @@ nfpms:
     formats:
       - deb
       - rpm
+    contents:
+      - src: packaging/tmus.desktop
+        dst: /usr/share/applications/tmus.desktop
+      - src: packaging/icons/hicolor/48x48/apps/tmus.png
+        dst: /usr/share/icons/hicolor/48x48/apps/tmus.png
+      - src: packaging/icons/hicolor/256x256/apps/tmus.png
+        dst: /usr/share/icons/hicolor/256x256/apps/tmus.png
+      - src: packaging/icons/hicolor/512x512/apps/tmus.png
+        dst: /usr/share/icons/hicolor/512x512/apps/tmus.png
     dependencies:
       - libasound2
 checksum:

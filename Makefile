@@ -1,7 +1,7 @@
 INSTALL_DIR ?= $(HOME)/.local
 BIN_DIR ?= $(INSTALL_DIR)/bin
 APP_DIR ?= $(INSTALL_DIR)/share/applications
-ICON_DIR ?= $(INSTALL_DIR)/share/icons/hicol
+ICON_DIR ?= $(INSTALL_DIR)/share/icons/hicolor
 CACHE_DIR ?= $(HOME)/.cache/tmus
 CONFIG_DIR ?= $(HOME)/.config/tmus
 

@@ -64,81 +64,69 @@ func NewModel(startDir string, appRef *core.App) *Model {
 		app:  appRef,
 		list: browserList,
 	}
-	b.loadDir(startDir)
 	return b
 }
 
-func (m *Model) loadDir(path string) {
-	items, err := library.List(path, m.showHidden)
-	if err != nil {
-		m.err = err.Error()
-		return
-	}
-
-	prevIndex := m.list.Index()
+func (m *Model) loadDir(path string) tea.Cmd {
 	m.Cwd = path
-	m.entries = items
-	m.updateListItems(prevIndex)
-	m.err = ""
+	return LoadDirCmd(path, m.showHidden)
 }
 
-func (m *Model) loadHomeDir() {
+func (m *Model) loadHomeDir() tea.Cmd {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		m.err = err.Error()
-		return
+		return nil
 	}
-	m.loadDir(homeDir)
+	return m.loadDir(homeDir)
 }
 
-func (m *Model) openSelection() {
+func (m *Model) openSelection() tea.Cmd {
 	m.err = ""
 	selected, ok := m.selected()
 	if !ok || !selected.IsDir {
 		if ok && !archive.IsArchivePath(selected.Path) {
 			if archivePath, ok := library.OpenArchiveRoot(selected.Path); ok {
 				m.clearSearch()
-				m.loadDir(archivePath)
+				return m.loadDir(archivePath)
 			}
 		}
-		return
+		return nil
 	}
 	m.clearSearch()
-	m.loadDir(selected.Path)
+	return m.loadDir(selected.Path)
 }
 
-func (m *Model) upDir() {
+func (m *Model) upDir() tea.Cmd {
 	m.err = ""
 	if archive.IsArchivePath(m.Cwd) {
 		scheme, archivePath, inner, err := archive.SplitPath(m.Cwd)
 		if err != nil {
 			m.err = err.Error()
-			return
+			return nil
 		}
 		if inner == "" {
 			m.clearSearch()
-			m.loadDir(filepath.Dir(archivePath))
-			return
+			return m.loadDir(filepath.Dir(archivePath))
 		}
 		parent := path.Dir(inner)
 		if parent == "." {
 			parent = ""
 		}
 		m.clearSearch()
-		m.loadDir(archive.BuildPath(scheme, archivePath, parent))
-		return
+		return m.loadDir(archive.BuildPath(scheme, archivePath, parent))
 	}
 	parent := filepath.Dir(m.Cwd)
 	if parent == m.Cwd {
-		return
+		return nil
 	}
 	m.clearSearch()
-	m.loadDir(parent)
+	return m.loadDir(parent)
 }
 
-func (m *Model) toggleHidden() {
+func (m *Model) toggleHidden() tea.Cmd {
 	m.showHidden = !m.showHidden
-	m.loadDir(m.Cwd)
+	return m.loadDir(m.Cwd)
 }
 
 func (m *Model) selected() (library.Entry, bool) {
@@ -147,6 +135,10 @@ func (m *Model) selected() (library.Entry, bool) {
 		return library.Entry{}, false
 	}
 	return item.entry, true
+}
+
+func (m *Model) Init() tea.Cmd {
+	return LoadDirCmd(m.Cwd, m.showHidden)
 }
 
 func (m *Model) View() string {
@@ -290,11 +282,9 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 			_ = m.app.Dispatch(cmd)
 			return nil, true
 		}
-		m.openSelection()
-		return nil, true
+		return m.openSelection(), true
 	case "backspace", "left", "h":
-		m.upDir()
-		return nil, true
+		return m.upDir(), true
 	case "a":
 		if selected, ok := m.selected(); ok {
 			if !selected.IsDir && selected.IsAudio {
@@ -323,14 +313,11 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 		}
 		return nil, true
 	case "ctrl+r":
-		m.loadDir(m.Cwd)
-		return nil, true
+		return m.loadDir(m.Cwd), true
 	case "H":
-		m.toggleHidden()
-		return nil, true
+		return m.toggleHidden(), true
 	case "~":
-		m.loadHomeDir()
-		return nil, true
+		return m.loadHomeDir(), true
 	default:
 		return nil, false
 	}
@@ -340,6 +327,24 @@ func (m *Model) UpdateSize(msg tea.WindowSizeMsg) {
 	m.width = msg.Width
 	m.height = msg.Height
 	m.list.SetSize(max(0, m.width-stylePanelFocused.GetHorizontalFrameSize()), max(0, m.height-6))
+}
+
+func (m *Model) HandleLoadDirMsg(msg LoadDirMsg) {
+	if m.Cwd != msg.Path {
+		// This can happen when the user quickly navigates to another directory before the previous one finishes loading.
+		// In this case we ignore the message since it's outdated.
+		return
+	}
+
+	if msg.Err != nil {
+		m.err = msg.Err.Error()
+		return
+	}
+
+	prevIndex := m.list.Index()
+	m.entries = msg.Items
+	m.updateListItems(prevIndex)
+	m.err = ""
 }
 
 func (m *Model) Visible() bool {
@@ -366,10 +371,6 @@ func (m *Model) ToggleFocus() {
 
 func (m *Model) Focus(focus bool) {
 	m.focus = focus
-}
-
-func (m *Model) Init() tea.Cmd {
-	return nil
 }
 
 func (m *Model) SyncState() {

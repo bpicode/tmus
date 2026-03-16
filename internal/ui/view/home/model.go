@@ -74,6 +74,10 @@ func (m *Model) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	return nil, false
 }
 
+func (m *Model) HandleLoadDirMsg(msg browser.LoadDirMsg) {
+	m.browser.HandleLoadDirMsg(msg)
+}
+
 func (m *Model) View() string {
 	if !m.show {
 		return ""

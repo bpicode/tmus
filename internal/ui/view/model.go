@@ -13,6 +13,7 @@ import (
 	"github.com/bpicode/tmus/internal/config"
 	"github.com/bpicode/tmus/internal/ui/view/help"
 	"github.com/bpicode/tmus/internal/ui/view/home"
+	"github.com/bpicode/tmus/internal/ui/view/home/browser"
 	"github.com/bpicode/tmus/internal/ui/view/home/playlist"
 	"github.com/bpicode/tmus/internal/ui/view/lyrics"
 	"github.com/bpicode/tmus/internal/ui/view/track_info"
@@ -150,6 +151,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.lyrics.Visible() && !m.help.Visible() {
 			m.trackInfo.Show(true)
 		}
+		return m, nil
+	case browser.LoadDirMsg:
+		m.home.HandleLoadDirMsg(msg)
 		return m, nil
 	case tickMsg:
 		return m, tickCmd()

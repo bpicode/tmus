@@ -182,6 +182,16 @@ var keybindings = content{
 					key1:     "c",
 					helpText: "clear playlist",
 				},
+				{
+					key1:     "alt+↑",
+					key2:     "alt+k",
+					helpText: "move item up",
+				},
+				{
+					key1:     "alt+↓",
+					key2:     "alt+j",
+					helpText: "move item down",
+				},
 			},
 		},
 		{

@@ -62,6 +62,36 @@ func (a *App) removeAt(index int) (removedPlaying bool, removed bool) {
 	return removedPlaying, true
 }
 
+func (a *App) moveUp() {
+	i := a.state.Cursor
+	if i <= 0 || i >= len(a.state.Playlist) {
+		return
+	}
+	a.state.Playlist[i], a.state.Playlist[i-1] = a.state.Playlist[i-1], a.state.Playlist[i]
+	switch a.state.Playing {
+	case i:
+		a.state.Playing = i - 1
+	case i - 1:
+		a.state.Playing = i
+	}
+	a.state.Cursor = i - 1
+}
+
+func (a *App) moveDown() {
+	i := a.state.Cursor
+	if i < 0 || i >= len(a.state.Playlist)-1 {
+		return
+	}
+	a.state.Playlist[i], a.state.Playlist[i+1] = a.state.Playlist[i+1], a.state.Playlist[i]
+	switch a.state.Playing {
+	case i:
+		a.state.Playing = i + 1
+	case i + 1:
+		a.state.Playing = i
+	}
+	a.state.Cursor = i + 1
+}
+
 func (a *App) selectUp() {
 	if len(a.state.Playlist) == 0 {
 		a.state.Cursor = -1

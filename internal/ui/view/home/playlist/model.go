@@ -290,6 +290,12 @@ func (m *Model) updateNav(msg tea.KeyMsg, state core.State) (tea.Cmd, bool) {
 		}
 		m.syncSelectionFromList(state)
 		return cmd, true
+	case "alt+up", "alt+k":
+		_ = m.app.Dispatch(core.Command{Type: core.CmdMoveUp})
+		return nil, true
+	case "alt+down", "alt+j":
+		_ = m.app.Dispatch(core.Command{Type: core.CmdMoveDown})
+		return nil, true
 	case "enter":
 		_ = m.app.Dispatch(core.Command{Type: core.CmdPlayFromCursor})
 		return nil, true

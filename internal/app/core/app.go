@@ -66,6 +66,8 @@ const (
 	CmdStop
 	CmdTogglePause
 	CmdRemoveAt
+	CmdMoveUp
+	CmdMoveDown
 	CmdSetQueueMode
 	CmdVolumeUp
 	CmdVolumeDown
@@ -381,6 +383,10 @@ func (a *App) apply(cmd Command) {
 		if removed && removedPlaying {
 			a.engine.Stop()
 		}
+	case CmdMoveUp:
+		a.moveUp()
+	case CmdMoveDown:
+		a.moveDown()
 	case CmdSetQueueMode:
 		a.setQueueMode(cmd.Mode)
 	case CmdVolumeUp:

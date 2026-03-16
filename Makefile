@@ -26,7 +26,7 @@ test:
 
 install: install-desktop
 	mkdir -p $(BIN_DIR)
-	go build -o $(BIN_DIR)/$(BIN_NAME) .
+	go build -ldflags="-s -w" -o $(BIN_DIR)/$(BIN_NAME) .
 
 install-desktop: install-icons
 	mkdir -p $(APP_DIR)

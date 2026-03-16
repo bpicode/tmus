@@ -21,7 +21,7 @@ type Model struct {
 	Cwd        string
 	entries    []library.Entry
 	showHidden bool
-	err        string
+	err        error
 	width      int
 	height     int
 	show       bool
@@ -72,14 +72,14 @@ func (m *Model) loadDir(path string) tea.Cmd {
 func (m *Model) loadHomeDir() tea.Cmd {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		m.err = err.Error()
+		m.err = err
 		return nil
 	}
 	return m.loadDir(homeDir)
 }
 
 func (m *Model) openSelection() tea.Cmd {
-	m.err = ""
+	m.err = nil
 	selected, ok := m.selected()
 	if !ok || !selected.IsDir {
 		if ok && !archive.IsArchivePath(selected.Path) {
@@ -95,11 +95,11 @@ func (m *Model) openSelection() tea.Cmd {
 }
 
 func (m *Model) upDir() tea.Cmd {
-	m.err = ""
+	m.err = nil
 	if archive.IsArchivePath(m.Cwd) {
 		scheme, archivePath, inner, err := archive.SplitPath(m.Cwd)
 		if err != nil {
-			m.err = err.Error()
+			m.err = err
 			return nil
 		}
 		if inner == "" {
@@ -157,8 +157,8 @@ func (m *Model) View() string {
 	sb.WriteString(styleSeparator.Render(strings.Repeat("─", max(0, m.width-panelStyle.GetHorizontalFrameSize()))))
 	sb.WriteString("\n")
 
-	if m.err != "" {
-		sb.WriteString(styleError.Render(m.err))
+	if m.err != nil {
+		sb.WriteString(styleError.Render(m.err.Error()))
 		return panelStyle.Render(sb.String())
 	}
 
@@ -266,7 +266,7 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 	}
 	switch msg.String() {
 	case "/", "up", "k", "down", "j", "pgup", "pageup", "pgdown", "pagedown", "home", "pos1", "end", "esc":
-		m.err = ""
+		m.err = nil
 		var cmd tea.Cmd
 		m.list, cmd = m.list.Update(msg)
 		return cmd, true
@@ -334,14 +334,14 @@ func (m *Model) HandleLoadDirMsg(msg LoadDirMsg) {
 	}
 
 	if msg.Err != nil {
-		m.err = msg.Err.Error()
+		m.err = msg.Err
 		return
 	}
 
 	prevIndex := m.list.Index()
 	m.entries = msg.Items
 	m.updateListItems(prevIndex)
-	m.err = ""
+	m.err = nil
 }
 
 func (m *Model) Visible() bool {

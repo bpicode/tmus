@@ -11,6 +11,7 @@ var (
 	styleEmpty          = lipgloss.NewStyle().Foreground(lipgloss.BrightBlack)
 	styleSelected       = lipgloss.NewStyle().Reverse(true)
 	stylePlaying        = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Cyan)
+	stylePaused         = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Yellow)
 	styleStatusMeta     = lipgloss.NewStyle().Foreground(lipgloss.BrightMagenta)
 	styleStatusPlay     = lipgloss.NewStyle().Foreground(lipgloss.Green)
 	styleStatusPause    = lipgloss.NewStyle().Foreground(lipgloss.Yellow)

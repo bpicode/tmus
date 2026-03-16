@@ -494,18 +494,24 @@ func (d playlistDelegate) Render(w io.Writer, m list.Model, index int, item list
 	}
 	name := playlistItem.track.DisplayName()
 	prefix := "  "
-	if playlistItem.index == d.model.playing && d.model.playState == core.PlaybackPlaying {
+	isPlaying := playlistItem.index == d.model.playing && d.model.playState == core.PlaybackPlaying
+	if isPlaying {
 		prefix = "▶︎ "
 	}
-	if playlistItem.index == d.model.playing && d.model.playState == core.PlaybackPaused {
+	isPaused := playlistItem.index == d.model.playing && d.model.playState == core.PlaybackPaused
+	if isPaused {
 		prefix = "⏸ "
 	}
 	pos := fmt.Sprintf("%*d ", max(1, d.model.posWidth), playlistItem.index+1)
 	line := ansi.Truncate(prefix+pos+name, max(0, m.Width()), "…")
-	if prefix == "* " {
+	if isPlaying {
 		line = stylePlaying.Render(line)
 	}
-	if index == m.Index() {
+	if isPaused {
+		line = stylePaused.Render(line)
+	}
+	isSelected := index == m.Index()
+	if isSelected {
 		line = styleSelected.Render(line)
 	}
 	_, _ = fmt.Fprint(w, line)

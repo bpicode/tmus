@@ -271,9 +271,9 @@ func (m *Model) SaveState() error {
 		return err
 	}
 	appState := m.app.State()
-	playlist := make([]Track, 0, len(appState.Playlist))
+	tracks := make([]Track, 0, len(appState.Playlist))
 	for _, track := range appState.Playlist {
-		playlist = append(playlist, Track{
+		tracks = append(tracks, Track{
 			Path:     track.Path,
 			Name:     track.Name,
 			Artist:   track.Artist,
@@ -292,7 +292,7 @@ func (m *Model) SaveState() error {
 		Focus:         focus,
 		Volume:        new(appState.Volume),
 		QueueMode:     QueueModeString(appState.QueueMode),
-		Playlist:      playlist,
+		Playlist:      tracks,
 		Playing:       appState.Playing,
 		Cursor:        appState.Cursor,
 	})

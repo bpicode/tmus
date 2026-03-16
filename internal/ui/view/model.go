@@ -11,9 +11,9 @@ import (
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/config"
-	"github.com/bpicode/tmus/internal/ui/actions"
 	"github.com/bpicode/tmus/internal/ui/view/help"
 	"github.com/bpicode/tmus/internal/ui/view/home"
+	"github.com/bpicode/tmus/internal/ui/view/home/playlist"
 	"github.com/bpicode/tmus/internal/ui/view/lyrics"
 	"github.com/bpicode/tmus/internal/ui/view/track_info"
 )
@@ -141,12 +141,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case core.LyricsEvent:
 		m.lyrics.HandleEvent(msg)
 		return m, m.listenForLyricsEvent()
-	case actions.ToggleLyricsMsg:
+	case playlist.ToggleLyricsMsg:
 		if !m.trackInfo.Visible() && !m.help.Visible() {
 			m.lyrics.Show(true)
 		}
 		return m, nil
-	case actions.ToggleTrackInfoMsg:
+	case playlist.ToggleTrackInfoMsg:
 		if !m.lyrics.Visible() && !m.help.Visible() {
 			m.trackInfo.Show(true)
 		}

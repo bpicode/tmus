@@ -13,7 +13,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
-	"github.com/bpicode/tmus/internal/ui/actions"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -221,9 +220,9 @@ func (m *Model) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	if m.focus {
 		switch msg.Key().Text {
 		case "i":
-			return actions.ToggleTrackInfoCmd(), true
+			return ToggleTrackInfoCmd(), true
 		case "L":
-			return actions.ToggleLyricsCmd(), true
+			return ToggleLyricsCmd(), true
 		case "c":
 			_ = m.app.Dispatch(core.Command{Type: core.CmdClear})
 			return nil, true

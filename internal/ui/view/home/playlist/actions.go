@@ -1,4 +1,4 @@
-package actions
+package playlist
 
 import tea "charm.land/bubbletea/v2"
 

@@ -1,8 +1,6 @@
 package browser
 
 import (
-	"fmt"
-	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -17,7 +15,6 @@ import (
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/ui/util"
-	"github.com/charmbracelet/x/ansi"
 )
 
 type Model struct {
@@ -383,53 +380,6 @@ type browserListItem struct {
 
 func (i browserListItem) FilterValue() string {
 	return i.entry.Name
-}
-
-type entryDelegate struct{}
-
-func newEntryDelegate() list.ItemDelegate {
-	return entryDelegate{}
-}
-
-func (entryDelegate) Height() int {
-	return 1
-}
-
-func (entryDelegate) Spacing() int {
-	return 0
-}
-
-func (entryDelegate) Update(tea.Msg, *list.Model) tea.Cmd {
-	return nil
-}
-
-func (entryDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
-	entry, ok := item.(browserListItem)
-	if !ok {
-		return
-	}
-
-	name := entry.entry.Name
-	if entry.entry.IsDir {
-		name = "📁 " + entry.entry.Name + string(filepath.Separator)
-	}
-	if entry.entry.IsArchive {
-		name = "📦 " + entry.entry.Name
-	}
-	if entry.entry.IsAudio {
-		name = "🎵 " + entry.entry.Name
-	}
-	name = ansi.Truncate(name, max(0, m.Width()), "…")
-
-	line := name
-	if index == m.Index() {
-		line = styleSelected.Render(name)
-	} else if entry.entry.IsDir {
-		line = styleDir.Render(name)
-	} else if entry.entry.IsArchive {
-		line = styleArchive.Render(name)
-	}
-	_, _ = fmt.Fprint(w, line)
 }
 
 func clamp(v, min, max int) int {

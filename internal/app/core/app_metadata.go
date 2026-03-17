@@ -86,7 +86,7 @@ func (a *App) metadataWorker() {
 	}
 }
 
-func readMetadataForScope(path string, scope MetadataScope) (Metadata, error) {
+func readMetadataForScope(path string, scope MetadataScope) (library.Metadata, error) {
 	switch scope {
 	case MetadataExtended:
 		return library.ReadMetadataExtended(path)
@@ -95,26 +95,26 @@ func readMetadataForScope(path string, scope MetadataScope) (Metadata, error) {
 	}
 }
 
-func (a *App) readMetadataExtendedCached(path string) (Metadata, error) {
+func (a *App) readMetadataExtendedCached(path string) (library.Metadata, error) {
 	if meta, ok := a.getCachedMetadata(path, MetadataExtended); ok {
 		return meta, nil
 	}
 	meta, err := library.ReadMetadataExtended(path)
 	if err != nil {
-		return Metadata{}, err
+		return library.Metadata{}, err
 	}
 	a.putCachedMetadata(path, MetadataExtended, meta)
 	return meta, nil
 }
 
-func (a *App) getCachedMetadata(path string, scope MetadataScope) (Metadata, bool) {
+func (a *App) getCachedMetadata(path string, scope MetadataScope) (library.Metadata, bool) {
 	if a == nil || a.metadataCache == nil {
-		return Metadata{}, false
+		return library.Metadata{}, false
 	}
 	return a.metadataCache.get(path, scope)
 }
 
-func (a *App) putCachedMetadata(path string, scope MetadataScope, meta Metadata) {
+func (a *App) putCachedMetadata(path string, scope MetadataScope, meta library.Metadata) {
 	if a == nil || a.metadataCache == nil {
 		return
 	}

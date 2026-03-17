@@ -3,6 +3,8 @@ package core
 import (
 	"container/list"
 	"sync"
+
+	"github.com/bpicode/tmus/internal/app/library"
 )
 
 const (
@@ -21,7 +23,7 @@ type metadataCache struct {
 
 type metadataCacheEntry struct {
 	key   string
-	meta  Metadata
+	meta  library.Metadata
 	scope MetadataScope
 	size  int
 	stat  fileStat
@@ -36,32 +38,32 @@ func newMetadataCache() *metadataCache {
 	}
 }
 
-func (c *metadataCache) get(path string, scope MetadataScope) (Metadata, bool) {
+func (c *metadataCache) get(path string, scope MetadataScope) (library.Metadata, bool) {
 	if c == nil || path == "" {
-		return Metadata{}, false
+		return library.Metadata{}, false
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	elem, ok := c.items[path]
 	if !ok {
-		return Metadata{}, false
+		return library.Metadata{}, false
 	}
 	entry := elem.Value.(*metadataCacheEntry)
 	if scope == MetadataExtended && entry.scope != MetadataExtended {
-		return Metadata{}, false
+		return library.Metadata{}, false
 	}
 	if entry.stat.ok {
 		current := statPath(path)
 		if !current.ok || !entry.stat.equal(current) {
 			c.remove(elem)
-			return Metadata{}, false
+			return library.Metadata{}, false
 		}
 	}
 	c.order.MoveToFront(elem)
 	return entry.meta, true
 }
 
-func (c *metadataCache) put(path string, scope MetadataScope, meta Metadata) {
+func (c *metadataCache) put(path string, scope MetadataScope, meta library.Metadata) {
 	if c == nil || path == "" {
 		return
 	}
@@ -125,7 +127,7 @@ func (c *metadataCache) evict() {
 	}
 }
 
-func estimateMetadataSize(meta Metadata) int {
+func estimateMetadataSize(meta library.Metadata) int {
 	size := 0
 	size += len(meta.Artist)
 	size += len(meta.Title)

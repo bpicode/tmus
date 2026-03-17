@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
+	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/config"
 	"github.com/bpicode/tmus/internal/ui/components/terminal_image"
 	"github.com/charmbracelet/x/ansi"
@@ -26,7 +27,7 @@ type Model struct {
 	err       string
 	viewport  viewport.Model
 	artwork   terminal_image.Model
-	data      core.Metadata
+	data      library.Metadata
 	app       *core.App
 }
 
@@ -130,7 +131,7 @@ func (m *Model) Show(show bool) {
 		m.loading = true
 		m.err = ""
 		m.viewport.GotoTop()
-		m.data = core.Metadata{}
+		m.data = library.Metadata{}
 		_ = m.app.Dispatch(core.Command{
 			Type:    core.CmdRequestMetadata,
 			TrackID: track.ID,
@@ -144,7 +145,7 @@ func (m *Model) Show(show bool) {
 		m.loading = false
 		m.err = ""
 		m.viewport.GotoTop()
-		m.data = core.Metadata{}
+		m.data = library.Metadata{}
 	}
 }
 
@@ -251,7 +252,7 @@ func formatYear(year int) string {
 	return strconv.Itoa(year)
 }
 
-func formatPicture(pic *core.Picture) string {
+func formatPicture(pic *library.Picture) string {
 	if pic == nil {
 		return ""
 	}
@@ -277,7 +278,7 @@ type field struct {
 	value string
 }
 
-func metadataFields(meta core.Metadata) []field {
+func metadataFields(meta library.Metadata) []field {
 	return []field{
 		{label: "Title", value: meta.Title},
 		{label: "Artist", value: meta.Artist},

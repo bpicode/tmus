@@ -43,7 +43,7 @@ var rootCmd = &cobra.Command{
 				defer mprisSvc.Close()
 			}
 		}
-		if err := ui.Run(playerApp, startDir, cfg, args); err != nil {
+		if err := ui.Run(playerApp, startDir, cfg.TUI, args); err != nil {
 			return fmt.Errorf("ui: %w", err)
 		}
 		return nil

@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
+	"github.com/bpicode/tmus/internal/config"
 	"github.com/bpicode/tmus/internal/ui/view/home/browser"
 	"github.com/bpicode/tmus/internal/ui/view/home/playlist"
 )
@@ -16,9 +17,9 @@ type Model struct {
 	show     bool
 }
 
-func NewModel(cwd string, appRef *core.App) *Model {
+func NewModel(cwd string, cfg config.TUIConfig, appRef *core.App) *Model {
 	return &Model{
-		browser:  browser.NewModel(cwd, appRef),
+		browser:  browser.NewModel(cwd, cfg, appRef),
 		playlist: playlist.NewModel(appRef),
 	}
 }

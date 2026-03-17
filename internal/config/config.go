@@ -24,6 +24,7 @@ type MPRISConfig struct {
 type TUIConfig struct {
 	FPS           int     `toml:"FPS" comment:"Frames per second for the terminal UI (1-120)."`
 	ArtworkAspect float64 `toml:"artwork_aspect" comment:"Artwork box width/height ratio for terminal cells (e.g., 2.0 looks square on most fonts)."`
+	BrowserHome   string  `toml:"browser_home" comment:"Default directory of music browser"`
 }
 
 type LyricsConfig struct {
@@ -66,6 +67,10 @@ func Default() Config {
 		TUI: TUIConfig{
 			FPS:           60,
 			ArtworkAspect: 2.0,
+			BrowserHome: func() string {
+				d, _ := os.UserHomeDir()
+				return d
+			}(),
 		},
 		Lyrics: LyricsConfig{
 			LrcLib: LrcLibConfig{

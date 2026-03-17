@@ -8,11 +8,11 @@ import (
 )
 
 // Run starts the TUI program.
-func Run(appRef *core.App, startDir string, cfg config.Config, openFiles []string) error {
-	m := view.NewModel(appRef, startDir, openFiles, cfg.TUI)
+func Run(appRef *core.App, startDir string, cfg config.TUIConfig, openFiles []string) error {
+	m := view.NewModel(appRef, startDir, openFiles, cfg)
 	final, err := tea.NewProgram(
 		m,
-		tea.WithFPS(cfg.TUI.FPS),
+		tea.WithFPS(cfg.FPS),
 	).Run()
 	if err != nil {
 		return err

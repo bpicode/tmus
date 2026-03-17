@@ -65,7 +65,7 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 
 	m := &Model{
 		app:       appRef,
-		home:      home.NewModel(cwd, appRef),
+		home:      home.NewModel(cwd, cfg, appRef),
 		help:      help.NewModel(),
 		trackInfo: track_info.NewModel(cfg, appRef),
 		lyrics:    lyrics.NewModel(appRef),

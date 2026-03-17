@@ -14,11 +14,13 @@ import (
 	"github.com/bpicode/tmus/internal/app/archive"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
+	"github.com/bpicode/tmus/internal/config"
 	"github.com/bpicode/tmus/internal/ui/util"
 )
 
 type Model struct {
 	Cwd        string
+	homeDir    string
 	entries    []library.Entry
 	showHidden bool
 	err        error
@@ -30,7 +32,7 @@ type Model struct {
 	list       list.Model
 }
 
-func NewModel(startDir string, appRef *core.App) *Model {
+func NewModel(startDir string, cfg config.TUIConfig, appRef *core.App) *Model {
 	delegate := newEntryDelegate()
 	browserList := list.New(nil, delegate, 0, 0)
 	browserList.SetShowTitle(false)
@@ -57,9 +59,10 @@ func NewModel(startDir string, appRef *core.App) *Model {
 	browserList.Paginator.InactiveDot = browserList.Styles.InactivePaginationDot.String()
 
 	b := &Model{
-		Cwd:  startDir,
-		app:  appRef,
-		list: browserList,
+		Cwd:     startDir,
+		homeDir: cfg.BrowserHome,
+		app:     appRef,
+		list:    browserList,
 	}
 	return b
 }
@@ -70,6 +73,9 @@ func (m *Model) loadDir(path string) tea.Cmd {
 }
 
 func (m *Model) loadHomeDir() tea.Cmd {
+	if m.homeDir != "" {
+		return m.loadDir(m.homeDir)
+	}
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		m.err = err

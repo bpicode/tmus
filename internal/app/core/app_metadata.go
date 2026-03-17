@@ -45,7 +45,7 @@ func (a *App) metadataWorker() {
 			if req.Scope == MetadataBasic && meta.Artist == "" && meta.Title == "" && meta.Album == "" {
 				continue
 			}
-			if !a.emitMetadataEvent(TrackMetadataEvent{
+			if !a.emitMetadataEvent(MetadataEvent{
 				TrackID:  req.TrackID,
 				Path:     req.Path,
 				Scope:    req.Scope,
@@ -60,7 +60,7 @@ func (a *App) metadataWorker() {
 			// Only surface errors for explicit extended requests to avoid spamming
 			// subscribers with "no metadata" during background basic reads.
 			if req.Scope == MetadataExtended {
-				if !a.emitMetadataEvent(TrackMetadataEvent{
+				if !a.emitMetadataEvent(MetadataEvent{
 					TrackID: req.TrackID,
 					Path:    req.Path,
 					Scope:   req.Scope,
@@ -75,7 +75,7 @@ func (a *App) metadataWorker() {
 			continue
 		}
 		a.putCachedMetadata(req.Path, req.Scope, meta)
-		if !a.emitMetadataEvent(TrackMetadataEvent{
+		if !a.emitMetadataEvent(MetadataEvent{
 			TrackID:  req.TrackID,
 			Path:     req.Path,
 			Scope:    req.Scope,
@@ -121,7 +121,7 @@ func (a *App) putCachedMetadata(path string, scope MetadataScope, meta library.M
 	a.metadataCache.put(path, scope, meta)
 }
 
-func (a *App) emitMetadataEvent(event TrackMetadataEvent) bool {
+func (a *App) emitMetadataEvent(event MetadataEvent) bool {
 	select {
 	case <-a.ctx.Done():
 		return false

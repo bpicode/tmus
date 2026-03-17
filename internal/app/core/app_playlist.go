@@ -221,7 +221,7 @@ func (a *App) nextID() uint64 {
 	return a.nextTrackID
 }
 
-func (a *App) updatePlayList(event TrackMetadataEvent) {
+func (a *App) updatePlayList(event MetadataEvent) {
 	if event.TrackID == 0 || event.Err != nil {
 		return
 	}

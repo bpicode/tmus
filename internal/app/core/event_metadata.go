@@ -10,8 +10,8 @@ const (
 	MetadataExtended
 )
 
-// TrackMetadataEvent reports tags for a track loaded in the background.
-type TrackMetadataEvent struct {
+// MetadataEvent reports tags for a track loaded in the background.
+type MetadataEvent struct {
 	TrackID  uint64
 	Path     string
 	Scope    MetadataScope

@@ -85,7 +85,7 @@ func (m *Model) HandleKey(msg tea.KeyMsg) (tea.Cmd, bool) {
 	}
 }
 
-func (m *Model) HandleEvent(event core.TrackMetadataEvent) {
+func (m *Model) HandleEvent(event core.MetadataEvent) {
 	if !m.show {
 		return
 	}

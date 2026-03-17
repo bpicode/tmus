@@ -145,11 +145,11 @@ type App struct {
 	shutdownWG sync.WaitGroup
 	closed     atomic.Bool
 
-	metadataChan  chan TrackMetadataEvent
+	metadataChan  chan MetadataEvent
 	metadataQueue chan metadataRequest
 	metadataCache *metadataCache
 	metadataWG    sync.WaitGroup
-	metadataSubs  map[chan TrackMetadataEvent]struct{}
+	metadataSubs  map[chan MetadataEvent]struct{}
 
 	lyricsChan     chan LyricsEvent
 	lyricsQueue    chan lyricsRequest
@@ -198,7 +198,7 @@ func New(cfg config.Config) *App {
 		},
 		queue:         LinearStrategy{},
 		lastVolume:    DefaultVolume,
-		metadataChan:  make(chan TrackMetadataEvent, 32),
+		metadataChan:  make(chan MetadataEvent, 32),
 		metadataQueue: make(chan metadataRequest, 2048),
 		lyricsChan:    make(chan LyricsEvent, 32),
 		lyricsQueue:   make(chan lyricsRequest, 2048),
@@ -208,7 +208,7 @@ func New(cfg config.Config) *App {
 		ctx:           ctx,
 		cancel:        cancel,
 		playerSubs:    make(map[chan player.Event]struct{}),
-		metadataSubs:  make(map[chan TrackMetadataEvent]struct{}),
+		metadataSubs:  make(map[chan MetadataEvent]struct{}),
 		lyricsSubs:    make(map[chan LyricsEvent]struct{}),
 		stateSubs:     make(map[chan StateEvent]struct{}),
 	}
@@ -299,8 +299,8 @@ func (a *App) SubscribePlayerEvents() (<-chan player.Event, func()) {
 
 // SubscribeMetadataEvents registers a new metadata event subscriber.
 // Use the returned unsubscribe func to stop receiving events.
-func (a *App) SubscribeMetadataEvents() (<-chan TrackMetadataEvent, func()) {
-	ch := make(chan TrackMetadataEvent, 8)
+func (a *App) SubscribeMetadataEvents() (<-chan MetadataEvent, func()) {
+	ch := make(chan MetadataEvent, 8)
 	a.subsMu.Lock()
 	a.metadataSubs[ch] = struct{}{}
 	a.subsMu.Unlock()
@@ -566,7 +566,7 @@ func (a *App) broadcastLyricsEvent(event LyricsEvent) {
 	a.subsMu.Unlock()
 }
 
-func (a *App) broadcastMetadataEvent(event TrackMetadataEvent) {
+func (a *App) broadcastMetadataEvent(event MetadataEvent) {
 	a.subsMu.Lock()
 	for ch := range a.metadataSubs {
 		select {
@@ -597,7 +597,7 @@ func (a *App) unsubscribePlayerEvents(ch chan player.Event) {
 	a.subsMu.Unlock()
 }
 
-func (a *App) unsubscribeMetadataEvents(ch chan TrackMetadataEvent) {
+func (a *App) unsubscribeMetadataEvents(ch chan MetadataEvent) {
 	a.subsMu.Lock()
 	if _, ok := a.metadataSubs[ch]; ok {
 		delete(a.metadataSubs, ch)

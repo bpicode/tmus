@@ -33,7 +33,7 @@ type Model struct {
 type eventChannels struct {
 	state         <-chan core.StateEvent
 	unsubState    func()
-	metadata      <-chan core.TrackMetadataEvent
+	metadata      <-chan core.MetadataEvent
 	unsubMetadata func()
 	lyrics        <-chan core.LyricsEvent
 	unsubLyrics   func()
@@ -135,7 +135,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.lyrics.SyncState()
 		m.home.SyncState()
 		return m, m.listenForStateEvent()
-	case core.TrackMetadataEvent:
+	case core.MetadataEvent:
 		m.trackInfo.HandleEvent(msg)
 		m.home.SyncState()
 		return m, m.listenForMetadataEvent()

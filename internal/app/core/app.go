@@ -202,8 +202,8 @@ func New(cfg config.Config) *App {
 		metadataQueue: make(chan metadataRequest, 2048),
 		lyricsChan:    make(chan LyricsEvent, 32),
 		lyricsQueue:   make(chan lyricsRequest, 2048),
-		metadataCache: newMetadataCache(metadataCacheMaxEntries, metadataCacheMaxBytes),
-		lyricsCache:   newLyricsCache(lyricsCacheMaxEntries, lyricsCacheMaxBytes),
+		metadataCache: newMetadataCache(),
+		lyricsCache:   newLyricsCache(),
 		cmdChan:       make(chan Command, 256),
 		ctx:           ctx,
 		cancel:        cancel,
@@ -521,7 +521,7 @@ func (a *App) forwardPlayerEvents() {
 
 func (a *App) forwardMetadataEvents() {
 	for event := range a.metadataChan {
-		a.HandleMetadataEvent(event)
+		a.updatePlayList(event)
 		a.broadcastMetadataEvent(event)
 	}
 	a.subsMu.Lock()

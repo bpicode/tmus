@@ -6,14 +6,6 @@ import (
 	"github.com/bpicode/tmus/internal/app/lyrics"
 )
 
-// LyricsEvent reports lyrics loaded in the background.
-type LyricsEvent struct {
-	TrackID uint64
-	Path    string
-	Lyrics  lyrics.Lyrics
-	Err     error
-}
-
 type lyricsRequest struct {
 	TrackID uint64
 	Path    string
@@ -126,4 +118,26 @@ func (a *App) trackInfoForLyrics(req lyricsRequest) lyrics.TrackInfo {
 		break
 	}
 	return info
+}
+
+func (a *App) readLyricsFromTagsCached(path string) (string, error) {
+	meta, err := a.readMetadataExtendedCached(path)
+	if err != nil {
+		return "", err
+	}
+	return meta.Lyrics, nil
+}
+
+func (a *App) getCachedLyrics(path string) (lyrics.Lyrics, bool) {
+	if a == nil || a.lyricsCache == nil {
+		return lyrics.Lyrics{}, false
+	}
+	return a.lyricsCache.get(path)
+}
+
+func (a *App) putCachedLyrics(path string, data lyrics.Lyrics) {
+	if a == nil || a.lyricsCache == nil {
+		return
+	}
+	a.lyricsCache.put(path, data)
 }

@@ -2,8 +2,6 @@ package core
 
 import (
 	"path/filepath"
-
-	"github.com/bpicode/tmus/internal/app/library"
 )
 
 func (a *App) addTrack(track Track) {
@@ -223,33 +221,7 @@ func (a *App) nextID() uint64 {
 	return a.nextTrackID
 }
 
-func (a *App) enqueueMetadataRead(track Track) {
-	if track.Path == "" {
-		return
-	}
-	if track.Artist != "" || track.Title != "" || track.Album != "" {
-		return
-	}
-	a.requestMetadata(track.ID, track.Path, MetadataBasic)
-}
-
-func (a *App) requestMetadata(trackID uint64, path string, scope MetadataScope) {
-	if trackID == 0 || path == "" {
-		return
-	}
-	req := metadataRequest{
-		TrackID: trackID,
-		Path:    path,
-		Scope:   scope,
-	}
-	select {
-	case <-a.ctx.Done(): // Do nothing, drop request during shutdown.
-	case a.metadataQueue <- req: // Nothing else to do, just queue the request.
-	}
-}
-
-// HandleMetadataEvent updates playlist metadata when tags are read in the background.
-func (a *App) HandleMetadataEvent(event TrackMetadataEvent) {
+func (a *App) updatePlayList(event TrackMetadataEvent) {
 	if event.TrackID == 0 || event.Err != nil {
 		return
 	}
@@ -282,82 +254,5 @@ func (a *App) HandleMetadataEvent(event TrackMetadataEvent) {
 			Source:  StateEventMetadata,
 			Changes: StateChangeMetadata,
 		})
-	}
-}
-
-func (a *App) metadataWorker() {
-	for {
-		var req metadataRequest
-		select {
-		case <-a.ctx.Done():
-			return // Stop worker on shutdown.
-		case req = <-a.metadataQueue: // Receive item from queue to work on.
-		}
-		if a.ctx.Err() != nil {
-			return
-		}
-		if req.Path == "" || req.TrackID == 0 {
-			continue
-		}
-		if meta, ok := a.getCachedMetadata(req.Path, req.Scope); ok {
-			if req.Scope == MetadataBasic && meta.Artist == "" && meta.Title == "" && meta.Album == "" {
-				continue
-			}
-			if !a.emitMetadataEvent(TrackMetadataEvent{
-				TrackID:  req.TrackID,
-				Path:     req.Path,
-				Scope:    req.Scope,
-				Metadata: meta,
-			}) {
-				return
-			}
-			continue
-		}
-		meta, err := readMetadataForScope(req.Path, req.Scope)
-		if err != nil {
-			// Only surface errors for explicit extended requests to avoid spamming
-			// subscribers with "no metadata" during background basic reads.
-			if req.Scope == MetadataExtended {
-				if !a.emitMetadataEvent(TrackMetadataEvent{
-					TrackID: req.TrackID,
-					Path:    req.Path,
-					Scope:   req.Scope,
-					Err:     err,
-				}) {
-					return
-				}
-			}
-			continue
-		}
-		if req.Scope == MetadataBasic && meta.Artist == "" && meta.Title == "" && meta.Album == "" {
-			continue
-		}
-		a.putCachedMetadata(req.Path, req.Scope, meta)
-		if !a.emitMetadataEvent(TrackMetadataEvent{
-			TrackID:  req.TrackID,
-			Path:     req.Path,
-			Scope:    req.Scope,
-			Metadata: meta,
-		}) {
-			return
-		}
-	}
-}
-
-func (a *App) emitMetadataEvent(event TrackMetadataEvent) bool {
-	select {
-	case <-a.ctx.Done():
-		return false
-	case a.metadataChan <- event:
-		return true
-	}
-}
-
-func readMetadataForScope(path string, scope MetadataScope) (Metadata, error) {
-	switch scope {
-	case MetadataExtended:
-		return library.ReadMetadataExtended(path)
-	default:
-		return library.ReadMetadataBasic(path)
 	}
 }

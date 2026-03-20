@@ -12,7 +12,10 @@ const maxShuffleHistory = 500
 
 // ShuffleStrategy advances randomly and tracks history for prev.
 type ShuffleStrategy struct {
-	history []int
+	history [maxShuffleHistory]int
+	head    int
+	tail    int
+	count   int
 	rng     *rand.Rand
 }
 
@@ -29,9 +32,12 @@ func (s *ShuffleStrategy) Next(in QueueInput) QueueDecision {
 		return QueueNoop()
 	}
 	if in.Playing != -1 {
-		s.history = append(s.history, in.Playing)
-		if len(s.history) > maxShuffleHistory {
-			s.history = s.history[len(s.history)-maxShuffleHistory:]
+		s.history[s.tail] = in.Playing
+		s.tail = (s.tail + 1) % maxShuffleHistory
+		if s.count < maxShuffleHistory {
+			s.count++
+		} else {
+			s.head = (s.head + 1) % maxShuffleHistory
 		}
 	}
 	next := s.pickNext(total, in.Playing)
@@ -42,14 +48,17 @@ func (s *ShuffleStrategy) Prev(in QueueInput) QueueDecision {
 	if in.PlaylistLen == 0 {
 		return QueueNoop()
 	}
-	if len(s.history) == 0 {
+	if s.count == 0 {
 		if in.Playing == -1 {
 			return QueueNoop()
 		}
 		return QueuePlay(in.Playing)
 	}
-	last := s.history[len(s.history)-1]
-	s.history = s.history[:len(s.history)-1]
+	lastIdx := (s.tail - 1 + maxShuffleHistory) % maxShuffleHistory
+	last := s.history[lastIdx]
+	s.tail = lastIdx
+	s.count--
+
 	if last < 0 || last >= in.PlaylistLen {
 		return QueueStop()
 	}
@@ -57,7 +66,9 @@ func (s *ShuffleStrategy) Prev(in QueueInput) QueueDecision {
 }
 
 func (s *ShuffleStrategy) Reset() {
-	s.history = nil
+	s.head = 0
+	s.tail = 0
+	s.count = 0
 }
 
 func (s *ShuffleStrategy) pickNext(total, current int) int {

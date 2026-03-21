@@ -75,6 +75,9 @@ func (s *ShuffleStrategy) pickNext(total, current int) int {
 	if total <= 1 {
 		return 0
 	}
+	if current == -1 {
+		return s.rng.Intn(total)
+	}
 	// Pick uniformly from [0, total-1) then map to [0, total) excluding current,
 	// so the result is always different from current and always O(1).
 	n := s.rng.Intn(total - 1)

@@ -1,7 +1,6 @@
 package lyrics
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -26,5 +25,17 @@ func (r *Resolver) Find(track TrackInfo) (Lyrics, error) {
 		}
 		errs = append(errs, fmt.Errorf("%s: %w", provider.name(), err))
 	}
-	return Lyrics{}, errors.Join(errs...)
+	return Lyrics{}, &noLyricsFoundError{providerErrs: errs}
+}
+
+type noLyricsFoundError struct {
+	providerErrs []error
+}
+
+func (e *noLyricsFoundError) Error() string {
+	return "no lyrics found"
+}
+
+func (e *noLyricsFoundError) Unwrap() []error {
+	return e.providerErrs
 }

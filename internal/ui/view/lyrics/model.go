@@ -10,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/lyrics"
+	"github.com/bpicode/tmus/internal/ui/components/error_view"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -23,9 +24,9 @@ type Model struct {
 	followPlay     bool
 	followLine     bool
 	loading        bool
-	err            error
 	data           lyrics.Lyrics
 	app            *core.App
+	errorView      *error_view.Model
 }
 
 func NewModel(app *core.App) *Model {
@@ -35,6 +36,10 @@ func NewModel(app *core.App) *Model {
 		lyricsViewport: vp,
 		app:            app,
 		followLine:     true,
+		errorView: error_view.New(error_view.Styles{
+			ErrorStyle:          styleError,
+			UnwrappedErrorStyle: styleError,
+		}),
 	}
 }
 
@@ -93,10 +98,10 @@ func (m *Model) HandleEvent(event core.LyricsEvent) bool {
 	}
 	m.loading = false
 	if event.Err != nil {
-		m.err = event.Err
+		m.errorView.SetErr(event.Err)
 		return true
 	}
-	m.err = nil
+	m.errorView.SetErr(nil)
 	m.data = event.Lyrics
 	return true
 }
@@ -116,7 +121,7 @@ func (m *Model) SyncState() {
 	m.trackID = track.ID
 	m.trackPath = track.Path
 	m.loading = true
-	m.err = nil
+	m.errorView.SetErr(nil)
 	m.lyricsViewport.GotoTop()
 	m.data = lyrics.Lyrics{}
 	_ = m.app.Dispatch(core.Command{
@@ -141,7 +146,7 @@ func (m *Model) Show(show bool) {
 		m.trackPath = track.Path
 		m.followPlay = index == state.Playing && index >= 0
 		m.loading = true
-		m.err = nil
+		m.errorView.SetErr(nil)
 		m.lyricsViewport.GotoTop()
 		m.data = lyrics.Lyrics{}
 		cmd := core.Command{Type: core.CmdRequestLyrics, TrackID: track.ID, Path: track.Path}
@@ -152,7 +157,7 @@ func (m *Model) Show(show bool) {
 		m.trackPath = ""
 		m.followPlay = false
 		m.loading = false
-		m.err = nil
+		m.errorView.SetErr(nil)
 		m.lyricsViewport.GotoTop()
 		m.data = lyrics.Lyrics{}
 	}
@@ -224,21 +229,19 @@ func (m *Model) bodyLines(maxWidth int, state core.State) ([]string, int) {
 	}
 
 	truncate := func(s string) string {
-		return ansi.Truncate(s, maxWidth, "…")
+		lines := strings.Split(s, "\n")
+		for i, line := range lines {
+			lines[i] = ansi.Truncate(line, maxWidth, "…")
+		}
+		return strings.Join(lines, "\n")
 	}
 
 	switch {
 	case m.loading:
 		return []string{truncate(styleTrack.Render("Loading..."))}, -1
-	case m.err != nil:
-		lines := []string{truncate(styleEmpty.Render("No lyrics available"))}
-		if errs, ok := m.err.(interface{ Unwrap() []error }); ok {
-			lines = append(lines, truncate("  Reasons:"))
-			for _, errItem := range errs.Unwrap() {
-				lines = append(lines, truncate(styleError.Render("    ", errItem.Error())))
-			}
-		} else {
-			lines = append(lines, truncate(styleError.Render("  Reason: ", m.err.Error())))
+	case m.errorView.HasErr():
+		lines := []string{
+			truncate(m.errorView.View()),
 		}
 		return lines, -1
 	case len(m.data.Lines) == 0:

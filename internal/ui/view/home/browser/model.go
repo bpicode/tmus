@@ -15,6 +15,7 @@ import (
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/config"
+	"github.com/bpicode/tmus/internal/ui/components/error_view"
 	"github.com/bpicode/tmus/internal/ui/util"
 )
 
@@ -23,13 +24,13 @@ type Model struct {
 	homeDir    string
 	entries    []library.Entry
 	showHidden bool
-	err        error
 	width      int
 	height     int
 	show       bool
 	focus      bool
 	app        *core.App
 	list       list.Model
+	errorView  *error_view.Model
 }
 
 func NewModel(startDir string, cfg config.TUIConfig, appRef *core.App) *Model {
@@ -63,6 +64,10 @@ func NewModel(startDir string, cfg config.TUIConfig, appRef *core.App) *Model {
 		homeDir: cfg.BrowserHome,
 		app:     appRef,
 		list:    browserList,
+		errorView: error_view.New(error_view.Styles{
+			ErrorStyle:          styleError,
+			UnwrappedErrorStyle: styleError,
+		}),
 	}
 	return b
 }
@@ -78,14 +83,14 @@ func (m *Model) loadHomeDir() tea.Cmd {
 	}
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		m.err = err
+		m.errorView.SetErr(err)
 		return nil
 	}
 	return m.loadDir(homeDir)
 }
 
 func (m *Model) openSelection() tea.Cmd {
-	m.err = nil
+	m.errorView.SetErr(nil)
 	selected, ok := m.selected()
 	if !ok || !selected.IsDir {
 		if ok && !archive.IsArchivePath(selected.Path) {
@@ -101,11 +106,11 @@ func (m *Model) openSelection() tea.Cmd {
 }
 
 func (m *Model) upDir() tea.Cmd {
-	m.err = nil
+	m.errorView.SetErr(nil)
 	if archive.IsArchivePath(m.Cwd) {
 		scheme, archivePath, inner, err := archive.SplitPath(m.Cwd)
 		if err != nil {
-			m.err = err
+			m.errorView.SetErr(err)
 			return nil
 		}
 		if inner == "" {
@@ -163,8 +168,8 @@ func (m *Model) View() string {
 	sb.WriteString(styleSeparator.Render(strings.Repeat("─", max(0, m.width-panelStyle.GetHorizontalFrameSize()))))
 	sb.WriteString("\n")
 
-	if m.err != nil {
-		sb.WriteString(styleError.Render(m.err.Error()))
+	if m.errorView.HasErr() {
+		sb.WriteString(m.errorView.View())
 		return panelStyle.Render(sb.String())
 	}
 
@@ -272,7 +277,7 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 	}
 	switch msg.String() {
 	case "/", "up", "k", "down", "j", "pgup", "pageup", "pgdown", "pagedown", "home", "pos1", "end", "esc":
-		m.err = nil
+		m.errorView.SetErr(nil)
 		var cmd tea.Cmd
 		m.list, cmd = m.list.Update(msg)
 		return cmd, true
@@ -340,14 +345,14 @@ func (m *Model) HandleLoadDirMsg(msg LoadDirMsg) {
 	}
 
 	if msg.Err != nil {
-		m.err = msg.Err
+		m.errorView.SetErr(msg.Err)
 		return
 	}
 
 	prevIndex := m.list.Index()
 	m.entries = msg.Items
 	m.updateListItems(prevIndex)
-	m.err = nil
+	m.errorView.SetErr(nil)
 }
 
 func (m *Model) Visible() bool {

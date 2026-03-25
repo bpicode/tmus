@@ -17,7 +17,7 @@ require (
 	github.com/llehouerou/go-faad2 v0.3.0
 	github.com/llehouerou/go-m4a v0.1.0
 	github.com/mholt/archives v0.1.5
-	github.com/pelletier/go-toml/v2 v2.2.4
+	github.com/pelletier/go-toml/v2 v2.3.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	github.com/ulikunitz/xz v0.5.15

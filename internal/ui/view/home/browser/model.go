@@ -199,8 +199,14 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 	case loadDirMsg:
 		return m.handleLoadDirMsg(msg)
 	default:
-		return m, nil, false
+		return m.handleRemaining(msg)
 	}
+}
+
+func (m *Model) handleRemaining(msg tea.Msg) (*Model, tea.Cmd, bool) {
+	var cmd tea.Cmd
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd, false
 }
 
 func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
@@ -267,20 +273,9 @@ func (m *Model) updateSearch(msg tea.KeyMsg) (bool, tea.Cmd) {
 	}
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
-	m.syncFilterWhileEditing()
 	return true, cmd
 }
 
-func (m *Model) syncFilterWhileEditing() {
-	if !m.list.SettingFilter() {
-		return
-	}
-	// This view only receives key messages from the parent model, so we
-	// apply filtering synchronously instead of relying on list filter commands.
-	filter := m.list.FilterInput.Value()
-	m.list.SetFilterText(filter)
-	m.list.SetFilterState(list.Filtering)
-}
 
 func (m *Model) clearSearch() {
 	m.list.ResetFilter()

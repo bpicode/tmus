@@ -309,9 +309,6 @@ func (m *Model) updateNav(msg tea.KeyMsg, state core.State) (tea.Cmd, bool) {
 	case "/", "up", "k", "down", "j", "pgup", "pageup", "pgdown", "pagedown", "home", "pos1", "end", "esc":
 		var cmd tea.Cmd
 		m.list, cmd = m.list.Update(msg)
-		if msg.String() == "/" {
-			m.syncFilterWhileEditing()
-		}
 		m.syncSelectionFromList(state)
 		return cmd, true
 	case "alt+up", "alt+k":
@@ -337,20 +334,10 @@ func (m *Model) updateSearch(msg tea.KeyMsg, state core.State) (bool, tea.Cmd) {
 	}
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
-	m.syncFilterWhileEditing()
 	m.syncSelectionFromList(state)
 	return true, cmd
 }
 
-func (m *Model) syncFilterWhileEditing() {
-	if !m.list.SettingFilter() {
-		return
-	}
-	// The parent view forwards only key events, so apply filtering now.
-	filter := m.list.FilterInput.Value()
-	m.list.SetFilterText(filter)
-	m.list.SetFilterState(list.Filtering)
-}
 
 func (m *Model) syncSelectionFromList(state core.State) {
 	selected, ok := m.selectedTrack()

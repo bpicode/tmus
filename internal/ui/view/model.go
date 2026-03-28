@@ -113,6 +113,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if subHandled {
 		return m, cmdSub
 	}
+	cmds = append(cmds, cmdSub)
 
 	m.home, cmdSub, subHandled = m.home.Update(msg)
 	if subHandled {

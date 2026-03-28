@@ -61,6 +61,7 @@ func NewModel(appRef *core.App) *Model {
 	playlistList.FilterInput.SetStyles(textinput.Styles{
 		Focused: textinput.StyleState{Text: styleSearchActive, Prompt: styleSearchActive},
 		Blurred: textinput.StyleState{Text: styleSearchInactive, Prompt: styleSearchInactive, Placeholder: styleSearchInactive},
+		Cursor:  textinput.CursorStyle{Blink: true},
 	})
 	playlistList.Styles.PaginationStyle = lipgloss.NewStyle().Foreground(lipgloss.BrightBlack)
 	playlistList.Styles.ActivePaginationDot = lipgloss.NewStyle().Foreground(lipgloss.BrightBlack).SetString("•")
@@ -337,7 +338,6 @@ func (m *Model) updateSearch(msg tea.KeyMsg, state core.State) (bool, tea.Cmd) {
 	m.syncSelectionFromList(state)
 	return true, cmd
 }
-
 
 func (m *Model) syncSelectionFromList(state core.State) {
 	selected, ok := m.selectedTrack()

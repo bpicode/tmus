@@ -52,6 +52,7 @@ func NewModel(startDir string, cfg config.TUIConfig, appRef *core.App) *Model {
 	browserList.FilterInput.SetStyles(textinput.Styles{
 		Focused: textinput.StyleState{Text: styleSearchActive, Prompt: styleSearchActive},
 		Blurred: textinput.StyleState{Text: styleSearchInactive, Prompt: styleSearchInactive, Placeholder: styleSearchInactive},
+		Cursor:  textinput.CursorStyle{Blink: true},
 	})
 	browserList.Styles.PaginationStyle = lipgloss.NewStyle().Foreground(lipgloss.BrightBlack)
 	browserList.Styles.ActivePaginationDot = lipgloss.NewStyle().Foreground(lipgloss.BrightBlack).SetString("•")
@@ -275,7 +276,6 @@ func (m *Model) updateSearch(msg tea.KeyMsg) (bool, tea.Cmd) {
 	m.list, cmd = m.list.Update(msg)
 	return true, cmd
 }
-
 
 func (m *Model) clearSearch() {
 	m.list.ResetFilter()

@@ -4,7 +4,7 @@ import tea "charm.land/bubbletea/v2"
 
 type ToggleLyricsMsg struct{}
 
-func ToggleLyricsCmd() tea.Cmd {
+func toggleLyricsCmd() tea.Cmd {
 	return func() tea.Msg {
 		return ToggleLyricsMsg{}
 	}
@@ -12,7 +12,7 @@ func ToggleLyricsCmd() tea.Cmd {
 
 type ToggleTrackInfoMsg struct{}
 
-func ToggleTrackInfoCmd() tea.Cmd {
+func toggleTrackInfoCmd() tea.Cmd {
 	return func() tea.Msg {
 		return ToggleTrackInfoMsg{}
 	}

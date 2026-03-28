@@ -74,7 +74,7 @@ func NewModel(startDir string, cfg config.TUIConfig, appRef *core.App) *Model {
 
 func (m *Model) loadDir(path string) tea.Cmd {
 	m.Cwd = path
-	return LoadDirCmd(path, m.showHidden)
+	return loadDirCmd(path, m.showHidden)
 }
 
 func (m *Model) loadHomeDir() tea.Cmd {
@@ -146,7 +146,7 @@ func (m *Model) selected() (library.Entry, bool) {
 }
 
 func (m *Model) Init() tea.Cmd {
-	return LoadDirCmd(m.Cwd, m.showHidden)
+	return loadDirCmd(m.Cwd, m.showHidden)
 }
 
 func (m *Model) View() string {
@@ -190,17 +190,56 @@ func (m *Model) View() string {
 	return panelStyle.Render(sb.String())
 }
 
-func (m *Model) HandleKey(msg tea.KeyMsg) (tea.Cmd, bool) {
+func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		return m.handleSizeMsg(msg)
+	case tea.KeyPressMsg:
+		return m.handleKeyPressMsg(msg)
+	case loadDirMsg:
+		return m.handleLoadDirMsg(msg)
+	default:
+		return m, nil, false
+	}
+}
+
+func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
+	m.height = msg.Height
+	m.width = msg.Width
+	m.list.SetSize(max(0, m.width-stylePanelFocused.GetHorizontalFrameSize()), max(0, m.height-6))
+	return m, nil, false
+}
+
+func (m *Model) handleKeyPressMsg(msg tea.KeyMsg) (*Model, tea.Cmd, bool) {
 	if !m.show || !m.focus {
-		return nil, false
+		return m, nil, false
 	}
 	if handled, cmd := m.updateSearch(msg); handled {
-		return cmd, true
+		return m, cmd, true
 	}
 	if cmd, handled := m.updateNav(msg); handled {
-		return cmd, true
+		return m, cmd, true
 	}
-	return nil, false
+	return m, nil, false
+}
+
+func (m *Model) handleLoadDirMsg(msg loadDirMsg) (*Model, tea.Cmd, bool) {
+	if m.Cwd != msg.Path {
+		// This can happen when the user quickly navigates to another directory before the previous one finishes loading.
+		// In this case we ignore the message since it's outdated.
+		return m, nil, false
+	}
+
+	if msg.Err != nil {
+		m.errorView.SetErr(msg.Err)
+		return m, nil, false
+	}
+
+	prevIndex := m.list.Index()
+	m.entries = msg.Items
+	m.updateListItems(prevIndex)
+	m.errorView.SetErr(nil)
+	return m, nil, false
 }
 
 func (m *Model) updateListItems(preferredIndex int) {
@@ -331,30 +370,6 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 	}
 }
 
-func (m *Model) UpdateSize(msg tea.WindowSizeMsg) {
-	m.width = msg.Width
-	m.height = msg.Height
-	m.list.SetSize(max(0, m.width-stylePanelFocused.GetHorizontalFrameSize()), max(0, m.height-6))
-}
-
-func (m *Model) HandleLoadDirMsg(msg LoadDirMsg) {
-	if m.Cwd != msg.Path {
-		// This can happen when the user quickly navigates to another directory before the previous one finishes loading.
-		// In this case we ignore the message since it's outdated.
-		return
-	}
-
-	if msg.Err != nil {
-		m.errorView.SetErr(msg.Err)
-		return
-	}
-
-	prevIndex := m.list.Index()
-	m.entries = msg.Items
-	m.updateListItems(prevIndex)
-	m.errorView.SetErr(nil)
-}
-
 func (m *Model) Visible() bool {
 	return m.show
 }
@@ -379,10 +394,6 @@ func (m *Model) ToggleFocus() {
 
 func (m *Model) Focus(focus bool) {
 	m.focus = focus
-}
-
-func (m *Model) SyncState() {
-	// Nothing to do
 }
 
 type browserListItem struct {

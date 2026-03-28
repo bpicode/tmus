@@ -71,11 +71,108 @@ func NewModel(appRef *core.App) *Model {
 	return m
 }
 
-func (m *Model) UpdateSize(msg tea.WindowSizeMsg) {
+func (m *Model) Init() tea.Cmd {
+	_, cmd, _ := m.syncState()
+	return cmd
+}
+
+func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		return m.handleSizeMsg(msg)
+	case tea.KeyPressMsg:
+		return m.handleKeyPressMsg(msg)
+	case core.StateEvent:
+		return m.syncState()
+	case core.MetadataEvent:
+		return m.syncState()
+	default:
+		var cmd tea.Cmd
+		m.list, cmd = m.list.Update(msg)
+		return m, cmd, false
+	}
+}
+
+func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 	m.width = msg.Width
 	m.height = msg.Height
 	m.volume.UpdateSize(m.width - stylePanelUnfocused.GetHorizontalFrameSize())
 	m.status.UpdateSize(m.width - stylePanelUnfocused.GetHorizontalFrameSize())
+	return m, nil, false
+}
+
+func (m *Model) handleKeyPressMsg(msg tea.KeyMsg) (*Model, tea.Cmd, bool) {
+	if !m.show {
+		return m, nil, false
+	}
+
+	state := m.app.State()
+	if handled, cmd := m.updateSearch(msg, state); handled {
+		return m, cmd, true
+	}
+	if cmd, handled := m.updateNav(msg, state); handled {
+		return m, cmd, true
+	}
+
+	if m.focus {
+		switch msg.Key().Text {
+		case "i":
+			return m, toggleTrackInfoCmd(), true
+		case "L":
+			return m, toggleLyricsCmd(), true
+		case "c":
+			_ = m.app.Dispatch(core.Command{Type: core.CmdClear})
+			return m, nil, true
+		case "x":
+			_ = m.app.Dispatch(core.Command{Type: core.CmdRemoveAt, Index: state.Cursor})
+			return m, nil, true
+		}
+	}
+
+	switch msg.String() {
+	case "space":
+		_ = m.app.Dispatch(core.Command{Type: core.CmdTogglePause})
+		return m, nil, true
+	}
+
+	switch msg.Key().Text {
+	case "n":
+		_ = m.app.Dispatch(core.Command{Type: core.CmdNext})
+		return m, nil, true
+	case "p":
+		_ = m.app.Dispatch(core.Command{Type: core.CmdPrev})
+		return m, nil, true
+	case "+":
+		_ = m.app.Dispatch(core.Command{Type: core.CmdVolumeUp})
+		return m, nil, true
+	case "-":
+		_ = m.app.Dispatch(core.Command{Type: core.CmdVolumeDown})
+		return m, nil, true
+	case "m":
+		_ = m.app.Dispatch(core.Command{Type: core.CmdToggleMute})
+		return m, nil, true
+	case "s":
+		_ = m.app.Dispatch(core.Command{Type: core.CmdStop})
+		return m, nil, true
+	case ",":
+		_ = m.app.Dispatch(core.Command{Type: core.CmdSeekBy, Offset: -10 * time.Second})
+		return m, nil, true
+	case ".":
+		_ = m.app.Dispatch(core.Command{Type: core.CmdSeekBy, Offset: 10 * time.Second})
+		return m, nil, true
+	case "<":
+		_ = m.app.Dispatch(core.Command{Type: core.CmdSeekBy, Offset: -60 * time.Second})
+		return m, nil, true
+	case ">":
+		_ = m.app.Dispatch(core.Command{Type: core.CmdSeekBy, Offset: 60 * time.Second})
+		return m, nil, true
+	case "M":
+		mode := nextQueueMode(state.QueueMode)
+		_ = m.app.Dispatch(core.Command{Type: core.CmdSetQueueMode, Mode: mode})
+		return m, nil, true
+	default:
+		return m, nil, false
+	}
 }
 
 func (m *Model) View() string {
@@ -168,11 +265,6 @@ func (m *Model) Focused() bool {
 	return m.focus
 }
 
-func (m *Model) Init() tea.Cmd {
-	m.SyncState()
-	return nil
-}
-
 func (m *Model) Show(show bool) {
 	m.show = show
 	if !show {
@@ -180,11 +272,7 @@ func (m *Model) Show(show bool) {
 	}
 }
 
-func (m *Model) Shutdown() {
-	// Nothing to do
-}
-
-func (m *Model) SyncState() {
+func (m *Model) syncState() (*Model, tea.Cmd, bool) {
 	state := m.app.State()
 	m.playing = state.Playing
 	m.playState = state.PlayState
@@ -193,88 +281,16 @@ func (m *Model) SyncState() {
 	cursor := selectedTrack(state)
 	if m.filterActive() {
 		m.ensureFilteredSelection(state)
-		return
+		return m, nil, false
 	}
 	if cursor >= 0 {
 		m.selectTrack(cursor)
-		return
+		return m, nil, false
 	}
 	if len(m.list.VisibleItems()) > 0 {
 		m.list.Select(0)
 	}
-}
-
-func (m *Model) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
-	if !m.show {
-		return nil, false
-	}
-
-	state := m.app.State()
-	if handled, cmd := m.updateSearch(msg, state); handled {
-		return cmd, true
-	}
-	if cmd, handled := m.updateNav(msg, state); handled {
-		return cmd, true
-	}
-
-	if m.focus {
-		switch msg.Key().Text {
-		case "i":
-			return ToggleTrackInfoCmd(), true
-		case "L":
-			return ToggleLyricsCmd(), true
-		case "c":
-			_ = m.app.Dispatch(core.Command{Type: core.CmdClear})
-			return nil, true
-		case "x":
-			_ = m.app.Dispatch(core.Command{Type: core.CmdRemoveAt, Index: state.Cursor})
-			return nil, true
-		}
-	}
-
-	switch msg.String() {
-	case "space":
-		_ = m.app.Dispatch(core.Command{Type: core.CmdTogglePause})
-		return nil, true
-	}
-
-	switch msg.Key().Text {
-	case "n":
-		_ = m.app.Dispatch(core.Command{Type: core.CmdNext})
-		return nil, true
-	case "p":
-		_ = m.app.Dispatch(core.Command{Type: core.CmdPrev})
-		return nil, true
-	case "+":
-		_ = m.app.Dispatch(core.Command{Type: core.CmdVolumeUp})
-		return nil, true
-	case "-":
-		_ = m.app.Dispatch(core.Command{Type: core.CmdVolumeDown})
-		return nil, true
-	case "m":
-		_ = m.app.Dispatch(core.Command{Type: core.CmdToggleMute})
-		return nil, true
-	case "s":
-		_ = m.app.Dispatch(core.Command{Type: core.CmdStop})
-		return nil, true
-	case ",":
-		_ = m.app.Dispatch(core.Command{Type: core.CmdSeekBy, Offset: -10 * time.Second})
-		return nil, true
-	case ".":
-		_ = m.app.Dispatch(core.Command{Type: core.CmdSeekBy, Offset: 10 * time.Second})
-		return nil, true
-	case "<":
-		_ = m.app.Dispatch(core.Command{Type: core.CmdSeekBy, Offset: -60 * time.Second})
-		return nil, true
-	case ">":
-		_ = m.app.Dispatch(core.Command{Type: core.CmdSeekBy, Offset: 60 * time.Second})
-		return nil, true
-	case "M":
-		mode := nextQueueMode(state.QueueMode)
-		_ = m.app.Dispatch(core.Command{Type: core.CmdSetQueueMode, Mode: mode})
-		return nil, true
-	}
-	return nil, false
+	return m, nil, false
 }
 
 func (m *Model) updateNav(msg tea.KeyMsg, state core.State) (tea.Cmd, bool) {

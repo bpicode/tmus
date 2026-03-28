@@ -32,61 +32,8 @@ func NewModel() *Model {
 	}
 }
 
-func (m *Model) Visible() bool {
-	return m.show
-}
-
-func (m *Model) HandleKey(msg tea.KeyMsg) (tea.Cmd, bool) {
-	if !m.show {
-		return nil, false
-	}
-	return nil, m.Update(msg)
-}
-
-func (m *Model) UpdateSize(message tea.WindowSizeMsg) {
-	m.width = message.Width
-	m.height = message.Height
-	m.viewport.SetWidth(max(min(m.maxLineLength, m.width-styleOverlay.GetHorizontalFrameSize()), 0))
-	m.viewport.SetHeight(max(m.height-styleOverlay.GetVerticalFrameSize(), 0))
-}
-
-func (m *Model) Show(show bool) {
-	m.show = show
-	if !m.show {
-		m.viewport.GotoTop()
-	}
-}
-
-func (m *Model) Update(msg tea.KeyMsg) bool {
-	if !m.show {
-		return false
-	}
-
-	switch msg.String() {
-	case "q", "esc", "?":
-		m.Show(false)
-		return true
-	case "up", "k":
-		m.viewport.ScrollUp(1)
-		return true
-	case "down", "j":
-		m.viewport.ScrollDown(1)
-		return true
-	case "pgup", "pageup":
-		m.viewport.PageUp()
-		return true
-	case "pgdown", "pagedown":
-		m.viewport.PageDown()
-		return true
-	case "home", "pos1":
-		m.viewport.GotoTop()
-		return true
-	case "end":
-		m.viewport.GotoBottom()
-		return true
-	default:
-		return false
-	}
+func (m *Model) Init() tea.Cmd {
+	return nil
 }
 
 func (m *Model) View() string {
@@ -97,6 +44,63 @@ func (m *Model) View() string {
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, styled)
 }
 
-func (m *Model) Init() tea.Cmd {
-	return nil
+func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		return m.handleSizeMsg(msg)
+	case tea.KeyPressMsg:
+		return m.handleKeyPressMsg(msg)
+	default:
+		return m, nil, false
+	}
+}
+
+func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
+	m.width = msg.Width
+	m.height = msg.Height
+	m.viewport.SetWidth(max(min(m.maxLineLength, m.width-styleOverlay.GetHorizontalFrameSize()), 0))
+	m.viewport.SetHeight(max(m.height-styleOverlay.GetVerticalFrameSize(), 0))
+	return m, nil, false
+}
+
+func (m *Model) handleKeyPressMsg(msg tea.KeyPressMsg) (*Model, tea.Cmd, bool) {
+	if !m.show {
+		return m, nil, false
+	}
+	switch msg.String() {
+	case "q", "esc", "?":
+		m.Show(false)
+		return m, nil, true
+	case "up", "k":
+		m.viewport.ScrollUp(1)
+		return m, nil, true
+	case "down", "j":
+		m.viewport.ScrollDown(1)
+		return m, nil, true
+	case "pgup", "pageup":
+		m.viewport.PageUp()
+		return m, nil, true
+	case "pgdown", "pagedown":
+		m.viewport.PageDown()
+		return m, nil, true
+	case "home", "pos1":
+		m.viewport.GotoTop()
+		return m, nil, true
+	case "end":
+		m.viewport.GotoBottom()
+		return m, nil, true
+	default:
+		return m, nil, false
+	}
+}
+
+func (m *Model) Visible() bool {
+	return m.show
+}
+
+func (m *Model) Show(show bool) {
+	m.show = show
+	if !m.show {
+		m.viewport.GotoTop()
+	}
 }

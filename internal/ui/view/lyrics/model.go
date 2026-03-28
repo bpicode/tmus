@@ -47,76 +47,123 @@ func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m *Model) UpdateSize(msg tea.WindowSizeMsg) {
-	m.width = msg.Width
-	m.height = msg.Height
+func (m *Model) View() string {
+	if m.width < 1 || m.height < 1 {
+		return ""
+	}
+	state := m.app.State()
+	innerWidth, innerHeight := m.innerSize()
+
+	availableWidth := innerWidth
+	viewportHeight := max(innerHeight-3, 0) // 3 -> 1 for title, 1 for track, 1 for empty line after track
+	m.lyricsViewport.SetWidth(availableWidth)
+	m.lyricsViewport.SetHeight(viewportHeight)
+
+	title := styleTitle.Render(ansi.Truncate("📜 Lyrics", availableWidth, "…"))
+	trackName := sanitizeTerminalText(displayNameForTrack(state, m.trackID, m.trackPath))
+	track := styleTrack.Render(ansi.Truncate(trackName, availableWidth, "…"))
+	pad := ""
+	headers := strings.Join([]string{title, track, pad}, "\n")
+
+	lines, hightlightIndex := m.bodyLines(availableWidth, state)
+	m.lyricsViewport.SetContentLines(lines)
+	if hightlightIndex >= 0 && hightlightIndex < len(lines) && m.followLine {
+		highlightLine := lines[hightlightIndex]
+		m.lyricsViewport.EnsureVisible(hightlightIndex, 0, lipgloss.Width(highlightLine))
+	}
+
+	content := lipgloss.JoinVertical(lipgloss.Left, headers, m.lyricsViewport.View())
+	inner := lipgloss.NewStyle().MaxWidth(availableWidth).MaxHeight(innerHeight).Render(content)
+	styled := styleOverlay.Render(inner)
+	return lipgloss.Place(m.width, m.height, lipgloss.Left, lipgloss.Top, styled)
 }
 
-func (m *Model) HandleKey(msg tea.KeyMsg) (tea.Cmd, bool) {
+func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		return m.handleSizeMsg(msg)
+	case tea.KeyPressMsg:
+		return m.handleKeyPressMsg(msg)
+	case core.LyricsEvent:
+		return m.handleLyricsEvent(msg)
+	case core.StateEvent:
+		return m.handleStateEvent()
+	default:
+		return m, nil, false
+	}
+}
+
+func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
+	m.width = msg.Width
+	m.height = msg.Height
+	return m, nil, false
+}
+
+func (m *Model) handleKeyPressMsg(msg tea.KeyPressMsg) (*Model, tea.Cmd, bool) {
 	if !m.show {
-		return nil, false
+		return m, nil, false
 	}
 	switch msg.String() {
 	case "q", "esc", "L":
 		m.Show(false)
-		return nil, true
+		return m, nil, true
 	case "f":
 		m.followLine = !m.followLine
-		return nil, true
+		return m, nil, true
 	case "up", "k":
 		m.lyricsViewport.ScrollUp(1)
-		return nil, true
+		return m, nil, true
 	case "down", "j":
 		m.lyricsViewport.ScrollDown(1)
-		return nil, true
+		return m, nil, true
 	case "pgup", "pageup":
 		m.lyricsViewport.PageUp()
-		return nil, true
+		return m, nil, true
 	case "pgdown", "pagedown":
 		m.lyricsViewport.PageDown()
-		return nil, true
+		return m, nil, true
 	case "home", "pos1":
 		m.lyricsViewport.GotoTop()
-		return nil, true
+		return m, nil, true
 	case "end":
 		m.lyricsViewport.GotoBottom()
-		return nil, true
+		return m, nil, true
 	default:
-		return nil, false
+		return m, nil, false
 	}
 }
 
-func (m *Model) HandleEvent(event core.LyricsEvent) bool {
+func (m *Model) handleLyricsEvent(event core.LyricsEvent) (*Model, tea.Cmd, bool) {
 	if !m.show {
-		return false
+		return m, nil, false
 	}
 	if event.TrackID != m.trackID {
-		return false
+		return m, nil, false
 	}
 	if event.Path != m.trackPath {
-		return false
+		return m, nil, false
 	}
 	m.loading = false
 	if event.Err != nil {
 		m.errorView.SetErr(event.Err)
-		return true
+		return m, nil, false
 	}
 	m.errorView.SetErr(nil)
 	m.data = event.Lyrics
-	return true
+	return m, nil, false
 }
 
-func (m *Model) SyncState() {
+func (m *Model) handleStateEvent() (*Model, tea.Cmd, bool) {
 	if !m.show || !m.followPlay {
-		return
+		return m, nil, false
 	}
 	state := m.app.State()
 	track, ok := lyricsPlayingTrack(state)
 	if !ok || track.ID == 0 || track.Path == "" {
-		return
+		return m, nil, false
 	}
 	if track.ID == m.trackID && track.Path == m.trackPath {
-		return
+		return m, nil, false
 	}
 	m.trackID = track.ID
 	m.trackPath = track.Path
@@ -129,6 +176,7 @@ func (m *Model) SyncState() {
 		TrackID: track.ID,
 		Path:    track.Path,
 	})
+	return m, nil, false
 }
 
 func (m *Model) Show(show bool) {
@@ -165,37 +213,6 @@ func (m *Model) Show(show bool) {
 
 func (m *Model) Visible() bool {
 	return m.show
-}
-
-func (m *Model) View() string {
-	if m.width < 1 || m.height < 1 {
-		return ""
-	}
-	state := m.app.State()
-	innerWidth, innerHeight := m.innerSize()
-
-	availableWidth := innerWidth
-	viewportHeight := max(innerHeight-3, 0) // 3 -> 1 for title, 1 for track, 1 for empty line after track
-	m.lyricsViewport.SetWidth(availableWidth)
-	m.lyricsViewport.SetHeight(viewportHeight)
-
-	title := styleTitle.Render(ansi.Truncate("📜 Lyrics", availableWidth, "…"))
-	trackName := sanitizeTerminalText(displayNameForTrack(state, m.trackID, m.trackPath))
-	track := styleTrack.Render(ansi.Truncate(trackName, availableWidth, "…"))
-	pad := ""
-	headers := strings.Join([]string{title, track, pad}, "\n")
-
-	lines, hightlightIndex := m.bodyLines(availableWidth, state)
-	m.lyricsViewport.SetContentLines(lines)
-	if hightlightIndex >= 0 && hightlightIndex < len(lines) && m.followLine {
-		highlightLine := lines[hightlightIndex]
-		m.lyricsViewport.EnsureVisible(hightlightIndex, 0, lipgloss.Width(highlightLine))
-	}
-
-	content := lipgloss.JoinVertical(lipgloss.Left, headers, m.lyricsViewport.View())
-	inner := lipgloss.NewStyle().MaxWidth(availableWidth).MaxHeight(innerHeight).Render(content)
-	styled := styleOverlay.Render(inner)
-	return lipgloss.Place(m.width, m.height, lipgloss.Left, lipgloss.Top, styled)
 }
 
 func (m *Model) innerSize() (int, int) {

@@ -10,7 +10,7 @@ import (
 
 func TestModelShowsKeybindings(t *testing.T) {
 	m := NewModel()
-	m.UpdateSize(tea.WindowSizeMsg{Width: 100, Height: 100})
+	m.Update(tea.WindowSizeMsg{Width: 100, Height: 100})
 	m.Show(true)
 	r := m.View()
 	assert.Contains(t, strings.ToLower(r), "keybindings")
@@ -18,7 +18,7 @@ func TestModelShowsKeybindings(t *testing.T) {
 
 func TestModelRendersEmptyIfNotShown(t *testing.T) {
 	m := NewModel()
-	m.UpdateSize(tea.WindowSizeMsg{Width: 100, Height: 100})
+	m.Update(tea.WindowSizeMsg{Width: 100, Height: 100})
 	m.Show(false)
 	r := m.View()
 	assert.Empty(t, r)

@@ -49,62 +49,77 @@ func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m *Model) UpdateSize(message tea.WindowSizeMsg) {
-	m.width = message.Width
-	m.height = message.Height
-}
-
-func (m *Model) HandleKey(msg tea.KeyMsg) (tea.Cmd, bool) {
-	if !m.show {
-		return nil, false
-	}
-	switch msg.String() {
-	case "q", "esc", "i":
-		m.Show(false)
-		return nil, true
-	case "up", "k":
-		m.viewport.ScrollUp(1)
-		return nil, true
-	case "down", "j":
-		m.viewport.ScrollDown(1)
-		return nil, true
-	case "pgup", "pageup":
-		m.viewport.PageUp()
-		return nil, true
-	case "pgdown", "pagedown":
-		m.viewport.PageDown()
-		return nil, true
-	case "home", "pos1":
-		m.viewport.GotoTop()
-		return nil, true
-	case "end":
-		m.viewport.GotoBottom()
-		return nil, true
+func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		return m.handleSizeMsg(msg)
+	case tea.KeyPressMsg:
+		return m.handleKeyPressMsg(msg)
+	case core.MetadataEvent:
+		return m.handleMetadataEvent(msg)
 	default:
-		return nil, false
+		return m, nil, false
 	}
 }
 
-func (m *Model) HandleEvent(event core.MetadataEvent) {
+func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
+	m.width = msg.Width
+	m.height = msg.Height
+	return m, nil, false
+}
+
+func (m *Model) handleMetadataEvent(event core.MetadataEvent) (*Model, tea.Cmd, bool) {
 	if !m.show {
-		return
+		return m, nil, false
 	}
 	if event.TrackID != m.trackID {
-		return
+		return m, nil, false
 	}
 	if event.Path != m.trackPath {
-		return
+		return m, nil, false
 	}
 	if event.Scope != core.MetadataExtended {
-		return
+		return m, nil, false
 	}
 	m.loading = false
 	if event.Err != nil {
 		m.err = event.Err.Error()
-		return
+		return m, nil, false
 	}
 	m.err = ""
 	m.data = event.Metadata
+	return m, nil, false
+}
+
+func (m *Model) handleKeyPressMsg(msg tea.KeyPressMsg) (*Model, tea.Cmd, bool) {
+	if !m.show {
+		return m, nil, false
+	}
+	switch msg.String() {
+	case "q", "esc", "i":
+		m.Show(false)
+		return m, nil, true
+	case "up", "k":
+		m.viewport.ScrollUp(1)
+		return m, nil, true
+	case "down", "j":
+		m.viewport.ScrollDown(1)
+		return m, nil, true
+	case "pgup", "pageup":
+		m.viewport.PageUp()
+		return m, nil, true
+	case "pgdown", "pagedown":
+		m.viewport.PageDown()
+		return m, nil, true
+	case "home", "pos1":
+		m.viewport.GotoTop()
+		return m, nil, true
+	case "end":
+		m.viewport.GotoBottom()
+		return m, nil, true
+	default:
+		return m, nil, false
+	}
 }
 
 func (m *Model) Show(show bool) {

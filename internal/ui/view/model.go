@@ -13,7 +13,6 @@ import (
 	"github.com/bpicode/tmus/internal/config"
 	"github.com/bpicode/tmus/internal/ui/view/help"
 	"github.com/bpicode/tmus/internal/ui/view/home"
-	"github.com/bpicode/tmus/internal/ui/view/home/browser"
 	"github.com/bpicode/tmus/internal/ui/view/home/playlist"
 	"github.com/bpicode/tmus/internal/ui/view/lyrics"
 	"github.com/bpicode/tmus/internal/ui/view/track_info"
@@ -94,72 +93,68 @@ func (m *Model) Init() tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+	var cmdSub tea.Cmd
+	var subHandled bool
+
+	m.help, cmdSub, subHandled = m.help.Update(msg)
+	if subHandled {
+		return m, cmdSub
+	}
+	cmds = append(cmds, cmdSub)
+
+	m.lyrics, cmdSub, subHandled = m.lyrics.Update(msg)
+	if subHandled {
+		return m, cmdSub
+	}
+	cmds = append(cmds, cmdSub)
+
+	m.trackInfo, cmdSub, subHandled = m.trackInfo.Update(msg)
+	if subHandled {
+		return m, cmdSub
+	}
+
+	m.home, cmdSub, subHandled = m.home.Update(msg)
+	if subHandled {
+		return m, cmdSub
+	}
+	cmds = append(cmds, cmdSub)
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.home.UpdateSize(msg)
-		m.help.UpdateSize(msg)
-		m.trackInfo.UpdateSize(msg)
-		m.lyrics.UpdateSize(msg)
-		return m, nil
 	case tea.KeyPressMsg:
-		if cmd, handled := m.help.HandleKey(msg); handled {
-			return m, cmd
-		}
-		if cmd, handled := m.trackInfo.HandleKey(msg); handled {
-			return m, cmd
-		}
-		if cmd, handled := m.lyrics.HandleKey(msg); handled {
-			return m, cmd
-		}
-		if cmd, handled := m.home.HandleKey(msg); handled {
-			return m, cmd
-		}
 		switch msg.String() {
-		case "ctrl+c":
+		case "q", "ctrl+c":
 			m.Shutdown()
-			return m, tea.Quit
+			cmds = append(cmds, tea.Quit)
 		}
 		switch msg.Key().Text {
 		case "?":
 			if !m.trackInfo.Visible() && !m.lyrics.Visible() {
 				m.help.Show(true)
 			}
-			return m, nil
-		case "q":
-			m.Shutdown()
-			return m, tea.Quit
 		}
 	case core.StateEvent:
-		m.lyrics.SyncState()
-		m.home.SyncState()
-		return m, m.listenForStateEvent()
+		cmds = append(cmds, m.listenForStateEvent())
 	case core.MetadataEvent:
-		m.trackInfo.HandleEvent(msg)
-		m.home.SyncState()
-		return m, m.listenForMetadataEvent()
+		cmds = append(cmds, m.listenForMetadataEvent())
 	case core.LyricsEvent:
-		m.lyrics.HandleEvent(msg)
-		return m, m.listenForLyricsEvent()
+		cmds = append(cmds, m.listenForLyricsEvent())
 	case playlist.ToggleLyricsMsg:
 		if !m.trackInfo.Visible() && !m.help.Visible() {
 			m.lyrics.Show(true)
 		}
-		return m, nil
 	case playlist.ToggleTrackInfoMsg:
 		if !m.lyrics.Visible() && !m.help.Visible() {
 			m.trackInfo.Show(true)
 		}
-		return m, nil
-	case browser.LoadDirMsg:
-		m.home.HandleLoadDirMsg(msg)
-		return m, nil
 	case tickMsg:
-		return m, tickCmd()
+		cmds = append(cmds, tickCmd())
 	}
 
-	return m, nil
+	return m, tea.Batch(cmds...)
 }
 
 func (m *Model) View() tea.View {

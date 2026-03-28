@@ -24,42 +24,53 @@ func NewModel(cwd string, cfg config.TUIConfig, appRef *core.App) *Model {
 	}
 }
 
-func (m *Model) UpdateSize(msg tea.WindowSizeMsg) {
+func (m *Model) Init() tea.Cmd {
+	m.playlist.Show(true)
+	return tea.Batch(
+		m.browser.Init(),
+		m.playlist.Init(),
+	)
+}
+
+func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		return m.handleSizeMsg(msg)
+	case tea.KeyPressMsg:
+		if mh, cmd, handled := m.handleKeyPressMsg(msg); handled {
+			return mh, cmd, handled
+		}
+		return m.handleRemaining(msg)
+	default:
+		return m.handleRemaining(msg)
+	}
+}
+
+func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 	m.height = msg.Height
 	m.width = msg.Width
 
-	m.updateChildrenSize()
+	var cmds []tea.Cmd
+	var cmdSub tea.Cmd
+	browserSize, playlistSize := m.childrenSizes()
+	m.browser, cmdSub, _ = m.browser.Update(browserSize)
+	cmds = append(cmds, cmdSub)
+	m.playlist, cmdSub, _ = m.playlist.Update(playlistSize)
+	cmds = append(cmds, cmdSub)
+	return m, tea.Batch(cmds...), false
 }
 
-func (m *Model) updateChildrenSize() {
-	leftWidth := max(m.width/2, 0)
-	rightWidth := max(m.width-leftWidth, 0)
-
-	browserWidth := leftWidth
-	playlistWidth := rightWidth
-	if !m.browser.Visible() {
-		browserWidth = 0
-		playlistWidth = m.width
-	}
-	m.browser.UpdateSize(tea.WindowSizeMsg{Width: browserWidth, Height: m.height})
-	m.playlist.UpdateSize(tea.WindowSizeMsg{Width: playlistWidth, Height: m.height})
-}
-
-func (m *Model) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
+func (m *Model) handleKeyPressMsg(msg tea.KeyPressMsg) (*Model, tea.Cmd, bool) {
 	if !m.show {
-		return nil, false
-	}
-	if cmd, handled := m.browser.HandleKey(msg); handled {
-		return cmd, true
-	}
-	if cmd, handled := m.playlist.HandleKey(msg); handled {
-		return cmd, true
+		return m, nil, false
 	}
 	switch msg.String() {
 	case "tab":
-		m.browser.ToggleFocus()
-		m.playlist.ToggleFocus()
-		return nil, true
+		if m.browser.Visible() {
+			m.browser.ToggleFocus()
+			m.playlist.ToggleFocus()
+		}
+		return m, nil, true
 	case "b":
 		m.browser.Toggle()
 		if m.browser.Visible() {
@@ -69,14 +80,50 @@ func (m *Model) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 			m.browser.Focus(false)
 			m.playlist.Focus(true)
 		}
-		m.updateChildrenSize()
-		return nil, true
+		var cmds []tea.Cmd
+		var cmdSub tea.Cmd
+		browserSize, playlistSize := m.childrenSizes()
+		m.browser, cmdSub, _ = m.browser.Update(browserSize)
+		cmds = append(cmds, cmdSub)
+		m.playlist, cmdSub, _ = m.playlist.Update(playlistSize)
+		cmds = append(cmds, cmdSub)
+		return m, tea.Batch(cmds...), true
+	default:
+		return m, nil, false
 	}
-	return nil, false
 }
 
-func (m *Model) HandleLoadDirMsg(msg browser.LoadDirMsg) {
-	m.browser.HandleLoadDirMsg(msg)
+func (m *Model) handleRemaining(msg tea.Msg) (*Model, tea.Cmd, bool) {
+	var cmds []tea.Cmd
+	var cmdSub tea.Cmd
+	var subHandled bool
+
+	m.browser, cmdSub, subHandled = m.browser.Update(msg)
+	if subHandled {
+		return m, cmdSub, true
+	}
+	cmds = append(cmds, cmdSub)
+
+	m.playlist, cmdSub, subHandled = m.playlist.Update(msg)
+	if subHandled {
+		return m, cmdSub, true
+	}
+	cmds = append(cmds, cmdSub)
+
+	return m, tea.Batch(cmds...), false
+}
+
+func (m *Model) childrenSizes() (tea.WindowSizeMsg, tea.WindowSizeMsg) {
+	leftWidth := max(m.width/2, 0)
+	rightWidth := max(m.width-leftWidth, 0)
+
+	browserWidth := leftWidth
+	playlistWidth := rightWidth
+	if !m.browser.Visible() {
+		browserWidth = 0
+		playlistWidth = m.width
+	}
+	return tea.WindowSizeMsg{Width: browserWidth, Height: m.height}, tea.WindowSizeMsg{Width: playlistWidth, Height: m.height}
 }
 
 func (m *Model) View() string {
@@ -120,19 +167,6 @@ func (m *Model) PlaylistFocused() bool {
 	return m.playlist.Focused()
 }
 
-func (m *Model) Init() tea.Cmd {
-	m.playlist.Show(true)
-	return tea.Batch(
-		m.browser.Init(),
-		m.playlist.Init(),
-	)
-}
-
 func (m *Model) Show(show bool) {
 	m.show = show
-}
-
-func (m *Model) SyncState() {
-	m.browser.SyncState()
-	m.playlist.SyncState()
 }

@@ -388,6 +388,10 @@ func (m *Model) Toggle() {
 	}
 }
 
+func (m *Model) Searching() bool {
+	return m.show && m.focus && m.list.SettingFilter()
+}
+
 func (m *Model) ToggleFocus() {
 	m.focus = !m.focus
 }

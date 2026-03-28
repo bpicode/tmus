@@ -87,9 +87,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 	case core.MetadataEvent:
 		return m.syncState()
 	default:
-		var cmd tea.Cmd
-		m.list, cmd = m.list.Update(msg)
-		return m, cmd, false
+		return m.handleRemaining(msg)
 	}
 }
 
@@ -171,8 +169,14 @@ func (m *Model) handleKeyPressMsg(msg tea.KeyMsg) (*Model, tea.Cmd, bool) {
 		_ = m.app.Dispatch(core.Command{Type: core.CmdSetQueueMode, Mode: mode})
 		return m, nil, true
 	default:
-		return m, nil, false
+		return m.handleRemaining(msg)
 	}
+}
+
+func (m *Model) handleRemaining(msg tea.Msg) (*Model, tea.Cmd, bool) {
+	var cmd tea.Cmd
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd, false
 }
 
 func (m *Model) View() string {
@@ -263,6 +267,10 @@ func (m *Model) Focus(focus bool) {
 
 func (m *Model) Focused() bool {
 	return m.focus
+}
+
+func (m *Model) Searching() bool {
+	return m.show && m.focus && m.list.SettingFilter()
 }
 
 func (m *Model) Show(show bool) {

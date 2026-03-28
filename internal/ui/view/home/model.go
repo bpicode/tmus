@@ -37,10 +37,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 	case tea.WindowSizeMsg:
 		return m.handleSizeMsg(msg)
 	case tea.KeyPressMsg:
-		if mh, cmd, handled := m.handleKeyPressMsg(msg); handled {
-			return mh, cmd, handled
-		}
-		return m.handleRemaining(msg)
+		return m.handleKeyPressMsg(msg)
 	default:
 		return m.handleRemaining(msg)
 	}
@@ -72,6 +69,9 @@ func (m *Model) handleKeyPressMsg(msg tea.KeyPressMsg) (*Model, tea.Cmd, bool) {
 		}
 		return m, nil, true
 	case "b":
+		if m.browser.Searching() || m.playlist.Searching() {
+			return m.handleRemaining(msg)
+		}
 		m.browser.Toggle()
 		if m.browser.Visible() {
 			m.playlist.Focus(false)
@@ -89,7 +89,7 @@ func (m *Model) handleKeyPressMsg(msg tea.KeyPressMsg) (*Model, tea.Cmd, bool) {
 		cmds = append(cmds, cmdSub)
 		return m, tea.Batch(cmds...), true
 	default:
-		return m, nil, false
+		return m.handleRemaining(msg)
 	}
 }
 

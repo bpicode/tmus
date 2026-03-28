@@ -80,4 +80,5 @@ tmus config show
 
 - [waves](https://github.com/llehouerou/waves)
 - [gomu](https://github.com/raziman18/gomu)
+- [cliamp](https://github.com/bjarneo/cliamp)
 - [termusic](https://github.com/tramhao/termusic)

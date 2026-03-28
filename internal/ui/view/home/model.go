@@ -96,16 +96,16 @@ func (m *Model) handleKeyPressMsg(msg tea.KeyPressMsg) (*Model, tea.Cmd, bool) {
 func (m *Model) handleRemaining(msg tea.Msg) (*Model, tea.Cmd, bool) {
 	var cmds []tea.Cmd
 	var cmdSub tea.Cmd
-	var subHandled bool
+	var stop bool
 
-	m.browser, cmdSub, subHandled = m.browser.Update(msg)
-	if subHandled {
+	m.browser, cmdSub, stop = m.browser.Update(msg)
+	if stop {
 		return m, cmdSub, true
 	}
 	cmds = append(cmds, cmdSub)
 
-	m.playlist, cmdSub, subHandled = m.playlist.Update(msg)
-	if subHandled {
+	m.playlist, cmdSub, stop = m.playlist.Update(msg)
+	if stop {
 		return m, cmdSub, true
 	}
 	cmds = append(cmds, cmdSub)

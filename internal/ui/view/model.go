@@ -95,28 +95,28 @@ func (m *Model) Init() tea.Cmd {
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmdSub tea.Cmd
-	var subHandled bool
+	var stop bool
 
-	m.help, cmdSub, subHandled = m.help.Update(msg)
-	if subHandled {
+	m.help, cmdSub, stop = m.help.Update(msg)
+	if stop {
 		return m, cmdSub
 	}
 	cmds = append(cmds, cmdSub)
 
-	m.lyrics, cmdSub, subHandled = m.lyrics.Update(msg)
-	if subHandled {
+	m.lyrics, cmdSub, stop = m.lyrics.Update(msg)
+	if stop {
 		return m, cmdSub
 	}
 	cmds = append(cmds, cmdSub)
 
-	m.trackInfo, cmdSub, subHandled = m.trackInfo.Update(msg)
-	if subHandled {
+	m.trackInfo, cmdSub, stop = m.trackInfo.Update(msg)
+	if stop {
 		return m, cmdSub
 	}
 	cmds = append(cmds, cmdSub)
 
-	m.home, cmdSub, subHandled = m.home.Update(msg)
-	if subHandled {
+	m.home, cmdSub, stop = m.home.Update(msg)
+	if stop {
 		return m, cmdSub
 	}
 	cmds = append(cmds, cmdSub)

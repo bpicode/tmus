@@ -10,8 +10,8 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
-	"github.com/bpicode/tmus/internal/config"
 	"github.com/bpicode/tmus/internal/ui/components/terminal_image"
+	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -29,19 +29,28 @@ type Model struct {
 	artwork   terminal_image.Model
 	data      library.Metadata
 	app       *core.App
+	styles    styles
 }
 
-func NewModel(cfg config.TUIConfig, app *core.App) *Model {
+type Config struct {
+	Theme         theme.Theme
+	ArtworkAspect float64
+	App           *core.App
+}
+
+func NewModel(cfg Config) *Model {
 	artworkAspect := cfg.ArtworkAspect
 	if artworkAspect <= 0 {
 		artworkAspect = defaultArtworkAspect
 	}
 	vp := viewport.New()
 	vp.LeftGutterFunc = viewport.NoGutter
+	styles := newStyles(cfg.Theme)
 	return &Model{
 		viewport: vp,
 		artwork:  terminal_image.NewModel(artworkAspect, "No artwork"),
-		app:      app,
+		app:      cfg.App,
+		styles:   styles,
 	}
 }
 
@@ -174,7 +183,7 @@ func (m *Model) View() string {
 	}
 	contentWidth, contentHeight := m.innerSize()
 	if contentHeight < 1 || contentWidth < 1 {
-		return styleOverlay.Width(m.width).Height(m.height).Render("")
+		return m.styles.Overlay.Width(m.width).Height(m.height).Render("")
 	}
 
 	header := m.headerLines(contentWidth)
@@ -182,7 +191,7 @@ func (m *Model) View() string {
 	header = header[:headerHeight]
 	headerBlock := lipgloss.NewStyle().Width(contentWidth).Height(headerHeight).Render(strings.Join(header, "\n"))
 	if contentHeight <= headerHeight {
-		return styleOverlay.Width(m.width).Height(m.height).Render(headerBlock)
+		return m.styles.Overlay.Width(m.width).Height(m.height).Render(headerBlock)
 	}
 
 	areaHeight := contentHeight - headerHeight
@@ -194,9 +203,9 @@ func (m *Model) View() string {
 	m.viewport.SetHeight(max(areaHeight, 0))
 	m.viewport.SetContentLines(rightLines)
 
-	styleRight := styleArtwork.Width(leftWidth).Height(areaHeight)
-	artworkWidth := leftWidth - styleArtwork.GetHorizontalFrameSize()
-	artworkHeight := areaHeight - styleArtwork.GetVerticalFrameSize()
+	styleRight := m.styles.Artwork.Width(leftWidth).Height(areaHeight)
+	artworkWidth := leftWidth - m.styles.Artwork.GetHorizontalFrameSize()
+	artworkHeight := areaHeight - m.styles.Artwork.GetVerticalFrameSize()
 	m.artwork.SetSize(artworkWidth, artworkHeight)
 	if m.data.Picture != nil {
 		m.artwork.SetImage(&terminal_image.ImageData{Data: m.data.Picture.Data})
@@ -227,20 +236,20 @@ func (m *Model) View() string {
 	}
 
 	inner := lipgloss.JoinVertical(lipgloss.Left, headerBlock, body)
-	return styleOverlay.Width(m.width).Height(m.height).Render(inner)
+	return m.styles.Overlay.Width(m.width).Height(m.height).Render(inner)
 }
 
 func (m *Model) innerSize() (int, int) {
-	contentWidth := max(m.width-styleOverlay.GetHorizontalFrameSize(), 0)
-	contentHeight := max(m.height-styleOverlay.GetVerticalFrameSize(), 0)
+	contentWidth := max(m.width-m.styles.Overlay.GetHorizontalFrameSize(), 0)
+	contentHeight := max(m.height-m.styles.Overlay.GetVerticalFrameSize(), 0)
 	return contentWidth, contentHeight
 }
 
 func (m *Model) headerLines(maxWidth int) []string {
 	lines := make([]string, 0, 3)
-	lines = append(lines, styleTitle.Render(ansi.Truncate("🎵 Track info", maxWidth, "…")))
+	lines = append(lines, m.styles.Title.Render(ansi.Truncate("🎵 Track info", maxWidth, "…")))
 	if m.trackPath != "" {
-		lines = append(lines, styleSubtitle.Render(ansi.Truncate(m.trackPath, maxWidth, "…")))
+		lines = append(lines, m.styles.Subtitle.Render(ansi.Truncate(m.trackPath, maxWidth, "…")))
 	}
 	lines = append(lines, "")
 	return lines
@@ -252,11 +261,11 @@ func (m *Model) rightLines(maxWidth int, fields []field) []string {
 	}
 	switch {
 	case m.loading:
-		return []string{styleSubtitle.Render(ansi.Truncate("Loading...", maxWidth, "…"))}
+		return []string{m.styles.Subtitle.Render(ansi.Truncate("Loading...", maxWidth, "…"))}
 	case m.err != "":
-		return []string{styleError.Render(ansi.Truncate(m.err, maxWidth, "…"))}
+		return []string{m.styles.Error.Render(ansi.Truncate(m.err, maxWidth, "…"))}
 	default:
-		return metadataFieldLines(fields, maxWidth)
+		return m.metadataFieldLines(fields, maxWidth)
 	}
 }
 
@@ -306,7 +315,7 @@ func metadataFields(meta library.Metadata) []field {
 	}
 }
 
-func metadataFieldLines(fields []field, maxWidth int) []string {
+func (m *Model) metadataFieldLines(fields []field, maxWidth int) []string {
 	if maxWidth < 1 {
 		return nil
 	}
@@ -337,7 +346,7 @@ func metadataFieldLines(fields []field, maxWidth int) []string {
 		}
 		avail := max(maxWidth-keyWidth-1, 1)
 		value = ansi.Truncate(value, avail, "…")
-		lines = append(lines, styleMetadataKey.Render(label)+" "+value)
+		lines = append(lines, m.styles.MetadataKey.Render(label)+" "+value)
 	}
 	return lines
 }

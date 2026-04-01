@@ -11,15 +11,17 @@ import (
 )
 
 type statusModel struct {
-	label string
-	app   *core.App
-	width int
+	label  string
+	app    *core.App
+	width  int
+	styles styles
 }
 
-func newStatusModel(label string, appRef *core.App) *statusModel {
+func newStatusModel(label string, appRef *core.App, styles styles) *statusModel {
 	return &statusModel{
-		label: label,
-		app:   appRef,
+		label:  label,
+		app:    appRef,
+		styles: styles,
 	}
 }
 
@@ -37,7 +39,7 @@ func (m *statusModel) View() string {
 		if m.width > 0 && len(plain) > m.width {
 			return util.TruncateLeft(plain, m.width)
 		}
-		return label + styleStatusNone.Render(stateText)
+		return label + m.styles.statusNone.Render(stateText)
 	}
 	elapsed := appState.Elapsed()
 	track := filepath.Base(appState.PlayTrack)
@@ -55,18 +57,18 @@ func (m *statusModel) View() string {
 		return util.TruncateLeft(prefix+track+suffix, m.width)
 	}
 	track = util.TruncateLeft(track, avail)
-	stateStyle := playStateStyle(appState)
-	return label + stateStyle.Render(track) + styleStatusTime.Render(suffix)
+	stateStyle := playStateStyle(appState, m.styles)
+	return label + stateStyle.Render(track) + m.styles.statusTime.Render(suffix)
 }
 
-func playStateStyle(state core.State) lipgloss.Style {
+func playStateStyle(state core.State, styles styles) lipgloss.Style {
 	switch state.PlayState {
 	case core.PlaybackPaused:
-		return styleStatusPause
+		return styles.statusPause
 	case core.PlaybackPlaying:
-		return styleStatusPlay
+		return styles.statusPlay
 	default:
-		return styleStatusStop
+		return styles.statusStop
 	}
 }
 

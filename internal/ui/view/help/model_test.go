@@ -5,11 +5,12 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestModelShowsKeybindings(t *testing.T) {
-	m := NewModel()
+	m := NewModel(theme.Theme{})
 	m.Update(tea.WindowSizeMsg{Width: 100, Height: 100})
 	m.Show(true)
 	r := m.View()
@@ -17,7 +18,7 @@ func TestModelShowsKeybindings(t *testing.T) {
 }
 
 func TestModelRendersEmptyIfNotShown(t *testing.T) {
-	m := NewModel()
+	m := NewModel(theme.Theme{})
 	m.Update(tea.WindowSizeMsg{Width: 100, Height: 100})
 	m.Show(false)
 	r := m.View()

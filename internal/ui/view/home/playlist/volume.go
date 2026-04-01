@@ -7,20 +7,22 @@ import (
 )
 
 type volumeModel struct {
-	bar   progress.Model
-	width int
-	label string
-	app   *core.App
+	bar    progress.Model
+	width  int
+	label  string
+	app    *core.App
+	styles styles
 }
 
-func newVolumeModel(label string, appRef *core.App) *volumeModel {
+func newVolumeModel(label string, appRef *core.App, styles styles) *volumeModel {
 	pr := progress.New(
-		progress.WithColors(colorVolumeBarLow, colorVolumeBarHigh),
+		progress.WithColors(styles.volumeBarLow, styles.volumeBarHigh),
 	)
 	return &volumeModel{
-		bar:   pr,
-		label: label,
-		app:   appRef,
+		bar:    pr,
+		label:  label,
+		app:    appRef,
+		styles: styles,
 	}
 }
 

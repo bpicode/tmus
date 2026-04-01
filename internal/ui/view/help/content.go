@@ -12,11 +12,11 @@ type content struct {
 	appendix string
 }
 
-func (h *content) render() []string {
+func (h *content) render(styles styles) []string {
 	maxWidthKey := 0
 	for _, s := range h.sections {
 		for _, hk := range s.helpKeys {
-			maxWidthKey = max(maxWidthKey, hk.width())
+			maxWidthKey = max(maxWidthKey, hk.width(styles))
 		}
 	}
 
@@ -24,11 +24,11 @@ func (h *content) render() []string {
 	keyFillMiddle := maxWidthKey + 4
 
 	lines := []string{
-		styleTitle.Render(h.title),
+		styles.title.Render(h.title),
 		"",
 	}
 	for _, s := range h.sections {
-		lines = append(lines, s.render(keyPadLeft, keyFillMiddle)...)
+		lines = append(lines, s.render(keyPadLeft, keyFillMiddle, styles)...)
 		lines = append(lines, "")
 	}
 	lines = append(lines, h.appendix)
@@ -40,12 +40,12 @@ type helpSection struct {
 	helpKeys []helpKey
 }
 
-func (h *helpSection) render(keyPadLeft, keyFillMiddle int) []string {
+func (h *helpSection) render(keyPadLeft, keyFillMiddle int, styles styles) []string {
 	lines := []string{
-		styleSubtitle.Render(h.subtitle),
+		styles.tubtitle.Render(h.subtitle),
 	}
 	for _, k := range h.helpKeys {
-		lines = append(lines, k.render(keyPadLeft, keyFillMiddle))
+		lines = append(lines, k.render(keyPadLeft, keyFillMiddle, styles))
 	}
 	return lines
 }
@@ -56,22 +56,22 @@ type helpKey struct {
 	helpText string
 }
 
-func (h *helpKey) render(padLeft, fillMiddle int) string {
+func (h *helpKey) render(padLeft, fillMiddle int, styles styles) string {
 	paddingLeft := strings.Repeat(" ", max(padLeft, 0))
-	paddingMiddle := strings.Repeat(" ", max(fillMiddle-h.width(), 0))
-	keys := h.renderKeys()
+	paddingMiddle := strings.Repeat(" ", max(fillMiddle-h.width(styles), 0))
+	keys := h.renderKeys(styles)
 	return paddingLeft + keys + paddingMiddle + h.helpText
 }
 
-func (h *helpKey) renderKeys() string {
+func (h *helpKey) renderKeys(styles styles) string {
 	if h.key2 == "" {
-		return styleHelpKey.Render(h.key1)
+		return styles.helpKey.Render(h.key1)
 	}
-	return styleHelpKey.Render(h.key1) + " / " + styleHelpKey.Render(h.key2)
+	return styles.helpKey.Render(h.key1) + " / " + styles.helpKey.Render(h.key2)
 }
 
-func (h *helpKey) width() int {
-	rendered := h.renderKeys()
+func (h *helpKey) width(styles styles) int {
+	rendered := h.renderKeys(styles)
 	return lipgloss.Width(rendered)
 }
 

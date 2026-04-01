@@ -4,6 +4,7 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/bpicode/tmus/internal/ui/theme"
 )
 
 type Model struct {
@@ -13,10 +14,12 @@ type Model struct {
 	width         int
 	height        int
 	viewport      viewport.Model
+	styles        styles
 }
 
-func NewModel() *Model {
-	lines := keybindings.render()
+func NewModel(th theme.Theme) *Model {
+	styles := newStyles(th)
+	lines := keybindings.render(styles)
 	maxLineLength := 0
 	for _, line := range lines {
 		maxLineLength = max(maxLineLength, lipgloss.Width(line))
@@ -29,6 +32,7 @@ func NewModel() *Model {
 		lines:         lines,
 		maxLineLength: maxLineLength,
 		viewport:      vp,
+		styles:        styles,
 	}
 }
 
@@ -40,7 +44,7 @@ func (m *Model) View() string {
 	if !m.show {
 		return ""
 	}
-	styled := styleOverlay.Render(m.viewport.View())
+	styled := m.styles.overlay.Render(m.viewport.View())
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, styled)
 }
 
@@ -58,8 +62,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 	m.width = msg.Width
 	m.height = msg.Height
-	m.viewport.SetWidth(max(min(m.maxLineLength, m.width-styleOverlay.GetHorizontalFrameSize()), 0))
-	m.viewport.SetHeight(max(m.height-styleOverlay.GetVerticalFrameSize(), 0))
+	m.viewport.SetWidth(max(min(m.maxLineLength, m.width-m.styles.overlay.GetHorizontalFrameSize()), 0))
+	m.viewport.SetHeight(max(m.height-m.styles.overlay.GetVerticalFrameSize(), 0))
 	return m, nil, false
 }
 

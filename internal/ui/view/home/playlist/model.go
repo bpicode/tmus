@@ -13,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
+	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -35,13 +36,21 @@ type Model struct {
 	playState core.PlaybackState
 	rows      []playlistRow
 	posWidth  int
+	styles    styles
 }
 
-func NewModel(appRef *core.App) *Model {
+type Config struct {
+	Theme theme.Theme
+	App   *core.App
+}
+
+func NewModel(cfg Config) *Model {
+	styles := newStyles(cfg.Theme)
 	m := &Model{
-		app:    appRef,
-		volume: newVolumeModel(volumeLabel, appRef),
-		status: newStatusModel(playingLabel, appRef),
+		app:    cfg.App,
+		volume: newVolumeModel(volumeLabel, cfg.App, styles),
+		status: newStatusModel(playingLabel, cfg.App, styles),
+		styles: styles,
 	}
 	delegate := newPlaylistDelegate(m)
 	playlistList := list.New(nil, delegate, 0, 0)
@@ -59,8 +68,8 @@ func NewModel(appRef *core.App) *Model {
 	playlistList.FilterInput.Prompt = "Search: "
 	playlistList.FilterInput.Placeholder = "/"
 	playlistList.FilterInput.SetStyles(textinput.Styles{
-		Focused: textinput.StyleState{Text: styleSearchActive, Prompt: styleSearchActive},
-		Blurred: textinput.StyleState{Text: styleSearchInactive, Prompt: styleSearchInactive, Placeholder: styleSearchInactive},
+		Focused: textinput.StyleState{Text: styles.searchActive, Prompt: styles.searchActive},
+		Blurred: textinput.StyleState{Text: styles.searchInactive, Prompt: styles.searchInactive, Placeholder: styles.searchInactive},
 		Cursor:  textinput.CursorStyle{Blink: true},
 	})
 	playlistList.Styles.PaginationStyle = lipgloss.NewStyle().Foreground(lipgloss.BrightBlack)
@@ -95,8 +104,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 	m.width = msg.Width
 	m.height = msg.Height
-	m.volume.UpdateSize(m.width - stylePanelUnfocused.GetHorizontalFrameSize())
-	m.status.UpdateSize(m.width - stylePanelUnfocused.GetHorizontalFrameSize())
+	m.volume.UpdateSize(m.width - m.styles.panelUnfocused.GetHorizontalFrameSize())
+	m.status.UpdateSize(m.width - m.styles.panelUnfocused.GetHorizontalFrameSize())
 	return m, nil, false
 }
 
@@ -185,25 +194,25 @@ func (m *Model) View() string {
 	status := m.status.View()
 	volume := m.volume.View()
 
-	title := styleTitle
-	panelStyle := stylePanelUnfocused
+	title := m.styles.titleUnfocused
+	panelStyle := m.styles.panelUnfocused
 	if m.focus {
-		title = styleTitleFocused
-		panelStyle = stylePanelFocused
+		title = m.styles.titleFocused
+		panelStyle = m.styles.panelFocused
 	}
 	panelStyle = panelStyle.Width(m.width).Height(m.height)
 	innerWidth := max(0, m.width-panelStyle.GetHorizontalFrameSize())
 	innerHeight := max(0, m.height-panelStyle.GetVerticalFrameSize())
 
-	titleLine := title.Render("🎵 Playlist") + " (" + playStateStyle(state).Render(playStateLabel(state)) + ", " + styleStatusMeta.Render(queueModeLabel(state.QueueMode)) + ")"
+	titleLine := title.Render("🎵 Playlist") + " (" + playStateStyle(state, m.styles).Render(playStateLabel(state)) + ", " + m.styles.statusQueueMode.Render(queueModeLabel(state.QueueMode)) + ")"
 	titleLine = ansi.Truncate(titleLine, innerWidth, "…")
 	lines := []string{
 		titleLine,
 		m.searchView(),
-		styleSeparator.Render(strings.Repeat("─", innerWidth)),
+		m.styles.separator.Render(strings.Repeat("─", innerWidth)),
 	}
 	if state.PlaylistErr != nil {
-		lines = append(lines, styleError.Render(state.PlaylistErr.Error()))
+		lines = append(lines, m.styles.err.Render(state.PlaylistErr.Error()))
 	}
 
 	footerLines := 0
@@ -225,14 +234,14 @@ func (m *Model) View() string {
 
 	switch {
 	case itemCount == 0 && availableLines > 0:
-		lines = append(lines, styleEmpty.Render("(empty)"))
+		lines = append(lines, m.styles.empty.Render("(empty)"))
 		contentLines = 1
 	case availableLines > 0:
 		if visibleCount == 0 && m.filterActive() {
-			lines = append(lines, styleEmpty.Render("(no matches)"))
+			lines = append(lines, m.styles.empty.Render("(no matches)"))
 			contentLines = 1
 		} else if visibleCount == 0 {
-			lines = append(lines, styleEmpty.Render("(empty)"))
+			lines = append(lines, m.styles.empty.Render("(empty)"))
 			contentLines = 1
 		} else {
 			lines = append(lines, m.list.View())
@@ -246,7 +255,7 @@ func (m *Model) View() string {
 	}
 
 	if status != "" || volume != "" {
-		lines = append(lines, styleSeparator.Render(strings.Repeat("─", innerWidth)))
+		lines = append(lines, m.styles.separator.Render(strings.Repeat("─", innerWidth)))
 		if status != "" {
 			lines = append(lines, status)
 		}
@@ -444,9 +453,9 @@ func (m *Model) searchView() string {
 	case m.list.SettingFilter():
 		return m.list.FilterInput.View()
 	case m.list.IsFiltered():
-		return styleSearchActive.Render("Search: " + m.list.FilterValue())
+		return m.styles.searchActive.Render("Search: " + m.list.FilterValue())
 	default:
-		return styleSearchInactive.Render("Search: /")
+		return m.styles.searchInactive.Render("Search: /")
 	}
 }
 
@@ -522,14 +531,14 @@ func (d playlistDelegate) Render(w io.Writer, m list.Model, index int, item list
 	pos := fmt.Sprintf("%*d ", max(1, d.model.posWidth), playlistItem.index+1)
 	line := ansi.Truncate(prefix+pos+name, max(0, m.Width()), "…")
 	if isPlaying {
-		line = stylePlaying.Render(line)
+		line = d.model.styles.playing.Render(line)
 	}
 	if isPaused {
-		line = stylePaused.Render(line)
+		line = d.model.styles.paused.Render(line)
 	}
 	isSelected := index == m.Index()
 	if isSelected {
-		line = styleSelected.Render(line)
+		line = d.model.styles.selected.Render(line)
 	}
 	_, _ = fmt.Fprint(w, line)
 }

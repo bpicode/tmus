@@ -13,6 +13,7 @@
 - Lyrics overlay (supports embedded metadata, sidecar `.lrc`/`.txt`, and online fetching via LRCLIB)
 - Single-instance handoff on Unix: opening files in a new `tmus` process forwards them to the running instance
 - MPRIS integration on Linux for external media controls
+- Configurable color palette
 
 ## Installation
 

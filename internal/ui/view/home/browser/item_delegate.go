@@ -6,14 +6,16 @@ import (
 	"path/filepath"
 
 	"charm.land/bubbles/v2/list"
-	"charm.land/bubbletea/v2"
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 )
 
-type itemDelegate struct{}
+type itemDelegate struct {
+	styles styles
+}
 
-func newEntryDelegate() list.ItemDelegate {
-	return itemDelegate{}
+func newEntryDelegate(styles styles) list.ItemDelegate {
+	return itemDelegate{styles: styles}
 }
 
 func (itemDelegate) Height() int {
@@ -28,7 +30,7 @@ func (itemDelegate) Update(tea.Msg, *list.Model) tea.Cmd {
 	return nil
 }
 
-func (itemDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+func (i itemDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
 	entry, ok := item.(browserListItem)
 	if !ok {
 		return
@@ -48,11 +50,11 @@ func (itemDelegate) Render(w io.Writer, m list.Model, index int, item list.Item)
 
 	line := name
 	if index == m.Index() {
-		line = styleSelected.Render(name)
+		line = i.styles.selected.Render(name)
 	} else if entry.entry.IsDir {
-		line = styleDir.Render(name)
+		line = i.styles.dir.Render(name)
 	} else if entry.entry.IsArchive {
-		line = styleArchive.Render(name)
+		line = i.styles.archive.Render(name)
 	}
 	_, _ = fmt.Fprint(w, line)
 }

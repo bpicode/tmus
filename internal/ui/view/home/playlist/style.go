@@ -1,27 +1,56 @@
 package playlist
 
-import "charm.land/lipgloss/v2"
+import (
+	"image/color"
 
-var (
-	styleTitle          = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Cyan)
-	styleTitleFocused   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.BrightCyan)
-	styleSearchInactive = lipgloss.NewStyle().Foreground(lipgloss.BrightBlack)
-	styleSearchActive   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.BrightCyan)
-	styleError          = lipgloss.NewStyle().Foreground(lipgloss.Red)
-	styleEmpty          = lipgloss.NewStyle().Foreground(lipgloss.BrightBlack)
-	styleSelected       = lipgloss.NewStyle().Reverse(true)
-	stylePlaying        = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Cyan)
-	stylePaused         = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Yellow)
-	styleStatusMeta     = lipgloss.NewStyle().Foreground(lipgloss.BrightMagenta)
-	styleStatusPlay     = lipgloss.NewStyle().Foreground(lipgloss.Green)
-	styleStatusPause    = lipgloss.NewStyle().Foreground(lipgloss.Yellow)
-	styleStatusStop     = lipgloss.NewStyle().Foreground(lipgloss.Red)
-	styleStatusNone     = lipgloss.NewStyle().Foreground(lipgloss.BrightBlack)
-	styleStatusTime     = lipgloss.NewStyle().Foreground(lipgloss.BrightBlue)
-	styleSeparator      = lipgloss.NewStyle().Foreground(lipgloss.BrightBlack)
-	stylePanelFocused   = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.BrightCyan).Padding(0, 1)
-	stylePanelUnfocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.BrightBlack).Padding(0, 1)
-
-	colorVolumeBarLow  = lipgloss.Cyan
-	colorVolumeBarHigh = lipgloss.BrightCyan
+	"charm.land/lipgloss/v2"
+	"github.com/bpicode/tmus/internal/ui/theme"
 )
+
+type styles struct {
+	titleUnfocused  lipgloss.Style
+	titleFocused    lipgloss.Style
+	searchInactive  lipgloss.Style
+	searchActive    lipgloss.Style
+	err             lipgloss.Style
+	empty           lipgloss.Style
+	selected        lipgloss.Style
+	playing         lipgloss.Style
+	paused          lipgloss.Style
+	statusQueueMode lipgloss.Style
+	statusPlay      lipgloss.Style
+	statusPause     lipgloss.Style
+	statusStop      lipgloss.Style
+	statusNone      lipgloss.Style
+	statusTime      lipgloss.Style
+	separator       lipgloss.Style
+	panelFocused    lipgloss.Style
+	panelUnfocused  lipgloss.Style
+	volumeBarLow    color.Color
+	volumeBarHigh   color.Color
+}
+
+func newStyles(th theme.Theme) styles {
+	return styles{
+		titleUnfocused:  lipgloss.NewStyle().Bold(true).Foreground(th.Primary),
+		titleFocused:    lipgloss.NewStyle().Bold(true).Foreground(th.Secondary),
+		searchInactive:  lipgloss.NewStyle().Foreground(th.Muted),
+		searchActive:    lipgloss.NewStyle().Bold(true).Foreground(th.Secondary),
+		err:             lipgloss.NewStyle().Foreground(th.Danger),
+		empty:           lipgloss.NewStyle().Foreground(th.Muted),
+		selected:        lipgloss.NewStyle().Reverse(true),
+		playing:         lipgloss.NewStyle().Bold(true).Foreground(th.Primary),
+		paused:          lipgloss.NewStyle().Bold(true).Foreground(th.Warning),
+		statusQueueMode: lipgloss.NewStyle().Foreground(th.Highlight),
+		statusPlay:      lipgloss.NewStyle().Foreground(th.Info),
+		statusPause:     lipgloss.NewStyle().Foreground(th.Warning),
+		statusStop:      lipgloss.NewStyle().Foreground(th.Danger),
+		statusNone:      lipgloss.NewStyle().Foreground(th.Muted),
+		statusTime:      lipgloss.NewStyle().Foreground(th.Working),
+		separator:       lipgloss.NewStyle().Foreground(th.Muted),
+		panelFocused:    lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(th.Primary).Padding(0, 1),
+		panelUnfocused:  lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(th.Muted).Padding(0, 1),
+		volumeBarLow:    th.Primary,
+		volumeBarHigh:   th.Secondary,
+	}
+}

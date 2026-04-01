@@ -14,8 +14,8 @@ import (
 	"github.com/bpicode/tmus/internal/app/archive"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
-	"github.com/bpicode/tmus/internal/config"
 	"github.com/bpicode/tmus/internal/ui/components/error_view"
+	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/bpicode/tmus/internal/ui/util"
 )
 
@@ -31,10 +31,19 @@ type Model struct {
 	app        *core.App
 	list       list.Model
 	errorView  *error_view.Model
+	styles     styles
 }
 
-func NewModel(startDir string, cfg config.TUIConfig, appRef *core.App) *Model {
-	delegate := newEntryDelegate()
+type Config struct {
+	Cwd     string
+	HomeDir string
+	Theme   theme.Theme
+	App     *core.App
+}
+
+func NewModel(cfg Config) *Model {
+	styles := newStyles(cfg.Theme)
+	delegate := newEntryDelegate(styles)
 	browserList := list.New(nil, delegate, 0, 0)
 	browserList.SetShowTitle(false)
 	browserList.SetShowFilter(false)
@@ -50,8 +59,8 @@ func NewModel(startDir string, cfg config.TUIConfig, appRef *core.App) *Model {
 	browserList.FilterInput.Prompt = "Search: "
 	browserList.FilterInput.Placeholder = "/"
 	browserList.FilterInput.SetStyles(textinput.Styles{
-		Focused: textinput.StyleState{Text: styleSearchActive, Prompt: styleSearchActive},
-		Blurred: textinput.StyleState{Text: styleSearchInactive, Prompt: styleSearchInactive, Placeholder: styleSearchInactive},
+		Focused: textinput.StyleState{Text: styles.searchActive, Prompt: styles.searchActive},
+		Blurred: textinput.StyleState{Text: styles.searchInactive, Prompt: styles.searchInactive, Placeholder: styles.searchInactive},
 		Cursor:  textinput.CursorStyle{Blink: true},
 	})
 	browserList.Styles.PaginationStyle = lipgloss.NewStyle().Foreground(lipgloss.BrightBlack)
@@ -61,14 +70,12 @@ func NewModel(startDir string, cfg config.TUIConfig, appRef *core.App) *Model {
 	browserList.Paginator.InactiveDot = browserList.Styles.InactivePaginationDot.String()
 
 	b := &Model{
-		Cwd:     startDir,
-		homeDir: cfg.BrowserHome,
-		app:     appRef,
-		list:    browserList,
-		errorView: error_view.New(error_view.Styles{
-			ErrorStyle:          styleError,
-			UnwrappedErrorStyle: styleError,
-		}),
+		Cwd:       cfg.Cwd,
+		homeDir:   cfg.HomeDir,
+		app:       cfg.App,
+		list:      browserList,
+		errorView: error_view.New(error_view.Styles{Error: styles.err}),
+		styles:    styles,
 	}
 	return b
 }
@@ -152,21 +159,21 @@ func (m *Model) Init() tea.Cmd {
 
 func (m *Model) View() string {
 	var sb strings.Builder
-	title := styleTitle
-	panelStyle := stylePanelUnfocused.Width(m.width).Height(m.height)
+	title := m.styles.titleUnfocused
+	panelStyle := m.styles.panelUnfocused.Width(m.width).Height(m.height)
 	if m.focus {
-		title = styleTitleFocused
-		panelStyle = stylePanelFocused.Width(m.width).Height(m.height)
+		title = m.styles.titleFocused
+		panelStyle = m.styles.panelFocused.Width(m.width).Height(m.height)
 	}
 	sb.WriteString(title.Render("📂 Files"))
 	sb.WriteString("\n")
 	pathWidth := max(0, m.width-panelStyle.GetHorizontalFrameSize())
 	cwd := util.TruncateLeft(m.Cwd, pathWidth)
-	sb.WriteString(styleCwd.Render(cwd))
+	sb.WriteString(m.styles.cwd.Render(cwd))
 	sb.WriteString("\n")
 	sb.WriteString(m.searchView())
 	sb.WriteString("\n")
-	sb.WriteString(styleSeparator.Render(strings.Repeat("─", max(0, m.width-panelStyle.GetHorizontalFrameSize()))))
+	sb.WriteString(m.styles.separator.Render(strings.Repeat("─", max(0, m.width-panelStyle.GetHorizontalFrameSize()))))
 	sb.WriteString("\n")
 
 	if m.errorView.HasErr() {
@@ -175,7 +182,7 @@ func (m *Model) View() string {
 	}
 
 	if len(m.entries) == 0 {
-		sb.WriteString(styleEmpty.Render("(empty)"))
+		sb.WriteString(m.styles.empty.Render("(empty)"))
 		return panelStyle.Render(sb.String())
 	}
 
@@ -213,7 +220,7 @@ func (m *Model) handleRemaining(msg tea.Msg) (*Model, tea.Cmd, bool) {
 func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 	m.height = msg.Height
 	m.width = msg.Width
-	m.list.SetSize(max(0, m.width-stylePanelFocused.GetHorizontalFrameSize()), max(0, m.height-6))
+	m.list.SetSize(max(0, m.width-m.styles.panelFocused.GetHorizontalFrameSize()), max(0, m.height-6))
 	return m, nil, false
 }
 
@@ -286,9 +293,9 @@ func (m *Model) searchView() string {
 	case m.list.SettingFilter():
 		return m.list.FilterInput.View()
 	case m.list.IsFiltered():
-		return styleSearchActive.Render("Search: " + m.list.FilterValue())
+		return m.styles.searchActive.Render("Search: " + m.list.FilterValue())
 	default:
-		return styleSearchInactive.Render("Search: /")
+		return m.styles.searchInactive.Render("Search: /")
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/config"
+	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/bpicode/tmus/internal/ui/view/help"
 	"github.com/bpicode/tmus/internal/ui/view/home"
 	"github.com/bpicode/tmus/internal/ui/view/home/playlist"
@@ -62,12 +63,13 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 		}
 	}
 
+	th := theme.New(cfg.Theme)
 	m := &Model{
 		app:       appRef,
-		home:      home.NewModel(cwd, cfg, appRef),
-		help:      help.NewModel(),
-		trackInfo: track_info.NewModel(cfg, appRef),
-		lyrics:    lyrics.NewModel(appRef),
+		home:      home.NewModel(home.Config{Cwd: cwd, HomeDir: cfg.BrowserHome, Theme: th, App: appRef}),
+		help:      help.NewModel(th),
+		trackInfo: track_info.NewModel(track_info.Config{Theme: th, App: appRef}),
+		lyrics:    lyrics.NewModel(lyrics.Config{Theme: th, App: appRef}),
 	}
 	m.restore(st)
 	m.openFiles(openFiles)

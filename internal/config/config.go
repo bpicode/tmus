@@ -21,10 +21,22 @@ type MPRISConfig struct {
 	Enabled bool `toml:"enabled" comment:"Enable DBus/MPRIS integration for media controls."`
 }
 
+type ThemeConfig struct {
+	Primary   string `toml:"primary" comment:"Main accent color (e.g., highlighting selected items)"`
+	Secondary string `toml:"secondary" comment:"Secondary accent color (e.g., search highlights, minor elements)"`
+	Muted     string `toml:"muted" comment:"Faded or dimmed text"`
+	Highlight string `toml:"highlight" comment:"Highlight color"`
+	Info      string `toml:"info" comment:"Info indications"`
+	Danger    string `toml:"danger" comment:"Danger indications"`
+	Warning   string `toml:"warning" comment:"Warning indications"`
+	Working   string `toml:"working" comment:"Working indications"`
+}
+
 type TUIConfig struct {
-	FPS           int     `toml:"FPS" comment:"Frames per second for the terminal UI (1-120)."`
-	ArtworkAspect float64 `toml:"artwork_aspect" comment:"Artwork box width/height ratio for terminal cells (e.g., 2.0 looks square on most fonts)."`
-	BrowserHome   string  `toml:"browser_home" comment:"Default directory of music browser"`
+	FPS           int         `toml:"FPS" comment:"Frames per second for the terminal UI (1-120)."`
+	ArtworkAspect float64     `toml:"artwork_aspect" comment:"Artwork box width/height ratio for terminal cells (e.g., 2.0 looks square on most fonts)."`
+	BrowserHome   string      `toml:"browser_home" comment:"Default directory of music browser"`
+	Theme         ThemeConfig `toml:"theme"`
 }
 
 type LyricsConfig struct {
@@ -71,6 +83,16 @@ func Default() Config {
 				d, _ := os.UserHomeDir()
 				return d
 			}(),
+			Theme: ThemeConfig{
+				Primary:   "6",
+				Secondary: "14",
+				Info:      "2",
+				Danger:    "1",
+				Warning:   "3",
+				Working:   "12",
+				Highlight: "13",
+				Muted:     "8",
+			},
 		},
 		Lyrics: LyricsConfig{
 			LrcLib: LrcLibConfig{

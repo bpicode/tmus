@@ -11,6 +11,7 @@ import (
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/lyrics"
 	"github.com/bpicode/tmus/internal/ui/components/error_view"
+	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -27,19 +28,24 @@ type Model struct {
 	data           lyrics.Lyrics
 	app            *core.App
 	errorView      *error_view.Model
+	styles         styles
 }
 
-func NewModel(app *core.App) *Model {
+type Config struct {
+	Theme theme.Theme
+	App   *core.App
+}
+
+func NewModel(cfg Config) *Model {
 	vp := viewport.New()
 	vp.LeftGutterFunc = viewport.NoGutter
+	styles := newStyles(cfg.Theme)
 	return &Model{
 		lyricsViewport: vp,
-		app:            app,
+		app:            cfg.App,
 		followLine:     true,
-		errorView: error_view.New(error_view.Styles{
-			ErrorStyle:          styleError,
-			UnwrappedErrorStyle: styleError,
-		}),
+		styles:         styles,
+		errorView:      error_view.New(error_view.Styles{Error: styles.err}),
 	}
 }
 
@@ -59,9 +65,9 @@ func (m *Model) View() string {
 	m.lyricsViewport.SetWidth(availableWidth)
 	m.lyricsViewport.SetHeight(viewportHeight)
 
-	title := styleTitle.Render(ansi.Truncate("📜 Lyrics", availableWidth, "…"))
+	title := m.styles.title.Render(ansi.Truncate("📜 Lyrics", availableWidth, "…"))
 	trackName := sanitizeTerminalText(displayNameForTrack(state, m.trackID, m.trackPath))
-	track := styleTrack.Render(ansi.Truncate(trackName, availableWidth, "…"))
+	track := m.styles.track.Render(ansi.Truncate(trackName, availableWidth, "…"))
 	pad := ""
 	headers := strings.Join([]string{title, track, pad}, "\n")
 
@@ -74,7 +80,7 @@ func (m *Model) View() string {
 
 	content := lipgloss.JoinVertical(lipgloss.Left, headers, m.lyricsViewport.View())
 	inner := lipgloss.NewStyle().MaxWidth(availableWidth).MaxHeight(innerHeight).Render(content)
-	styled := styleOverlay.Render(inner)
+	styled := m.styles.overlay.Render(inner)
 	return lipgloss.Place(m.width, m.height, lipgloss.Left, lipgloss.Top, styled)
 }
 
@@ -216,8 +222,8 @@ func (m *Model) Visible() bool {
 }
 
 func (m *Model) innerSize() (int, int) {
-	contentWidth := max(m.width-styleOverlay.GetHorizontalFrameSize(), 0)
-	contentHeight := max(m.height-styleOverlay.GetVerticalFrameSize(), 0)
+	contentWidth := max(m.width-m.styles.overlay.GetHorizontalFrameSize(), 0)
+	contentHeight := max(m.height-m.styles.overlay.GetVerticalFrameSize(), 0)
 	return contentWidth, contentHeight
 }
 
@@ -255,20 +261,20 @@ func (m *Model) bodyLines(maxWidth int, state core.State) ([]string, int) {
 
 	switch {
 	case m.loading:
-		return []string{truncate(styleTrack.Render("Loading..."))}, -1
+		return []string{truncate(m.styles.track.Render("Loading..."))}, -1
 	case m.errorView.HasErr():
 		lines := []string{
 			truncate(m.errorView.View()),
 		}
 		return lines, -1
 	case len(m.data.Lines) == 0:
-		return []string{truncate(styleEmpty.Render("No lyrics available"))}, -1
+		return []string{truncate(m.styles.empty.Render("No lyrics available"))}, -1
 	default:
 		active := -1
 		if m.data.Timed && m.followPlay && m.matchesPlaying(state) {
 			active = activeLyricIndex(m.data.Lines, state.Elapsed())
 		}
-		return lyricsLinesForWidth(m.data.Lines, maxWidth, active), active
+		return lyricsLinesForWidth(m.data.Lines, maxWidth, active, m.styles), active
 	}
 }
 
@@ -299,12 +305,12 @@ func activeLyricIndex(lines []lyrics.Line, elapsed time.Duration) int {
 	return active
 }
 
-func lyricsLinesForWidth(lines []lyrics.Line, width int, active int) []string {
+func lyricsLinesForWidth(lines []lyrics.Line, width int, active int, styles styles) []string {
 	out := make([]string, 0, len(lines))
 	for i, line := range lines {
 		trimmed := ansi.Truncate(sanitizeTerminalText(line.Text), width, "…")
 		if i == active {
-			out = append(out, styleActiveLine.Render(trimmed))
+			out = append(out, styles.activeLine.Render(trimmed))
 		} else {
 			out = append(out, trimmed)
 		}

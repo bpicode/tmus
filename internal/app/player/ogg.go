@@ -575,6 +575,9 @@ func (o *OggReader) findPageNear(offset int64) (pageOffset, granule int64, err e
 	}
 	buf = buf[:n]
 
+	if len(buf) < 27 {
+		return 0, 0, errors.New("ogg: buffer too small to contain page header")
+	}
 	for i := range len(buf) - 27 {
 		if string(buf[i:i+4]) == oggMagic && buf[i+4] == 0 { // version must be 0
 			pageOffset = offset + int64(i)

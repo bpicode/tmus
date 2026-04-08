@@ -1,4 +1,4 @@
-package archive
+package library
 
 import (
 	"fmt"
@@ -29,8 +29,8 @@ func IsArchivePath(value string) bool {
 	return strings.HasPrefix(value, "arch://")
 }
 
-// SplitPath parses an archive URI into scheme, archive path, and inner path.
-func SplitPath(value string) (scheme, archivePath, inner string, err error) {
+// SplitArchivePath parses an archive URI into scheme, archive path, and inner path.
+func SplitArchivePath(value string) (scheme, archivePath, inner string, err error) {
 	if !IsArchivePath(value) {
 		return "", "", "", fmt.Errorf("not an archive path")
 	}
@@ -44,8 +44,8 @@ func SplitPath(value string) (scheme, archivePath, inner string, err error) {
 	return scheme, archivePath, inner, err
 }
 
-// BuildPath builds an archive URI from scheme, archive path, and inner path.
-func BuildPath(scheme, archivePath, inner string) string {
+// BuildArchivePath builds an archive URI from scheme, archive path, and inner path.
+func BuildArchivePath(scheme, archivePath, inner string) string {
 	archivePath = filepath.Clean(archivePath)
 	if inner == "" {
 		return "arch://" + scheme + ":" + archivePath

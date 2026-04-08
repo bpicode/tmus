@@ -1,4 +1,4 @@
-package archive
+package library
 
 import (
 	"io"
@@ -17,7 +17,7 @@ func TestArchiveHandlers(t *testing.T) {
 		"test-archive.7z",
 		"test-archive.rar",
 	}
-	registry := DefaultRegistry()
+	registry := DefaultArchiveRegistry()
 
 	for _, testArchive := range testArchives {
 		t.Run(testArchive, func(t *testing.T) {

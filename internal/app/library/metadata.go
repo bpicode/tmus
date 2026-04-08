@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bpicode/tmus/internal/app/archive"
 	"github.com/dhowden/tag"
 )
 
@@ -68,7 +67,7 @@ func ReadMetadataExtended(path string) (Metadata, error) {
 }
 
 func readMetadata(path string) (Metadata, error) {
-	if handler := archive.DefaultRegistry().FindHandler(path); handler != nil {
+	if handler := DefaultArchiveRegistry().FindHandler(path); handler != nil {
 		rc, err := handler.Open(path)
 		if err != nil {
 			return Metadata{}, fmt.Errorf("open archived file: %w", err)

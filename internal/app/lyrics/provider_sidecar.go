@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bpicode/tmus/internal/app/archive"
+	"github.com/bpicode/tmus/internal/app/library"
 )
 
 // sidecarProvider resolves lyrics from .lrc or .txt files next to the track.
@@ -27,7 +27,7 @@ func (p sidecarProvider) find(track TrackInfo) (Lyrics, error) {
 	if track.Path == "" {
 		return Lyrics{}, errors.New("track path is empty")
 	}
-	if archive.IsArchivePath(track.Path) {
+	if library.IsArchivePath(track.Path) {
 		return Lyrics{}, errors.New("sidecar files are not supported in archives")
 	}
 	dir := filepath.Dir(track.Path)

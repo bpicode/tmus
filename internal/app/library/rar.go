@@ -1,4 +1,4 @@
-package archive
+package library
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 
 type rarHandler struct{}
 
-func NewRarHandler() Handler {
+func NewRarHandler() ArchiveHandler {
 	return &rarHandler{}
 }
 
@@ -26,7 +26,7 @@ func (h *rarHandler) IsArchivePath(value string) bool {
 	return strings.HasSuffix(strings.ToLower(value), ".rar")
 }
 
-func (h *rarHandler) List(value string, showHidden bool) ([]Entry, error) {
+func (h *rarHandler) List(value string, showHidden bool) ([]ArchiveEntry, error) {
 	archivePath, inner, err := splitArchivePath(h.Scheme(), value)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (h *rarHandler) List(value string, showHidden bool) ([]Entry, error) {
 		return nil, fmt.Errorf("read rar: %w", err)
 	}
 
-	items := make([]Entry, 0, len(entries))
+	items := make([]ArchiveEntry, 0, len(entries))
 	for _, entry := range entries {
 		name := entry.Name()
 		if !showHidden && strings.HasPrefix(name, ".") {
@@ -52,14 +52,14 @@ func (h *rarHandler) List(value string, showHidden bool) ([]Entry, error) {
 		if inner != "" {
 			entryPath = path.Join(inner, name)
 		}
-		items = append(items, Entry{
+		items = append(items, ArchiveEntry{
 			Name:  name,
-			Path:  BuildPath(h.Scheme(), archivePath, entryPath),
+			Path:  BuildArchivePath(h.Scheme(), archivePath, entryPath),
 			IsDir: entry.IsDir(),
 		})
 	}
 
-	sortEntries(items)
+	sortArchiveEntries(items)
 	return items, nil
 }
 

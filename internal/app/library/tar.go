@@ -1,4 +1,4 @@
-package archive
+package library
 
 import (
 	"archive/tar"
@@ -19,15 +19,15 @@ type tarHandler struct {
 	xz     bool
 }
 
-func NewTarHandler() Handler {
+func NewTarHandler() ArchiveHandler {
 	return &tarHandler{scheme: "tar", exts: []string{".tar"}}
 }
 
-func NewTarGzHandler() Handler {
+func NewTarGzHandler() ArchiveHandler {
 	return &tarHandler{scheme: "targz", exts: []string{".tar.gz", ".tgz"}, gzip: true}
 }
 
-func NewTarXzHandler() Handler {
+func NewTarXzHandler() ArchiveHandler {
 	return &tarHandler{scheme: "tarxz", exts: []string{".tar.xz", ".txz"}, xz: true}
 }
 
@@ -49,7 +49,7 @@ func (h *tarHandler) IsArchivePath(value string) bool {
 	return false
 }
 
-func (h *tarHandler) List(value string, showHidden bool) ([]Entry, error) {
+func (h *tarHandler) List(value string, showHidden bool) ([]ArchiveEntry, error) {
 	archivePath, inner, err := splitArchivePath(h.scheme, value)
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (h *tarHandler) List(value string, showHidden bool) ([]Entry, error) {
 		inner += "/"
 	}
 
-	children := map[string]Entry{}
+	children := map[string]ArchiveEntry{}
 	for {
 		hdr, err := reader.next()
 		if err == io.EOF {
@@ -94,25 +94,25 @@ func (h *tarHandler) List(value string, showHidden bool) ([]Entry, error) {
 		}
 		entryPath := path.Join(inner, child)
 		if len(parts) > 1 || hdr.FileInfo().IsDir() {
-			children[child] = Entry{
+			children[child] = ArchiveEntry{
 				Name:  child,
-				Path:  BuildPath(h.scheme, archivePath, strings.TrimSuffix(entryPath, "/")),
+				Path:  BuildArchivePath(h.scheme, archivePath, strings.TrimSuffix(entryPath, "/")),
 				IsDir: true,
 			}
 		} else {
-			children[child] = Entry{
+			children[child] = ArchiveEntry{
 				Name:  child,
-				Path:  BuildPath(h.scheme, archivePath, entryPath),
+				Path:  BuildArchivePath(h.scheme, archivePath, entryPath),
 				IsDir: false,
 			}
 		}
 	}
 
-	entries := make([]Entry, 0, len(children))
+	entries := make([]ArchiveEntry, 0, len(children))
 	for _, v := range children {
 		entries = append(entries, v)
 	}
-	sortEntries(entries)
+	sortArchiveEntries(entries)
 	return entries, nil
 }
 

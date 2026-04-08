@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/bpicode/tmus/internal/app/archive"
+	"github.com/bpicode/tmus/internal/app/library"
 )
 
 type fileStat struct {
@@ -14,7 +14,7 @@ type fileStat struct {
 }
 
 func statPath(path string) fileStat {
-	if path == "" || archive.IsArchivePath(path) {
+	if path == "" || library.IsArchivePath(path) {
 		return fileStat{}
 	}
 	info, err := os.Stat(path)

@@ -11,7 +11,6 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/bpicode/tmus/internal/app/archive"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/ui/components/error_view"
@@ -101,7 +100,7 @@ func (m *Model) openSelection() tea.Cmd {
 	m.errorView.SetErr(nil)
 	selected, ok := m.selected()
 	if !ok || !selected.IsDir {
-		if ok && !archive.IsArchivePath(selected.Path) {
+		if ok && !library.IsArchivePath(selected.Path) {
 			if archivePath, ok := library.OpenArchiveRoot(selected.Path); ok {
 				m.clearSearch()
 				return m.loadDir(archivePath)
@@ -115,8 +114,8 @@ func (m *Model) openSelection() tea.Cmd {
 
 func (m *Model) upDir() tea.Cmd {
 	m.errorView.SetErr(nil)
-	if archive.IsArchivePath(m.Cwd) {
-		scheme, archivePath, inner, err := archive.SplitPath(m.Cwd)
+	if library.IsArchivePath(m.Cwd) {
+		scheme, archivePath, inner, err := library.SplitArchivePath(m.Cwd)
 		if err != nil {
 			m.errorView.SetErr(err)
 			return nil
@@ -130,7 +129,7 @@ func (m *Model) upDir() tea.Cmd {
 			parent = ""
 		}
 		m.clearSearch()
-		return m.loadDir(archive.BuildPath(scheme, archivePath, parent))
+		return m.loadDir(library.BuildArchivePath(scheme, archivePath, parent))
 	}
 	parent := filepath.Dir(m.Cwd)
 	if parent == m.Cwd {

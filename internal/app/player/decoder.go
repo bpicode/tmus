@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bpicode/tmus/internal/app/archive"
+	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/gopxl/beep/v2"
 	"github.com/gopxl/beep/v2/flac"
 	"github.com/gopxl/beep/v2/mp3"
@@ -17,7 +17,7 @@ import (
 )
 
 func decodeFile(path string) (beep.StreamSeekCloser, beep.Format, error) {
-	if handler := archive.DefaultRegistry().FindHandler(path); handler != nil {
+	if handler := library.DefaultArchiveRegistry().FindHandler(path); handler != nil {
 		return decodeArchiveEntry(handler, path)
 	}
 	ext := strings.ToLower(filepath.Ext(path))
@@ -60,7 +60,7 @@ func decodeFile(path string) (beep.StreamSeekCloser, beep.Format, error) {
 	return streamer, format, nil
 }
 
-func decodeArchiveEntry(handler archive.Handler, path string) (beep.StreamSeekCloser, beep.Format, error) {
+func decodeArchiveEntry(handler library.ArchiveHandler, path string) (beep.StreamSeekCloser, beep.Format, error) {
 	rc, err := handler.Open(path)
 	if err != nil {
 		return nil, beep.Format{}, err
@@ -73,8 +73,8 @@ func decodeArchiveEntry(handler archive.Handler, path string) (beep.StreamSeekCl
 	}
 
 	ext := filepath.Ext(path)
-	if archive.IsArchivePath(path) {
-		if inner := archive.EntryExt(path); inner != "" {
+	if library.IsArchivePath(path) {
+		if inner := library.EntryExt(path); inner != "" {
 			ext = inner
 		}
 	}

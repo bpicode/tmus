@@ -7,7 +7,6 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/bpicode/tmus/internal/app/archive"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/config"
@@ -54,7 +53,7 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 			cwd = wd
 		}
 	}
-	if !archive.IsArchivePath(cwd) {
+	if !library.IsArchivePath(cwd) {
 		if abs, err := filepath.Abs(cwd); err == nil {
 			cwd = abs
 		}
@@ -222,8 +221,8 @@ func (m *Model) restore(s State) {
 }
 
 func trackName(value string) string {
-	if archive.IsArchivePath(value) {
-		if _, archivePath, inner, err := archive.SplitPath(value); err == nil {
+	if library.IsArchivePath(value) {
+		if _, archivePath, inner, err := library.SplitArchivePath(value); err == nil {
 			if inner != "" {
 				return path.Base(inner)
 			}

@@ -3,8 +3,6 @@ package library
 import (
 	"path/filepath"
 	"strings"
-
-	"github.com/bpicode/tmus/internal/app/archive"
 )
 
 var supportedAudioExt = map[string]struct{}{
@@ -21,8 +19,8 @@ var supportedAudioExt = map[string]struct{}{
 // IsAudio reports whether the path is a supported audio file (including archive entries).
 func IsAudio(path string) bool {
 	ext := filepath.Ext(path)
-	if archive.IsArchivePath(path) {
-		if innerExt := archive.EntryExt(path); innerExt != "" {
+	if IsArchivePath(path) {
+		if innerExt := EntryExt(path); innerExt != "" {
 			ext = innerExt
 		}
 	}

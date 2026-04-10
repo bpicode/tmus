@@ -56,26 +56,15 @@ func (m *Model) View() string {
 	if m.width < 1 || m.height < 1 {
 		return ""
 	}
-	label := m.fallback
-	if m.pic != nil {
-		label = "Image"
+	if m.pic == nil {
+		return m.renderPlaceholder(m.fallback)
+	}
+
+	img, err := decode(m.pic)
+	if err != nil {
+		return m.renderPlaceholder("Decode failed: " + err.Error())
 	}
 	boxWidth, boxHeight, leftOffset, topOffset := m.boxRect()
-	return m.renderImage(boxWidth, boxHeight, leftOffset, topOffset, m.pic, label)
-}
-
-// renderImage decides whether to render a truecolor image or a placeholder.
-func (m *Model) renderImage(boxWidth, boxHeight, leftOffset, topOffset int, pic *Data, label string) string {
-	if pic == nil {
-		return m.renderPlaceholder(label)
-	}
-
-	img, err := decode(pic)
-	if err != nil {
-		label = "Decode failed: " + err.Error()
-		return m.renderPlaceholder(label)
-	}
-
 	mode := detectColorMode()
 	switch mode {
 	case colorModeTruecolor:

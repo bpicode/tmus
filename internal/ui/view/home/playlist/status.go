@@ -71,13 +71,3 @@ func formatDuration(d time.Duration) string {
 	sec = sec % 60
 	return fmt.Sprintf("%02d:%02d", minute, sec)
 }
-
-func (m *statusModel) fmtLabel() string {
-	if m.width < 1 {
-		return ""
-	}
-	if lipgloss.Width(m.label) >= m.width {
-		return "" // give everything to the rest
-	}
-	return m.label
-}

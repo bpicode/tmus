@@ -51,7 +51,7 @@ require (
 	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
-	github.com/mattn/go-runewidth v0.0.22 // indirect
+	github.com/mattn/go-runewidth v0.0.23 // indirect
 	github.com/mewkiz/flac v1.0.13 // indirect
 	github.com/mewkiz/pkg v0.0.0-20260331151047-10214ccde7de // indirect
 	github.com/mewpkg/term v0.0.0-20241026122259-37a80af23985 // indirect
@@ -71,7 +71,7 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

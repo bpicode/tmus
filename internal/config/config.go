@@ -22,14 +22,16 @@ type MPRISConfig struct {
 }
 
 type ThemeConfig struct {
-	Primary   string `toml:"primary" comment:"Main accent color (e.g., highlighting selected items)"`
-	Secondary string `toml:"secondary" comment:"Secondary accent color (e.g., search highlights, minor elements)"`
-	Muted     string `toml:"muted" comment:"Faded or dimmed text"`
-	Highlight string `toml:"highlight" comment:"Highlight color"`
-	Info      string `toml:"info" comment:"Info indications"`
-	Danger    string `toml:"danger" comment:"Danger indications"`
-	Warning   string `toml:"warning" comment:"Warning indications"`
-	Working   string `toml:"working" comment:"Working indications"`
+	Primary    string `toml:"primary" comment:"Main accent color (e.g., highlighting selected items)"`
+	Secondary  string `toml:"secondary" comment:"Secondary accent color (e.g., search highlights, minor elements)"`
+	Muted      string `toml:"muted" comment:"Faded or dimmed text"`
+	Highlight  string `toml:"highlight" comment:"Highlight color"`
+	Info       string `toml:"info" comment:"Info indications"`
+	Danger     string `toml:"danger" comment:"Danger indications"`
+	Warning    string `toml:"warning" comment:"Warning indications"`
+	Working    string `toml:"working" comment:"Working indications"`
+	Background string `toml:"background" comment:"Background color, leave empty for terminal default"`
+	Foreground string `toml:"foreground" comment:"Foreground color, leave empty for terminal default"`
 }
 
 type TUIConfig struct {

@@ -27,6 +27,7 @@ type Model struct {
 	events    eventChannels
 	width     int
 	height    int
+	styles    styles
 }
 
 type eventChannels struct {
@@ -69,6 +70,7 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 		help:      help.NewModel(th),
 		trackInfo: track_info.NewModel(track_info.Config{Theme: th, App: appRef}),
 		lyrics:    lyrics.NewModel(lyrics.Config{Theme: th, App: appRef, FollowLine: st.Lyrics.FollowLine}),
+		styles:    newStyles(th),
 	}
 	m.restore(st)
 	m.openFiles(openFiles)
@@ -176,6 +178,8 @@ func (m *Model) View() tea.View {
 	view := tea.NewView(content)
 	view.AltScreen = true
 	view.WindowTitle = "tmus"
+	view.ForegroundColor = m.styles.foreground
+	view.BackgroundColor = m.styles.background
 	return view
 }
 

@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
+	"github.com/bpicode/tmus/internal/ui/components/truncate"
 	"golang.org/x/image/draw"
 )
 
@@ -111,7 +111,8 @@ func (m *Model) renderPlaceholder(label string) string {
 	if m.width < 1 || m.height < 1 {
 		return ""
 	}
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, ansi.Truncate(label, m.width, "…"))
+	truncateRight := truncate.Right{}.MaxWidth(m.width)
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, truncateRight.Render(label))
 }
 
 // renderImageTruecolor draws a truecolor image inside the box using half-blocks.

@@ -11,6 +11,7 @@ import (
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/lyrics"
 	"github.com/bpicode/tmus/internal/ui/components/error_view"
+	"github.com/bpicode/tmus/internal/ui/components/truncate"
 	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/charmbracelet/x/ansi"
 )
@@ -66,17 +67,17 @@ func (m *Model) View() string {
 	m.lyricsViewport.SetWidth(availableWidth)
 	m.lyricsViewport.SetHeight(viewportHeight)
 
-	title := m.styles.title.Render(ansi.Truncate("📜 Lyrics", availableWidth, "…"))
+	title := truncate.Right{Style: m.styles.title}.MaxWidth(availableWidth).Render("📜 Lyrics")
 	trackName := sanitizeTerminalText(displayNameForTrack(state, m.trackID, m.trackPath))
-	track := m.styles.track.Render(ansi.Truncate(trackName, availableWidth, "…"))
+	track := truncate.Right{Style: m.styles.track}.MaxWidth(availableWidth).Render(trackName)
 	pad := ""
 	headers := strings.Join([]string{title, track, pad}, "\n")
 
-	lines, hightlightIndex := m.bodyLines(availableWidth, state)
+	lines, highlightIndex := m.bodyLines(availableWidth, state)
 	m.lyricsViewport.SetContentLines(lines)
-	if hightlightIndex >= 0 && hightlightIndex < len(lines) && m.followLine {
-		highlightLine := lines[hightlightIndex]
-		m.lyricsViewport.EnsureVisible(hightlightIndex, 0, lipgloss.Width(highlightLine))
+	if highlightIndex >= 0 && highlightIndex < len(lines) && m.followLine {
+		highlightLine := lines[highlightIndex]
+		m.lyricsViewport.EnsureVisible(highlightIndex, 0, lipgloss.Width(highlightLine))
 	}
 
 	content := lipgloss.JoinVertical(lipgloss.Left, headers, m.lyricsViewport.View())
@@ -256,24 +257,16 @@ func (m *Model) bodyLines(maxWidth int, state core.State) ([]string, int) {
 		return nil, -1
 	}
 
-	truncate := func(s string) string {
-		lines := strings.Split(s, "\n")
-		for i, line := range lines {
-			lines[i] = ansi.Truncate(line, maxWidth, "…")
-		}
-		return strings.Join(lines, "\n")
-	}
-
 	switch {
 	case m.loading:
-		return []string{truncate(m.styles.track.Render("Loading..."))}, -1
+		style := truncate.Right{Style: m.styles.track}.MaxWidth(maxWidth)
+		return []string{style.Render("Loading...")}, -1
 	case m.errorView.HasErr():
-		lines := []string{
-			truncate(m.errorView.View()),
-		}
-		return lines, -1
+		style := truncate.Right{}.MaxWidth(maxWidth)
+		return []string{style.Render(m.errorView.View())}, -1
 	case len(m.data.Lines) == 0:
-		return []string{truncate(m.styles.empty.Render("No lyrics available"))}, -1
+		style := truncate.Right{Style: m.styles.empty}.MaxWidth(maxWidth)
+		return []string{style.Render("No lyrics available")}, -1
 	default:
 		active := -1
 		if m.data.Timed && m.followPlay && m.matchesPlaying(state) {
@@ -313,12 +306,12 @@ func activeLyricIndex(lines []lyrics.Line, elapsed time.Duration) int {
 func lyricsLinesForWidth(lines []lyrics.Line, width int, active int, styles styles) []string {
 	out := make([]string, 0, len(lines))
 	for i, line := range lines {
-		trimmed := ansi.Truncate(sanitizeTerminalText(line.Text), width, "…")
+		style := lipgloss.NewStyle()
 		if i == active {
-			out = append(out, styles.activeLine.Render(trimmed))
-		} else {
-			out = append(out, trimmed)
+			style = styles.activeLine
 		}
+		truncateRight := truncate.Right{Style: style}.MaxWidth(width)
+		out = append(out, truncateRight.Render(sanitizeTerminalText(line.Text)))
 	}
 	return out
 }

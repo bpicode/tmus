@@ -11,8 +11,8 @@ import (
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/ui/components/terminal_image"
+	"github.com/bpicode/tmus/internal/ui/components/truncate"
 	"github.com/bpicode/tmus/internal/ui/theme"
-	"github.com/charmbracelet/x/ansi"
 )
 
 const defaultArtworkAspect = 2.0
@@ -201,7 +201,7 @@ func (m *Model) View() string {
 	rightLines := m.rightLines(rightWidth, fields)
 	m.viewport.SetWidth(max(rightWidth, 0))
 	m.viewport.SetHeight(max(areaHeight, 0))
-	m.viewport.SetContentLines(rightLines)
+	m.viewport.SetContentLines([]string{truncate.Right{}.MaxWidth(rightWidth).Render(rightLines)})
 
 	styleRight := m.styles.Artwork.Width(leftWidth).Height(areaHeight)
 	artworkWidth := leftWidth - m.styles.Artwork.GetHorizontalFrameSize()
@@ -247,25 +247,25 @@ func (m *Model) innerSize() (int, int) {
 
 func (m *Model) headerLines(maxWidth int) []string {
 	lines := make([]string, 0, 3)
-	lines = append(lines, m.styles.Title.Render(ansi.Truncate("🎵 Track info", maxWidth, "…")))
+	lines = append(lines, truncate.Right{Style: m.styles.Title}.MaxWidth(maxWidth).Render("🎵 Track info"))
 	if m.trackPath != "" {
-		lines = append(lines, m.styles.Subtitle.Render(ansi.Truncate(m.trackPath, maxWidth, "…")))
+		lines = append(lines, truncate.Right{Style: m.styles.Subtitle}.MaxWidth(maxWidth).Render(m.trackPath))
 	}
 	lines = append(lines, "")
 	return lines
 }
 
-func (m *Model) rightLines(maxWidth int, fields []field) []string {
+func (m *Model) rightLines(maxWidth int, fields []field) string {
 	if maxWidth < 1 {
-		return nil
+		return ""
 	}
 	switch {
 	case m.loading:
-		return []string{m.styles.Subtitle.Render(ansi.Truncate("Loading...", maxWidth, "…"))}
+		return m.styles.Subtitle.Render("Loading...")
 	case m.err != "":
-		return []string{m.styles.Error.Render(ansi.Truncate(m.err, maxWidth, "…"))}
+		return m.styles.Error.Render(m.err)
 	default:
-		return m.metadataFieldLines(fields, maxWidth)
+		return m.metadataFieldLines(fields)
 	}
 }
 
@@ -292,7 +292,7 @@ func formatPicture(pic *library.Picture) string {
 
 func normalizeMetadataValue(value string) string {
 	if value == "" {
-		return ""
+		return "-"
 	}
 	return strings.Join(strings.Fields(value), " ")
 }
@@ -315,51 +315,30 @@ func metadataFields(meta library.Metadata) []field {
 	}
 }
 
-func (m *Model) metadataFieldLines(fields []field, maxWidth int) []string {
-	if maxWidth < 1 {
-		return nil
-	}
-	keyWidth := metadataKeyWidth(fields)
-	if maxWidth < 2 {
-		lines := make([]string, 0, len(fields))
-		for _, f := range fields {
-			label := f.label + ":"
-			lines = append(lines, ansi.Truncate(label, maxWidth, "…"))
-		}
-		return lines
-	}
-	if keyWidth > maxWidth-2 {
-		keyWidth = maxWidth - 2
-	}
+func (m *Model) metadataFieldLines(fields []field) string {
+	maxKW := maxKeyWidth(fields)
 	lines := make([]string, 0, len(fields))
 	for _, f := range fields {
-		label := f.label + ":"
-		if len(label) > keyWidth {
-			label = ansi.Truncate(label, keyWidth, "…")
-		} else {
-			label = label + strings.Repeat(" ", max(keyWidth-len(label), 0))
-		}
-
+		labelPadding := strings.Repeat(" ", max(maxKW-len(f.label), 0))
+		label := fmt.Sprintf("%s:%s", f.label, labelPadding)
+		label = m.styles.MetadataKey.Render(label)
 		value := normalizeMetadataValue(f.value)
-		if value == "" {
-			value = "-"
-		}
-		avail := max(maxWidth-keyWidth-1, 1)
-		value = ansi.Truncate(value, avail, "…")
-		lines = append(lines, m.styles.MetadataKey.Render(label)+" "+value)
+		line := fmt.Sprintf("%s %s", label, value)
+		lines = append(lines, line)
 	}
-	return lines
+	return strings.Join(lines, "\n")
 }
 
-func metadataKeyWidth(fields []field) int {
-	keyWidth := 0
+func maxKeyWidth(fields []field) int {
+	maxKW := 0
 	for _, f := range fields {
 		label := f.label + ":"
-		if len(label) > keyWidth {
-			keyWidth = len(label)
+		width := lipgloss.Width(label)
+		if width > maxKW {
+			maxKW = width
 		}
 	}
-	return keyWidth
+	return maxKW
 }
 
 func metadataColumnWidths(contentWidth, areaHeight int, fields []field, aspect float64) (leftWidth, rightWidth, gap int) {
@@ -373,7 +352,7 @@ func metadataColumnWidths(contentWidth, areaHeight int, fields []field, aspect f
 	available := contentWidth - gap
 	leftMin := 10
 	minValue := 8
-	rightMin := max(20, metadataKeyWidth(fields)+1+minValue)
+	rightMin := max(20, maxKeyWidth(fields)+1+minValue)
 
 	leftWidth = max(available-rightMin, leftMin)
 	if areaHeight > 0 {

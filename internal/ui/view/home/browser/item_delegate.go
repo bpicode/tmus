@@ -7,7 +7,8 @@ import (
 
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
+	"charm.land/lipgloss/v2"
+	"github.com/bpicode/tmus/internal/ui/components/truncate"
 )
 
 type itemDelegate struct {
@@ -46,15 +47,15 @@ func (i itemDelegate) Render(w io.Writer, m list.Model, index int, item list.Ite
 	if entry.entry.IsAudio {
 		name = "🎵 " + entry.entry.Name
 	}
-	name = ansi.Truncate(name, max(0, m.Width()), "…")
 
-	line := name
+	style := lipgloss.NewStyle()
 	if index == m.Index() {
-		line = i.styles.selected.Render(name)
+		style = i.styles.selected
 	} else if entry.entry.IsDir {
-		line = i.styles.dir.Render(name)
+		style = i.styles.dir
 	} else if entry.entry.IsArchive {
-		line = i.styles.archive.Render(name)
+		style = i.styles.archive
 	}
-	_, _ = fmt.Fprint(w, line)
+	truncateRight := truncate.Right{Style: style}.MaxWidth(m.Width())
+	_, _ = fmt.Fprint(w, truncateRight.Render(name))
 }

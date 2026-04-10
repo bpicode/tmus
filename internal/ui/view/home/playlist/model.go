@@ -13,8 +13,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
+	"github.com/bpicode/tmus/internal/ui/components/truncate"
 	"github.com/bpicode/tmus/internal/ui/theme"
-	"github.com/charmbracelet/x/ansi"
 )
 
 var (
@@ -204,8 +204,9 @@ func (m *Model) View() string {
 	innerWidth := max(0, m.width-panelStyle.GetHorizontalFrameSize())
 	innerHeight := max(0, m.height-panelStyle.GetVerticalFrameSize())
 
-	titleLine := title.Render("🎵 Playlist") + " (" + playStateStyle(state, m.styles).Render(playStateLabel(state)) + ", " + m.styles.statusQueueMode.Render(queueModeLabel(state.QueueMode)) + ")"
-	titleLine = ansi.Truncate(titleLine, innerWidth, "…")
+	titleLine := fmt.Sprintf("%s (%s, %s)", title.Render("🎵 Playlist"), playStateStyle(state, m.styles).Render(playStateLabel(state)), m.styles.statusQueueMode.Render(queueModeLabel(state.QueueMode)))
+	titleLine = truncate.Right{}.MaxWidth(innerWidth).Render(titleLine)
+
 	lines := []string{
 		titleLine,
 		m.searchView(),
@@ -529,18 +530,19 @@ func (d playlistDelegate) Render(w io.Writer, m list.Model, index int, item list
 		prefix = "⏸ "
 	}
 	pos := fmt.Sprintf("%*d ", max(1, d.model.posWidth), playlistItem.index+1)
-	line := ansi.Truncate(prefix+pos+name, max(0, m.Width()), "…")
+	style := lipgloss.NewStyle()
 	if isPlaying {
-		line = d.model.styles.playing.Render(line)
+		style = style.Inherit(d.model.styles.playing)
 	}
 	if isPaused {
-		line = d.model.styles.paused.Render(line)
+		style = style.Inherit(d.model.styles.paused)
 	}
 	isSelected := index == m.Index()
 	if isSelected {
-		line = d.model.styles.selected.Render(line)
+		style = style.Inherit(d.model.styles.selected)
 	}
-	_, _ = fmt.Fprint(w, line)
+	truncateRight := truncate.Right{Style: style}.MaxWidth(m.Width())
+	_, _ = fmt.Fprint(w, truncateRight.Render(prefix+pos+name))
 }
 
 func playStateLabel(state core.State) string {

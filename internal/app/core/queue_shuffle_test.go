@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestShuffleStrategy_Next(t *testing.T) {
@@ -72,4 +73,46 @@ func TestNewShuffleStrategy_Next_And_Prev(t *testing.T) {
 	qi.Playing = 1
 	p := s.Prev(qi)
 	assert.Equal(t, QueuePlay(0), p)
+}
+
+// TestShuffleStrategy_FullCycle verifies every track appears exactly once
+// before the deck reshuffles (fair shuffle guarantee).
+func TestShuffleStrategy_FullCycle(t *testing.T) {
+	const n = 10
+	s := NewShuffleStrategy()
+	seen := make(map[int]int)
+	playing := -1
+	for range n {
+		d := s.Next(QueueInput{PlaylistLen: n, Playing: playing})
+		require.True(t, d.Index >= 0 && d.Index < n, "index %d out of range", d.Index)
+		seen[d.Index]++
+		playing = d.Index
+	}
+	for i := range n {
+		assert.Equal(t, 1, seen[i], "track %d should appear exactly once in a cycle", i)
+	}
+}
+
+// TestShuffleStrategy_PrevDoesNotAffectDeck verifies that calling Prev does
+// not corrupt forward navigation: after going back via history, Next should
+// still produce a valid in-range track.
+func TestShuffleStrategy_PrevDoesNotAffectDeck(t *testing.T) {
+	const n = 5
+	s := NewShuffleStrategy()
+	playing := -1
+
+	// Advance two steps.
+	for range 2 {
+		d := s.Next(QueueInput{PlaylistLen: n, Playing: playing})
+		require.True(t, d.Index >= 0 && d.Index < n)
+		playing = d.Index
+	}
+	// Go back once.
+	p := s.Prev(QueueInput{PlaylistLen: n, Playing: playing})
+	require.True(t, p.Index >= 0 && p.Index < n)
+	playing = p.Index
+
+	// Going forward again should still yield a valid track (deck untouched).
+	d := s.Next(QueueInput{PlaylistLen: n, Playing: playing})
+	assert.True(t, d.Index >= 0 && d.Index < n, "Next after Prev should return a valid track")
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/ui/components/error_view"
 	"github.com/bpicode/tmus/internal/ui/theme"
-	"github.com/bpicode/tmus/internal/ui/util"
 )
 
 type Model struct {
@@ -167,8 +166,7 @@ func (m *Model) View() string {
 	sb.WriteString(title.Render("📂 Files"))
 	sb.WriteString("\n")
 	pathWidth := max(0, m.width-panelStyle.GetHorizontalFrameSize())
-	cwd := util.TruncateLeft(m.Cwd, pathWidth)
-	sb.WriteString(m.styles.cwd.Render(cwd))
+	sb.WriteString(m.styles.cwd.MaxWidth(pathWidth).Render(m.Cwd))
 	sb.WriteString("\n")
 	sb.WriteString(m.searchView())
 	sb.WriteString("\n")

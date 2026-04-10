@@ -1,4 +1,4 @@
-package error_view
+package errorview
 
 import (
 	"strings"

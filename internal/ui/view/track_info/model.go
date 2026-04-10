@@ -10,7 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
-	"github.com/bpicode/tmus/internal/ui/components/terminal_image"
+	"github.com/bpicode/tmus/internal/ui/components/terminalimage"
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 	"github.com/bpicode/tmus/internal/ui/theme"
 )
@@ -26,7 +26,7 @@ type Model struct {
 	loading   bool
 	err       string
 	viewport  viewport.Model
-	artwork   terminal_image.Model
+	artwork   terminalimage.Model
 	data      library.Metadata
 	app       *core.App
 	styles    styles
@@ -48,7 +48,7 @@ func NewModel(cfg Config) *Model {
 	styles := newStyles(cfg.Theme)
 	return &Model{
 		viewport: vp,
-		artwork:  terminal_image.NewModel(artworkAspect, "No artwork"),
+		artwork:  terminalimage.NewModel(artworkAspect, "No artwork"),
 		app:      cfg.App,
 		styles:   styles,
 	}
@@ -208,7 +208,7 @@ func (m *Model) View() string {
 	artworkHeight := areaHeight - m.styles.Artwork.GetVerticalFrameSize()
 	m.artwork.SetSize(artworkWidth, artworkHeight)
 	if m.data.Picture != nil {
-		m.artwork.SetImage(&terminal_image.ImageData{Data: m.data.Picture.Data})
+		m.artwork.SetImage(&terminalimage.Data{Bytes: m.data.Picture.Data})
 	} else {
 		m.artwork.SetImage(nil)
 	}

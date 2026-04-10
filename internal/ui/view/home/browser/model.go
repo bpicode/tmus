@@ -13,7 +13,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
-	"github.com/bpicode/tmus/internal/ui/components/error_view"
+	"github.com/bpicode/tmus/internal/ui/components/errorview"
 	"github.com/bpicode/tmus/internal/ui/theme"
 )
 
@@ -28,7 +28,7 @@ type Model struct {
 	focus      bool
 	app        *core.App
 	list       list.Model
-	errorView  *error_view.Model
+	errorView  *errorview.Model
 	styles     styles
 }
 
@@ -72,7 +72,7 @@ func NewModel(cfg Config) *Model {
 		homeDir:   cfg.HomeDir,
 		app:       cfg.App,
 		list:      browserList,
-		errorView: error_view.New(error_view.Styles{Error: styles.err}),
+		errorView: errorview.New(errorview.Styles{Error: styles.err}),
 		styles:    styles,
 	}
 	return b

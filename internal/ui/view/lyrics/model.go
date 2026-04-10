@@ -10,7 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/lyrics"
-	"github.com/bpicode/tmus/internal/ui/components/error_view"
+	"github.com/bpicode/tmus/internal/ui/components/errorview"
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/charmbracelet/x/ansi"
@@ -28,7 +28,7 @@ type Model struct {
 	loading        bool
 	data           lyrics.Lyrics
 	app            *core.App
-	errorView      *error_view.Model
+	errorView      *errorview.Model
 	styles         styles
 }
 
@@ -47,7 +47,7 @@ func NewModel(cfg Config) *Model {
 		app:            cfg.App,
 		followLine:     cfg.FollowLine,
 		styles:         styles,
-		errorView:      error_view.New(error_view.Styles{Error: styles.err}),
+		errorView:      errorview.New(errorview.Styles{Error: styles.err}),
 	}
 }
 

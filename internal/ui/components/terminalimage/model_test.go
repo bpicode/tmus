@@ -1,4 +1,4 @@
-package terminal_image
+package terminalimage
 
 import (
 	"encoding/base64"
@@ -17,7 +17,7 @@ func TestModel(t *testing.T) {
 
 	m := NewModel(2.0, "My Fallback")
 	m.SetSize(10, 10)
-	m.SetImage(&ImageData{Data: data})
+	m.SetImage(&Data{Bytes: data})
 	view := m.View()
 	assert.NotContains(t, view, "My Fallback")
 	assert.NotContains(t, view, "Decode failed")
@@ -33,6 +33,6 @@ func TestModelFallback(t *testing.T) {
 func TestModelError(t *testing.T) {
 	m := NewModel(2.0, "My Fallback")
 	m.SetSize(20, 20)
-	m.SetImage(&ImageData{Data: []byte("invalid-image-data")})
+	m.SetImage(&Data{Bytes: []byte("invalid-image-data")})
 	assert.Contains(t, m.View(), "Decode failed")
 }

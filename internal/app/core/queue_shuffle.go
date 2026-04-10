@@ -1,9 +1,6 @@
 package core
 
-import (
-	"math/rand"
-	"time"
-)
+import "math/rand/v2"
 
 // maxShuffleHistory is the maximum number of entries retained in the
 // shuffle back-navigation history. Older entries are discarded to prevent
@@ -16,14 +13,11 @@ type ShuffleStrategy struct {
 	head    int
 	tail    int
 	count   int
-	rng     *rand.Rand
 }
 
 // NewShuffleStrategy constructs a shuffle strategy with a random seed.
 func NewShuffleStrategy() *ShuffleStrategy {
-	return &ShuffleStrategy{
-		rng: rand.New(rand.NewSource(time.Now().UnixNano())),
-	}
+	return &ShuffleStrategy{}
 }
 
 func (s *ShuffleStrategy) Next(in QueueInput) QueueDecision {
@@ -76,11 +70,11 @@ func (s *ShuffleStrategy) pickNext(total, current int) int {
 		return 0
 	}
 	if current == -1 {
-		return s.rng.Intn(total)
+		return rand.IntN(total)
 	}
 	// Pick uniformly from [0, total-1) then map to [0, total) excluding current,
 	// so the result is always different from current and always O(1).
-	n := s.rng.Intn(total - 1)
+	n := rand.IntN(total - 1)
 	if n >= current {
 		n++
 	}

@@ -20,7 +20,7 @@ func TestStopAfterCurrentStrategy_Next(t *testing.T) {
 		{
 			name: "stop after currently playing track",
 			arg:  QueueInput{PlaylistLen: 15, Playing: 7},
-			want: QueueNoop(),
+			want: QueueStop(),
 		},
 	}
 	for _, tt := range tests {

@@ -32,8 +32,9 @@ type Model struct {
 }
 
 type Config struct {
-	Theme theme.Theme
-	App   *core.App
+	Theme      theme.Theme
+	FollowLine bool
+	App        *core.App
 }
 
 func NewModel(cfg Config) *Model {
@@ -43,7 +44,7 @@ func NewModel(cfg Config) *Model {
 	return &Model{
 		lyricsViewport: vp,
 		app:            cfg.App,
-		followLine:     true,
+		followLine:     cfg.FollowLine,
 		styles:         styles,
 		errorView:      error_view.New(error_view.Styles{Error: styles.err}),
 	}
@@ -219,6 +220,10 @@ func (m *Model) Show(show bool) {
 
 func (m *Model) Visible() bool {
 	return m.show
+}
+
+func (m *Model) FollowLine() bool {
+	return m.followLine
 }
 
 func (m *Model) innerSize() (int, int) {

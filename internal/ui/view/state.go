@@ -13,14 +13,30 @@ import (
 
 // State captures UI-related state persisted across runs.
 type State struct {
-	BrowserDir    string  `toml:"browser_dir"`
-	BrowserHidden bool    `toml:"browser_hidden"`
-	Focus         string  `toml:"focus"`
-	Volume        *int    `toml:"volume"`
-	QueueMode     string  `toml:"queue_mode"`
-	Playlist      []Track `toml:"playlist"`
-	Playing       int     `toml:"playing"`
-	Cursor        int     `toml:"cursor"`
+	Focus   string  `toml:"focus"`
+	Browser Browser `toml:"browser"`
+	Player  Player  `toml:"player"`
+	Lyrics  Lyrics  `toml:"lyrics"`
+}
+
+// Browser captures persisted state for the file browser.
+type Browser struct {
+	Hidden bool   `toml:"hidden"`
+	Cwd    string `toml:"cwd"`
+}
+
+// Player captures persisted state for the player.
+type Player struct {
+	Volume    *int    `toml:"volume"`
+	QueueMode string  `toml:"queue_mode"`
+	Playing   int     `toml:"playing"`
+	Cursor    int     `toml:"cursor"`
+	Playlist  []Track `toml:"playlist"`
+}
+
+// Lyrics captures persisted state for the lyrics view.
+type Lyrics struct {
+	FollowLine bool `toml:"follow_line"`
 }
 
 // Track captures persisted metadata for a playlist entry.

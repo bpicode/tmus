@@ -45,8 +45,8 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 	}
 
 	cwd := startDir
-	if cwd == "" && st.BrowserDir != "" {
-		cwd = st.BrowserDir
+	if cwd == "" && st.Browser.Cwd != "" {
+		cwd = st.Browser.Cwd
 	}
 	if cwd == "" {
 		if wd, err := os.Getwd(); err == nil {
@@ -68,7 +68,7 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 		home:      home.NewModel(home.Config{Cwd: cwd, HomeDir: cfg.BrowserHome, Theme: th, App: appRef}),
 		help:      help.NewModel(th),
 		trackInfo: track_info.NewModel(track_info.Config{Theme: th, App: appRef}),
-		lyrics:    lyrics.NewModel(lyrics.Config{Theme: th, App: appRef}),
+		lyrics:    lyrics.NewModel(lyrics.Config{Theme: th, App: appRef, FollowLine: st.Lyrics.FollowLine}),
 	}
 	m.restore(st)
 	m.openFiles(openFiles)
@@ -180,8 +180,8 @@ func (m *Model) View() tea.View {
 }
 
 func (m *Model) restore(s State) {
-	tracks := make([]core.Track, 0, len(s.Playlist))
-	for _, entry := range s.Playlist {
+	tracks := make([]core.Track, 0, len(s.Player.Playlist))
+	for _, entry := range s.Player.Playlist {
 		if entry.Path == "" {
 			continue
 		}
@@ -198,24 +198,24 @@ func (m *Model) restore(s State) {
 			Duration: entry.Duration,
 		})
 	}
-	cursor := s.Cursor
+	cursor := s.Player.Cursor
 	if cursor < 0 || cursor >= len(tracks) {
-		cursor = s.Playing
+		cursor = s.Player.Playing
 	}
-	m.app.Restore(tracks, cursor, ParseQueueMode(s.QueueMode))
+	m.app.Restore(tracks, cursor, ParseQueueMode(s.Player.QueueMode))
 	volume := core.DefaultVolume
-	if s.Volume != nil {
-		volume = *s.Volume
+	if s.Player.Volume != nil {
+		volume = *s.Player.Volume
 	}
 	m.app.SetVolume(volume)
-	m.home.ShowBrowser(!s.BrowserHidden)
+	m.home.ShowBrowser(!s.Browser.Hidden)
 	switch s.Focus {
 	case "playlist":
 		m.home.FocusPlaylist()
 	default:
 		m.home.FocusBrowser()
 	}
-	if s.BrowserHidden {
+	if s.Browser.Hidden {
 		m.home.FocusPlaylist()
 	}
 }
@@ -284,14 +284,21 @@ func (m *Model) SaveState() error {
 		focus = "playlist"
 	}
 	return Save(statePath, State{
-		BrowserDir:    m.home.BrowserCwd(),
-		BrowserHidden: m.home.BrowserHidden(),
-		Focus:         focus,
-		Volume:        new(appState.Volume),
-		QueueMode:     QueueModeString(appState.QueueMode),
-		Playlist:      tracks,
-		Playing:       appState.Playing,
-		Cursor:        appState.Cursor,
+		Focus: focus,
+		Browser: Browser{
+			Cwd:    m.home.BrowserCwd(),
+			Hidden: m.home.BrowserHidden(),
+		},
+		Player: Player{
+			Volume:    new(appState.Volume),
+			QueueMode: QueueModeString(appState.QueueMode),
+			Playlist:  tracks,
+			Playing:   appState.Playing,
+			Cursor:    appState.Cursor,
+		},
+		Lyrics: Lyrics{
+			FollowLine: m.lyrics.FollowLine(),
+		},
 	})
 }
 

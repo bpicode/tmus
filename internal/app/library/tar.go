@@ -49,7 +49,7 @@ func (h *tarHandler) IsArchivePath(value string) bool {
 	return false
 }
 
-func (h *tarHandler) List(value string, showHidden bool) ([]ArchiveEntry, error) {
+func (h *tarHandler) List(value string, showHidden bool) ([]Entry, error) {
 	archivePath, inner, err := splitArchivePath(h.scheme, value)
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (h *tarHandler) List(value string, showHidden bool) ([]ArchiveEntry, error)
 		inner += "/"
 	}
 
-	children := map[string]ArchiveEntry{}
+	children := map[string]Entry{}
 	for {
 		hdr, err := reader.next()
 		if err == io.EOF {
@@ -94,25 +94,26 @@ func (h *tarHandler) List(value string, showHidden bool) ([]ArchiveEntry, error)
 		}
 		entryPath := path.Join(inner, child)
 		if len(parts) > 1 || hdr.FileInfo().IsDir() {
-			children[child] = ArchiveEntry{
+			path := BuildArchivePath(h.scheme, archivePath, strings.TrimSuffix(entryPath, "/"))
+			children[child] = Entry{
 				Name:  child,
-				Path:  BuildArchivePath(h.scheme, archivePath, strings.TrimSuffix(entryPath, "/")),
+				Path:  path,
 				IsDir: true,
 			}
 		} else {
-			children[child] = ArchiveEntry{
-				Name:  child,
-				Path:  BuildArchivePath(h.scheme, archivePath, entryPath),
-				IsDir: false,
+			path := BuildArchivePath(h.scheme, archivePath, entryPath)
+			children[child] = Entry{
+				Name:    child,
+				Path:    path,
+				IsAudio: IsAudio(path),
 			}
 		}
 	}
 
-	entries := make([]ArchiveEntry, 0, len(children))
+	entries := make([]Entry, 0, len(children))
 	for _, v := range children {
 		entries = append(entries, v)
 	}
-	sortArchiveEntries(entries)
 	return entries, nil
 }
 

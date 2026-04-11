@@ -26,7 +26,7 @@ func (h *rarHandler) IsArchivePath(value string) bool {
 	return strings.HasSuffix(strings.ToLower(value), ".rar")
 }
 
-func (h *rarHandler) List(value string, showHidden bool) ([]ArchiveEntry, error) {
+func (h *rarHandler) List(value string, showHidden bool) ([]Entry, error) {
 	archivePath, inner, err := splitArchivePath(h.Scheme(), value)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (h *rarHandler) List(value string, showHidden bool) ([]ArchiveEntry, error)
 		return nil, fmt.Errorf("read rar: %w", err)
 	}
 
-	items := make([]ArchiveEntry, 0, len(entries))
+	items := make([]Entry, 0, len(entries))
 	for _, entry := range entries {
 		name := entry.Name()
 		if !showHidden && strings.HasPrefix(name, ".") {
@@ -52,14 +52,15 @@ func (h *rarHandler) List(value string, showHidden bool) ([]ArchiveEntry, error)
 		if inner != "" {
 			entryPath = path.Join(inner, name)
 		}
-		items = append(items, ArchiveEntry{
-			Name:  name,
-			Path:  BuildArchivePath(h.Scheme(), archivePath, entryPath),
-			IsDir: entry.IsDir(),
+		path := BuildArchivePath(h.Scheme(), archivePath, entryPath)
+		items = append(items, Entry{
+			Name:    name,
+			Path:    path,
+			IsDir:   entry.IsDir(),
+			IsAudio: IsAudio(path),
 		})
 	}
 
-	sortArchiveEntries(items)
 	return items, nil
 }
 

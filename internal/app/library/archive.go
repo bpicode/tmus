@@ -4,18 +4,11 @@ import (
 	"io"
 )
 
-// ArchiveEntry is a single file or directory within an archive.
-type ArchiveEntry struct {
-	Name  string
-	Path  string
-	IsDir bool
-}
-
 // ArchiveHandler manages a specific archive format (zip, tar, etc.).
 type ArchiveHandler interface {
 	Scheme() string
 	IsArchivePath(path string) bool
-	List(path string, showHidden bool) ([]ArchiveEntry, error)
+	List(path string, showHidden bool) ([]Entry, error)
 	Open(path string) (io.ReadCloser, error)
 }
 

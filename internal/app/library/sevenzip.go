@@ -26,7 +26,7 @@ func (h *sevenZipHandler) IsArchivePath(value string) bool {
 	return strings.HasSuffix(strings.ToLower(value), ".7z")
 }
 
-func (h *sevenZipHandler) List(value string, showHidden bool) ([]ArchiveEntry, error) {
+func (h *sevenZipHandler) List(value string, showHidden bool) ([]Entry, error) {
 	archivePath, inner, err := splitArchivePath(h.Scheme(), value)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (h *sevenZipHandler) List(value string, showHidden bool) ([]ArchiveEntry, e
 		inner += "/"
 	}
 
-	children := map[string]ArchiveEntry{}
+	children := map[string]Entry{}
 	for _, f := range reader.File {
 		name := f.Name
 		if inner != "" {
@@ -64,25 +64,26 @@ func (h *sevenZipHandler) List(value string, showHidden bool) ([]ArchiveEntry, e
 		}
 		entryPath := path.Join(inner, child)
 		if len(parts) > 1 || f.FileInfo().IsDir() {
-			children[child] = ArchiveEntry{
+			path := BuildArchivePath(h.Scheme(), archivePath, strings.TrimSuffix(entryPath, "/"))
+			children[child] = Entry{
 				Name:  child,
-				Path:  BuildArchivePath(h.Scheme(), archivePath, strings.TrimSuffix(entryPath, "/")),
+				Path:  path,
 				IsDir: true,
 			}
 		} else {
-			children[child] = ArchiveEntry{
-				Name:  child,
-				Path:  BuildArchivePath(h.Scheme(), archivePath, entryPath),
-				IsDir: false,
+			path := BuildArchivePath(h.Scheme(), archivePath, entryPath)
+			children[child] = Entry{
+				Name:    child,
+				Path:    path,
+				IsAudio: IsAudio(path),
 			}
 		}
 	}
 
-	entries := make([]ArchiveEntry, 0, len(children))
+	entries := make([]Entry, 0, len(children))
 	for _, v := range children {
 		entries = append(entries, v)
 	}
-	sortArchiveEntries(entries)
 	return entries, nil
 }
 

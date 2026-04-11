@@ -18,8 +18,7 @@ build:
 lint:
 	go vet ./...
 	go fmt ./...
-	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.2
-	golangci-lint run
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run
 
 test:
 	go test -race ./...

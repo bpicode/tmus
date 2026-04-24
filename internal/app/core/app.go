@@ -135,28 +135,27 @@ type App struct {
 	lastVolume  int
 	nextTrackID uint64
 
-	cmdChan    chan Command
-	commandWG  sync.WaitGroup
-	subsMu     sync.Mutex
-	playerSubs map[chan player.Event]struct{}
-	stateSubs  map[chan StateEvent]struct{}
-	ctx        context.Context
-	cancel     context.CancelFunc
-	shutdownWG sync.WaitGroup
-	closed     atomic.Bool
+	cmdChan      chan Command
+	commandWG    sync.WaitGroup
+	playerEvents *topic[player.Event]
+	stateEvents  *topic[StateEvent]
+	ctx          context.Context
+	cancel       context.CancelFunc
+	shutdownWG   sync.WaitGroup
+	closed       atomic.Bool
 
-	metadataChan  chan MetadataEvent
-	metadataQueue chan metadataRequest
-	metadataCache *metadataCache
-	metadataWG    sync.WaitGroup
-	metadataSubs  map[chan MetadataEvent]struct{}
+	metadataChan   chan MetadataEvent
+	metadataQueue  chan metadataRequest
+	metadataCache  *metadataCache
+	metadataWG     sync.WaitGroup
+	metadataEvents *topic[MetadataEvent]
 
 	lyricsChan     chan LyricsEvent
 	lyricsQueue    chan lyricsRequest
 	lyricsResolver *lyrics.Resolver
 	lyricsCache    *lyricsCache
 	lyricsWG       sync.WaitGroup
-	lyricsSubs     map[chan LyricsEvent]struct{}
+	lyricsEvents   *topic[LyricsEvent]
 }
 
 var (
@@ -196,21 +195,21 @@ func New(cfg config.Config) *App {
 			PlayState: PlaybackStopped,
 			Volume:    DefaultVolume,
 		},
-		queue:         LinearStrategy{},
-		lastVolume:    DefaultVolume,
-		metadataChan:  make(chan MetadataEvent, 32),
-		metadataQueue: make(chan metadataRequest, 2048),
-		lyricsChan:    make(chan LyricsEvent, 32),
-		lyricsQueue:   make(chan lyricsRequest, 2048),
-		metadataCache: newMetadataCache(),
-		lyricsCache:   newLyricsCache(),
-		cmdChan:       make(chan Command, 256),
-		ctx:           ctx,
-		cancel:        cancel,
-		playerSubs:    make(map[chan player.Event]struct{}),
-		metadataSubs:  make(map[chan MetadataEvent]struct{}),
-		lyricsSubs:    make(map[chan LyricsEvent]struct{}),
-		stateSubs:     make(map[chan StateEvent]struct{}),
+		queue:          LinearStrategy{},
+		lastVolume:     DefaultVolume,
+		metadataChan:   make(chan MetadataEvent, 32),
+		metadataQueue:  make(chan metadataRequest, 2048),
+		lyricsChan:     make(chan LyricsEvent, 32),
+		lyricsQueue:    make(chan lyricsRequest, 2048),
+		metadataCache:  newMetadataCache(),
+		lyricsCache:    newLyricsCache(),
+		cmdChan:        make(chan Command, 256),
+		ctx:            ctx,
+		cancel:         cancel,
+		playerEvents:   newTopic[player.Event](),
+		metadataEvents: newTopic[MetadataEvent](),
+		lyricsEvents:   newTopic[LyricsEvent](),
+		stateEvents:    newTopic[StateEvent](),
 	}
 	app.lyricsResolver = lyrics.NewResolver(
 		lyrics.NewSidecarProvider(),
@@ -290,41 +289,25 @@ func (a *App) Dispatch(cmd Command) error {
 // SubscribePlayerEvents registers a new player event subscriber.
 // Use the returned unsubscribe func to stop receiving events.
 func (a *App) SubscribePlayerEvents() (<-chan player.Event, func()) {
-	ch := make(chan player.Event, 8)
-	a.subsMu.Lock()
-	a.playerSubs[ch] = struct{}{}
-	a.subsMu.Unlock()
-	return ch, func() { a.unsubscribePlayerEvents(ch) }
+	return a.playerEvents.subscribe()
 }
 
 // SubscribeMetadataEvents registers a new metadata event subscriber.
 // Use the returned unsubscribe func to stop receiving events.
 func (a *App) SubscribeMetadataEvents() (<-chan MetadataEvent, func()) {
-	ch := make(chan MetadataEvent, 8)
-	a.subsMu.Lock()
-	a.metadataSubs[ch] = struct{}{}
-	a.subsMu.Unlock()
-	return ch, func() { a.unsubscribeMetadataEvents(ch) }
+	return a.metadataEvents.subscribe()
 }
 
 // SubscribeLyricsEvents registers a new lyrics event subscriber.
 // Use the returned unsubscribe func to stop receiving events.
 func (a *App) SubscribeLyricsEvents() (<-chan LyricsEvent, func()) {
-	ch := make(chan LyricsEvent, 8)
-	a.subsMu.Lock()
-	a.lyricsSubs[ch] = struct{}{}
-	a.subsMu.Unlock()
-	return ch, func() { a.unsubscribeLyricsEvents(ch) }
+	return a.lyricsEvents.subscribe()
 }
 
 // SubscribeStateEvents registers a new state event subscriber.
 // Use the returned unsubscribe func to stop receiving events.
 func (a *App) SubscribeStateEvents() (<-chan StateEvent, func()) {
-	ch := make(chan StateEvent, 8)
-	a.subsMu.Lock()
-	a.stateSubs[ch] = struct{}{}
-	a.subsMu.Unlock()
-	return ch, func() { a.unsubscribeStateEvents(ch) }
+	return a.stateEvents.subscribe()
 }
 
 // apply executes a command against the current state.
@@ -422,7 +405,7 @@ func (a *App) commandLoop() {
 			a.stateMu.RUnlock()
 			changes := DiffState(before, after)
 			if changes != StateChangeNone {
-				a.broadcastStateEvent(StateEvent{
+				a.stateEvents.broadcast(StateEvent{
 					Source:  StateEventCommand,
 					Command: cmd,
 					Changes: changes,
@@ -484,7 +467,7 @@ func (a *App) HandlePlayerEvent(event player.Event) {
 	a.stateMu.RUnlock()
 	changes := DiffState(before, after)
 	if changes != StateChangeNone {
-		a.broadcastStateEvent(StateEvent{
+		a.stateEvents.broadcast(StateEvent{
 			Source:  StateEventPlayer,
 			Changes: changes,
 		})
@@ -509,119 +492,24 @@ func (a *App) ShutdownAndWait() {
 func (a *App) forwardPlayerEvents() {
 	for event := range a.engine.Events() {
 		a.HandlePlayerEvent(event)
-		a.broadcastPlayerEvent(event)
+		a.playerEvents.broadcast(event)
 	}
-	a.subsMu.Lock()
-	for ch := range a.playerSubs {
-		close(ch)
-		delete(a.playerSubs, ch)
-	}
-	a.subsMu.Unlock()
+	a.playerEvents.close()
 }
 
 func (a *App) forwardMetadataEvents() {
 	for event := range a.metadataChan {
 		a.updatePlayList(event)
-		a.broadcastMetadataEvent(event)
+		a.metadataEvents.broadcast(event)
 	}
-	a.subsMu.Lock()
-	for ch := range a.metadataSubs {
-		close(ch)
-		delete(a.metadataSubs, ch)
-	}
-	a.subsMu.Unlock()
+	a.metadataEvents.close()
 }
 
 func (a *App) forwardLyricsEvents() {
 	for event := range a.lyricsChan {
-		a.broadcastLyricsEvent(event)
+		a.lyricsEvents.broadcast(event)
 	}
-	a.subsMu.Lock()
-	for ch := range a.lyricsSubs {
-		close(ch)
-		delete(a.lyricsSubs, ch)
-	}
-	a.subsMu.Unlock()
-}
-
-func (a *App) broadcastPlayerEvent(event player.Event) {
-	a.subsMu.Lock()
-	for ch := range a.playerSubs {
-		select {
-		case ch <- event:
-		default:
-		}
-	}
-	a.subsMu.Unlock()
-}
-
-func (a *App) broadcastLyricsEvent(event LyricsEvent) {
-	a.subsMu.Lock()
-	for ch := range a.lyricsSubs {
-		select {
-		case ch <- event:
-		default:
-		}
-	}
-	a.subsMu.Unlock()
-}
-
-func (a *App) broadcastMetadataEvent(event MetadataEvent) {
-	a.subsMu.Lock()
-	for ch := range a.metadataSubs {
-		select {
-		case ch <- event:
-		default:
-		}
-	}
-	a.subsMu.Unlock()
-}
-
-func (a *App) broadcastStateEvent(event StateEvent) {
-	a.subsMu.Lock()
-	for ch := range a.stateSubs {
-		select {
-		case ch <- event:
-		default:
-		}
-	}
-	a.subsMu.Unlock()
-}
-
-func (a *App) unsubscribePlayerEvents(ch chan player.Event) {
-	a.subsMu.Lock()
-	if _, ok := a.playerSubs[ch]; ok {
-		delete(a.playerSubs, ch)
-		close(ch)
-	}
-	a.subsMu.Unlock()
-}
-
-func (a *App) unsubscribeMetadataEvents(ch chan MetadataEvent) {
-	a.subsMu.Lock()
-	if _, ok := a.metadataSubs[ch]; ok {
-		delete(a.metadataSubs, ch)
-		close(ch)
-	}
-	a.subsMu.Unlock()
-}
-
-func (a *App) unsubscribeLyricsEvents(ch chan LyricsEvent) {
-	a.subsMu.Lock()
-	if _, ok := a.lyricsSubs[ch]; ok {
-		delete(a.lyricsSubs, ch)
-		close(ch)
-	}
-	a.subsMu.Unlock()
-}
-
-func (a *App) unsubscribeStateEvents(ch chan StateEvent) {
-	a.subsMu.Lock()
-	if _, ok := a.stateSubs[ch]; ok {
-		delete(a.stateSubs, ch)
-		close(ch)
-	}
-	a.subsMu.Unlock()
+	a.lyricsEvents.close()
 }
 
 func copyState(s State) State {
@@ -712,10 +600,5 @@ func (a *App) setQueueMode(mode QueueMode) {
 }
 
 func (a *App) closeStateSubscribers() {
-	a.subsMu.Lock()
-	for ch := range a.stateSubs {
-		close(ch)
-		delete(a.stateSubs, ch)
-	}
-	a.subsMu.Unlock()
+	a.stateEvents.close()
 }

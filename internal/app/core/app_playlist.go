@@ -250,7 +250,7 @@ func (a *App) updatePlayList(event MetadataEvent) {
 	}
 	a.stateMu.Unlock()
 	if updated {
-		a.broadcastStateEvent(StateEvent{
+		a.stateEvents.broadcast(StateEvent{
 			Source:  StateEventMetadata,
 			Changes: StateChangeMetadata,
 		})

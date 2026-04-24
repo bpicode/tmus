@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 )
 
@@ -92,13 +91,4 @@ func OpenArchiveRoot(path string) (string, bool) {
 		return "", false
 	}
 	return BuildArchivePath(handler.Scheme(), path, ""), true
-}
-
-func sortEntries(entries []Entry) {
-	sort.Slice(entries, func(i, j int) bool {
-		if entries[i].IsDir != entries[j].IsDir {
-			return entries[i].IsDir
-		}
-		return strings.ToLower(entries[i].Name) < strings.ToLower(entries[j].Name)
-	})
 }

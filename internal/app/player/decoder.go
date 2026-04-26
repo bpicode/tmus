@@ -1,12 +1,9 @@
 package player
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/bpicode/tmus/internal/app/library"
@@ -16,76 +13,18 @@ import (
 	"github.com/gopxl/beep/v2/wav"
 )
 
-func decodeFile(path string) (beep.StreamSeekCloser, beep.Format, error) {
-	if handler := library.DefaultArchiveRegistry().FindHandler(path); handler != nil {
-		return decodeArchiveEntry(handler, path)
-	}
-	ext := strings.ToLower(filepath.Ext(path))
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, beep.Format{}, fmt.Errorf("open file: %w", err)
-	}
-
-	var (
-		streamer beep.StreamSeekCloser
-		format   beep.Format
-	)
-
-	switch ext {
-	case ".mp3":
-		streamer, format, err = mp3.Decode(f)
-	case ".wav":
-		streamer, format, err = wav.Decode(f)
-	case ".flac":
-		streamer, format, err = flac.Decode(f)
-	case ".opus", ".ogg", ".oga":
-		streamer, format, err = decodeOgg(f)
-	case ".m4a", ".mp4":
-		streamer, format, err = decodeM4a(f)
-	default:
-		_ = f.Close()
-		return nil, beep.Format{}, fmt.Errorf("unsupported file type: %s", ext)
-	}
-
-	if err != nil {
-		_ = f.Close()
-		return nil, beep.Format{}, fmt.Errorf("decode %s: %w", ext, err)
-	}
-
-	if streamer == nil {
-		_ = f.Close()
-		return nil, beep.Format{}, errors.New("decoder returned nil streamer")
-	}
-
-	return streamer, format, nil
-}
-
-func decodeArchiveEntry(handler library.ArchiveHandler, path string) (beep.StreamSeekCloser, beep.Format, error) {
-	rc, err := handler.Open(path)
-	if err != nil {
-		return nil, beep.Format{}, err
-	}
-	defer rc.Close()
-
-	data, err := io.ReadAll(rc)
-	if err != nil {
-		return nil, beep.Format{}, fmt.Errorf("read archive entry: %w", err)
-	}
-
-	ext := filepath.Ext(path)
-	if library.IsArchivePath(path) {
-		if inner := library.EntryExt(path); inner != "" {
-			ext = inner
-		}
-	}
-
-	r := bytes.NewReader(data)
-	return decodeReader(r, ext)
-}
-
-func decodeReader(r io.ReadSeeker, ext string) (beep.StreamSeekCloser, beep.Format, error) {
-	ext = strings.ToLower(ext)
-	rc := readSeekCloser{r: r}
+// decodeSource decodes a library.Source into a beep audio stream.
+// It takes ownership of Source.Reader, closing it on error or delegating
+// responsibility to the returned streamer on success.
+//
+// If Source.Reader implements io.ReadSeekCloser (local files, buffered archive
+// entries) the reader is passed directly to the format decoder, enabling
+// seeking on the returned stream. Otherwise the reader is passed as-is without
+// any buffering, and Seek on the returned stream will return an error — the
+// expected behaviour for non-seekable sources such as HTTP streams.
+func decodeSource(s library.Source) (beep.StreamSeekCloser, beep.Format, error) {
+	rc := s.Reader
+	ext := strings.ToLower(s.Ext)
 
 	var (
 		streamer beep.StreamSeekCloser
@@ -101,9 +40,19 @@ func decodeReader(r io.ReadSeeker, ext string) (beep.StreamSeekCloser, beep.Form
 	case ".flac":
 		streamer, format, err = flac.Decode(rc)
 	case ".opus", ".ogg", ".oga":
-		streamer, format, err = decodeOgg(rc)
+		rsc, ok := rc.(io.ReadSeekCloser)
+		if !ok {
+			_ = rc.Close()
+			return nil, beep.Format{}, fmt.Errorf("ogg/opus decoding requires a seekable source")
+		}
+		streamer, format, err = decodeOgg(rsc)
 	case ".m4a", ".mp4":
-		streamer, format, err = decodeM4a(rc)
+		rsc, ok := rc.(io.ReadSeekCloser)
+		if !ok {
+			_ = rc.Close()
+			return nil, beep.Format{}, fmt.Errorf("m4a decoding requires a seekable source")
+		}
+		streamer, format, err = decodeM4a(rsc)
 	default:
 		_ = rc.Close()
 		return nil, beep.Format{}, fmt.Errorf("unsupported file type: %s", ext)
@@ -113,19 +62,9 @@ func decodeReader(r io.ReadSeeker, ext string) (beep.StreamSeekCloser, beep.Form
 		_ = rc.Close()
 		return nil, beep.Format{}, fmt.Errorf("decode %s: %w", ext, err)
 	}
-
 	if streamer == nil {
 		_ = rc.Close()
 		return nil, beep.Format{}, errors.New("decoder returned nil streamer")
 	}
-
 	return streamer, format, nil
 }
-
-type readSeekCloser struct {
-	r io.ReadSeeker
-}
-
-func (r readSeekCloser) Read(p []byte) (int, error)         { return r.r.Read(p) }
-func (r readSeekCloser) Seek(o int64, w int) (int64, error) { return r.r.Seek(o, w) }
-func (r readSeekCloser) Close() error                       { return nil }

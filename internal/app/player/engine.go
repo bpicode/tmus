@@ -1,11 +1,13 @@
 package player
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/gopxl/beep/v2"
 	"github.com/gopxl/beep/v2/effects"
 	"github.com/gopxl/beep/v2/speaker"
@@ -51,6 +53,9 @@ type Options struct {
 	SampleRate      int
 	ResampleQuality int
 	BufferDuration  time.Duration
+	// Resolvers is the ordered list of source resolvers consulted when opening
+	// a URI for playback. Defaults to [library.LocalResolver{}] when empty.
+	Resolvers []library.SourceResolver
 }
 
 // Engine runs audio playback in a background goroutine.
@@ -73,15 +78,27 @@ type Engine struct {
 	volumeLevel int
 	sourceRate  beep.SampleRate
 	trackDur    time.Duration
+
+	resolvers []library.SourceResolver
+	ctx       context.Context
+	cancel    context.CancelFunc
 }
 
 func NewEngine(opts Options) *Engine {
+	resolvers := opts.Resolvers
+	if len(resolvers) == 0 {
+		resolvers = []library.SourceResolver{library.LocalResolver{}}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
 	e := &Engine{
 		cmdCh:      make(chan command, 8),
 		eventCh:    make(chan Event, 8),
 		targetRate: beep.SampleRate(opts.SampleRate),
 		resampleQ:  opts.ResampleQuality,
 		bufferDur:  opts.BufferDuration,
+		resolvers:  resolvers,
+		ctx:        ctx,
+		cancel:     cancel,
 	}
 	go e.loop()
 	return e
@@ -125,6 +142,7 @@ func (e *Engine) Close() {
 	if e.closed.Swap(true) {
 		return
 	}
+	e.cancel()
 	e.cmdCh <- command{kind: cmdQuit}
 }
 
@@ -172,16 +190,37 @@ func (e *Engine) loop() {
 	}
 }
 
-func (e *Engine) playPath(path string) {
+// findResolver returns the first resolver that claims to handle the URI.
+// It returns an error when no registered resolver matches.
+func (e *Engine) findResolver(uri string) (library.SourceResolver, error) {
+	for _, r := range e.resolvers {
+		if r.CanResolve(uri) {
+			return r, nil
+		}
+	}
+	return nil, fmt.Errorf("no resolver registered for URI: %s", uri)
+}
+
+func (e *Engine) playPath(uri string) {
 	if e.closed.Load() {
 		return
 	}
 	playID := e.nextPlaybackID()
 	e.stopCurrent()
 
-	streamer, format, err := decodeFile(path)
+	resolver, err := e.findResolver(uri)
 	if err != nil {
-		e.sendEvent(Event{Type: EventTrackError, Path: path, Err: err})
+		e.sendEvent(Event{Type: EventTrackError, Path: uri, Err: err})
+		return
+	}
+	source, err := resolver.Resolve(e.ctx, uri)
+	if err != nil {
+		e.sendEvent(Event{Type: EventTrackError, Path: uri, Err: err})
+		return
+	}
+	streamer, format, err := decodeSource(source)
+	if err != nil {
+		e.sendEvent(Event{Type: EventTrackError, Path: uri, Err: err})
 		return
 	}
 
@@ -195,7 +234,7 @@ func (e *Engine) playPath(path string) {
 		buffer := targetRate.N(e.bufferDur)
 		if err := speaker.Init(targetRate, buffer); err != nil {
 			_ = streamer.Close()
-			e.sendEvent(Event{Type: EventTrackError, Path: path, Err: fmt.Errorf("init speaker: %w", err)})
+			e.sendEvent(Event{Type: EventTrackError, Path: uri, Err: fmt.Errorf("init speaker: %w", err)})
 			return
 		}
 		e.sampleRate = targetRate
@@ -216,17 +255,17 @@ func (e *Engine) playPath(path string) {
 	e.volume = vol
 	e.ctrl = &beep.Ctrl{Streamer: vol, Paused: false}
 	e.paused = false
-	e.current = path
+	e.current = uri
 	e.mu.Unlock()
 
-	e.sendEvent(Event{Type: EventTrackStarted, Path: path, Dur: trackDur})
+	e.sendEvent(Event{Type: EventTrackStarted, Path: uri, Dur: trackDur})
 
 	speaker.Play(beep.Seq(e.ctrl, beep.Callback(func() {
 		_ = streamer.Close()
 		if e.playID.Load() != playID {
 			return
 		}
-		e.sendEvent(Event{Type: EventTrackEnded, Path: path})
+		e.sendEvent(Event{Type: EventTrackEnded, Path: uri})
 	})))
 }
 
@@ -313,24 +352,17 @@ func (e *Engine) seekTo(pos time.Duration) SeekResult {
 		pos = 0
 	}
 
-	type seeker interface {
-		Seek(int) error
-		Len() int
-	}
-	s, ok := streamer.(seeker)
-	if !ok {
-		return SeekResult{Ok: false}
-	}
-
+	// beep.StreamSeekCloser always exposes Seek and Len directly.
+	// Non-seekable sources (e.g. HTTP streams) return an error from Seek.
 	frames := max(rate.N(pos), 0)
-	if length := s.Len(); length > 0 {
+	if length := streamer.Len(); length > 0 {
 		if frames >= length {
 			return SeekResult{Ok: true, Dur: dur}
 		}
 	}
 
 	speaker.Lock()
-	err := s.Seek(frames)
+	err := streamer.Seek(frames)
 	speaker.Unlock()
 	if err != nil {
 		return SeekResult{Ok: false}

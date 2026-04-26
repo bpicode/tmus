@@ -1,8 +1,10 @@
 package player
 
 import (
+	"context"
 	"testing"
 
+	"github.com/bpicode/tmus/internal/app/library"
 	_ "github.com/bpicode/tmus/testing"
 	"github.com/gopxl/beep/v2"
 	"github.com/stretchr/testify/assert"
@@ -26,9 +28,12 @@ func Test_decodeFile(t *testing.T) {
 			wantFormat: beep.Format{SampleRate: 44100, NumChannels: 2, Precision: 2},
 		},
 	}
+	resolver := library.LocalResolver{}
 	for _, tt := range tests {
 		t.Run(tt.arg, func(t *testing.T) {
-			ssc, f, err := decodeFile(tt.arg)
+			source, err := resolver.Resolve(context.Background(), tt.arg)
+			assert.NoError(t, err)
+			ssc, f, err := decodeSource(source)
 			assert.NoError(t, err)
 			defer ssc.Close()
 			assert.NotNil(t, ssc)

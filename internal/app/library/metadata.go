@@ -67,6 +67,9 @@ func ReadMetadataExtended(path string) (Metadata, error) {
 }
 
 func readMetadata(path string) (Metadata, error) {
+	if IsRemote(path) {
+		return Metadata{}, errors.New("remote metadata not supported")
+	}
 	if handler := DefaultArchiveRegistry().FindHandler(path); handler != nil {
 		rc, err := handler.Open(path)
 		if err != nil {

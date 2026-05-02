@@ -27,6 +27,9 @@ func (p sidecarProvider) find(track TrackInfo) (Lyrics, error) {
 	if track.Path == "" {
 		return Lyrics{}, errors.New("track path is empty")
 	}
+	if library.IsRemote(track.Path) {
+		return Lyrics{}, errors.New("sidecar files are not supported for remote tracks")
+	}
 	if library.IsArchivePath(track.Path) {
 		return Lyrics{}, errors.New("sidecar files are not supported in archives")
 	}

@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/app/lyrics"
 	"github.com/bpicode/tmus/internal/app/player"
 	"github.com/bpicode/tmus/internal/config"
@@ -187,6 +188,10 @@ func New(cfg config.Config) *App {
 			SampleRate:      cfg.Audio.SampleRate,
 			ResampleQuality: cfg.Audio.ResampleQuality,
 			BufferDuration:  time.Duration(cfg.Audio.BufferMs) * time.Millisecond,
+			Resolvers: []library.SourceResolver{
+				library.NewHTTPResolver(),
+				library.LocalResolver{},
+			},
 		}),
 		state: State{
 			Playing:   -1,

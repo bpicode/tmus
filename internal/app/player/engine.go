@@ -355,10 +355,12 @@ func (e *Engine) seekTo(pos time.Duration) SeekResult {
 	// beep.StreamSeekCloser always exposes Seek and Len directly.
 	// Non-seekable sources (e.g. HTTP streams) return an error from Seek.
 	frames := max(rate.N(pos), 0)
-	if length := streamer.Len(); length > 0 {
-		if frames >= length {
-			return SeekResult{Ok: true, Dur: dur}
-		}
+	length := streamer.Len()
+	if length <= 0 {
+		return SeekResult{Ok: false} // Unseekable stream (e.g., live radio)
+	}
+	if frames >= length {
+		return SeekResult{Ok: true, Dur: dur}
 	}
 
 	speaker.Lock()

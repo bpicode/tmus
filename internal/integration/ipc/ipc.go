@@ -35,15 +35,18 @@ func buildTracks(paths []string) []core.Track {
 		if value == "" {
 			continue
 		}
-		path := filepath.Clean(value)
-		if abs, err := filepath.Abs(path); err == nil {
-			path = abs
+		path := value
+		if !library.IsURI(value) {
+			path = filepath.Clean(value)
+			if abs, err := filepath.Abs(path); err == nil {
+				path = abs
+			}
 		}
 		if !library.IsAudio(path) {
 			continue
 		}
 		tracks = append(tracks, core.Track{
-			Name: filepath.Base(path),
+			Name: library.BaseName(path),
 			Path: path,
 		})
 	}

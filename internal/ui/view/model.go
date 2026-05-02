@@ -2,7 +2,6 @@ package view
 
 import (
 	"os"
-	"path"
 	"path/filepath"
 	"time"
 
@@ -191,7 +190,7 @@ func (m *Model) restore(s State) {
 		}
 		name := entry.Name
 		if name == "" {
-			name = trackName(entry.Path)
+			name = library.BaseName(entry.Path)
 		}
 		tracks = append(tracks, core.Track{
 			Name:     name,
@@ -224,18 +223,6 @@ func (m *Model) restore(s State) {
 	}
 }
 
-func trackName(value string) string {
-	if library.IsArchivePath(value) {
-		if _, archivePath, inner, err := library.SplitArchivePath(value); err == nil {
-			if inner != "" {
-				return path.Base(inner)
-			}
-			return filepath.Base(archivePath)
-		}
-	}
-	return filepath.Base(value)
-}
-
 func (m *Model) openFiles(openFiles []string) {
 	if len(openFiles) == 0 {
 		return
@@ -246,15 +233,18 @@ func (m *Model) openFiles(openFiles []string) {
 		if file == "" {
 			continue
 		}
-		cleanPath := filepath.Clean(file)
-		if abs, err := filepath.Abs(cleanPath); err == nil {
-			cleanPath = abs
+		cleanPath := file
+		if !library.IsURI(file) {
+			cleanPath = filepath.Clean(file)
+			if abs, err := filepath.Abs(cleanPath); err == nil {
+				cleanPath = abs
+			}
 		}
 		if !library.IsAudio(cleanPath) {
 			continue
 		}
 		tracks = append(tracks, core.Track{
-			Name: trackName(cleanPath),
+			Name: library.BaseName(cleanPath),
 			Path: cleanPath,
 		})
 	}

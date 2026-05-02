@@ -22,6 +22,8 @@ func TestIsAudio(t *testing.T) {
 		{name: "MP4 file", path: "video.mp4", want: true},
 		{name: "MP3 file (full path)", path: "/home/user/my-lib/song.mp3", want: true},
 		{name: "MP3 file (archive path)", path: "arch://zip:/home/user/my-lib/album.zip::song.mp3", want: true},
+		{name: "HTTP stream", path: "http://example.com/radio", want: true},
+		{name: "HTTPS stream", path: "https://example.com/radio", want: true},
 		{name: "Unsupported extension", path: "document.txt", want: false},
 		{name: "No extension", path: "file", want: false},
 		{name: "Archive", path: "a.rar", want: false},

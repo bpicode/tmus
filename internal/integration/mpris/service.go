@@ -219,7 +219,7 @@ func (s *Service) OpenUri(uri string) *dbus.Error {
 	}
 	state := s.app.State()
 	index := len(state.Playlist)
-	track := core.Track{Name: filepath.Base(path), Path: path}
+	track := core.Track{Name: library.BaseName(path), Path: path}
 	if err := s.dispatch(core.Command{Type: core.CmdAddAll, Tracks: []core.Track{track}}); err != nil {
 		return err
 	}
@@ -508,6 +508,9 @@ func resolveURI(value string) (string, error) {
 			return "", errors.New("uri path is empty")
 		}
 		return path, nil
+	}
+	if library.IsRemote(value) {
+		return value, nil
 	}
 	if filepath.IsAbs(value) {
 		return value, nil

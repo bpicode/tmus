@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 )
@@ -50,7 +51,11 @@ func (r *HTTPResolver) Resolve(ctx context.Context, uri string) (Source, error) 
 	contentType := resp.Header.Get("Content-Type")
 	ext := extFromContentType(contentType)
 	if ext == "" {
-		ext = filepath.Ext(uri)
+		if u, err := url.Parse(uri); err == nil {
+			ext = filepath.Ext(u.Path)
+		} else {
+			ext = filepath.Ext(uri)
+		}
 	}
 	ext = strings.ToLower(ext)
 

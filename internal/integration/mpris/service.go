@@ -50,12 +50,10 @@ func Start(appRef *core.App) (*Service, error) {
 	}
 	reply, err := conn.RequestName(serviceName, dbus.NameFlagDoNotQueue)
 	if err != nil {
-		_ = conn.Close()
-		return nil, err
+		return nil, errors.Join(err, conn.Close())
 	}
 	if reply != dbus.RequestNameReplyPrimaryOwner {
-		_ = conn.Close()
-		return nil, ErrNameOwned
+		return nil, errors.Join(ErrNameOwned, conn.Close())
 	}
 
 	stateCh, unsub := appRef.SubscribeStateEvents()
@@ -69,16 +67,13 @@ func Start(appRef *core.App) (*Service, error) {
 	}
 
 	if err := conn.Export(svc, objectPath, ifaceRoot); err != nil {
-		svc.Close()
-		return nil, err
+		return nil, errors.Join(err, svc.Close())
 	}
 	if err := conn.ExportMethodTable(playerMethodTable(svc), objectPath, ifacePlayer); err != nil {
-		svc.Close()
-		return nil, err
+		return nil, errors.Join(err, svc.Close())
 	}
 	if err := conn.Export(svc, objectPath, ifaceProps); err != nil {
-		svc.Close()
-		return nil, err
+		return nil, errors.Join(err, svc.Close())
 	}
 
 	svc.lastPlayerMap = svc.playerProperties(appRef.State())
@@ -87,22 +82,23 @@ func Start(appRef *core.App) (*Service, error) {
 }
 
 // Close releases the DBus name and stops event handling.
-func (s *Service) Close() {
+func (s *Service) Close() error {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.closed {
-		s.mu.Unlock()
-		return
+		return nil
 	}
 	s.closed = true
-	s.mu.Unlock()
 
 	if s.unsub != nil {
 		s.unsub()
 	}
 	if s.conn != nil {
-		_, _ = s.conn.ReleaseName(serviceName)
-		_ = s.conn.Close()
+		_, errRelease := s.conn.ReleaseName(serviceName)
+		errClose := s.conn.Close()
+		return errors.Join(errRelease, errClose)
 	}
+	return nil
 }
 
 func (s *Service) loop() {

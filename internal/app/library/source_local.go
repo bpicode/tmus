@@ -13,9 +13,9 @@ import (
 // LocalResolver handles local filesystem paths and archive URIs (arch://...).
 type LocalResolver struct{}
 
-// CanResolve returns true for any URI that is not an HTTP or HTTPS URL.
+// CanResolve returns true for any URI that is not a remote network resource.
 func (LocalResolver) CanResolve(uri string) bool {
-	return !strings.HasPrefix(uri, "http://") && !strings.HasPrefix(uri, "https://")
+	return !IsRemote(uri)
 }
 
 // Resolve opens a local file or archive entry.

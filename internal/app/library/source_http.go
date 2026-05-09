@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // HTTPResolver handles http:// and https:// URIs, including m3u/pls playlists.
@@ -18,9 +20,17 @@ type HTTPResolver struct {
 }
 
 // NewHTTPResolver creates a resolver for network streams.
+// The client uses transport-level timeouts for connection setup and header
+// reads without bounding the duration of long-lived audio streams.
 func NewHTTPResolver() *HTTPResolver {
 	return &HTTPResolver{
-		Client: http.DefaultClient,
+		Client: &http.Client{
+			Transport: &http.Transport{
+				DialContext:           (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ResponseHeaderTimeout: 15 * time.Second,
+			},
+		},
 	}
 }
 

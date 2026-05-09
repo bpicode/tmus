@@ -60,8 +60,8 @@ func (r *HTTPResolver) Resolve(ctx context.Context, uri string) (Source, error) 
 	ext = strings.ToLower(ext)
 
 	if isPlaylist(contentType, ext) {
-		defer resp.Body.Close()
-		targetURI, err := parsePlaylist(resp.Body, ext)
+		targetURI, err := parsePlaylist(resp.Body, ext, uri)
+		_ = resp.Body.Close()
 		if err != nil {
 			return Source{}, err
 		}
@@ -82,24 +82,40 @@ func isPlaylist(contentType, ext string) bool {
 	return ext == ".m3u" || ext == ".m3u8" || ext == ".pls"
 }
 
-func parsePlaylist(r io.Reader, ext string) (string, error) {
+func parsePlaylist(r io.Reader, ext string, baseURI string) (string, error) {
+	baseURL, _ := url.Parse(baseURI)
+	isPls := ext == ".pls" || strings.Contains(ext, "scpls")
+
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
 			continue
 		}
-		if ext == ".pls" || strings.Contains(ext, "scpls") {
+
+		var target string
+		if isPls {
 			if strings.HasPrefix(strings.ToLower(line), "file") {
-				parts := strings.SplitN(line, "=", 2)
-				if len(parts) == 2 {
-					return strings.TrimSpace(parts[1]), nil
+				if _, after, found := strings.Cut(line, "="); found {
+					target = strings.TrimSpace(after)
 				}
 			}
-		} else { // m3u / generic
-			if !strings.HasPrefix(line, "#") && IsRemote(line) {
-				return line, nil
+		} else if !strings.HasPrefix(line, "#") {
+			target = line
+		}
+
+		if target == "" {
+			continue
+		}
+
+		if baseURL != nil {
+			if parsed, err := baseURL.Parse(target); err == nil {
+				target = parsed.String()
 			}
+		}
+
+		if IsRemote(target) {
+			return target, nil
 		}
 	}
 	if err := scanner.Err(); err != nil {

@@ -102,7 +102,7 @@ func isPlaylist(contentType, ext string) bool {
 
 func parsePlaylist(r io.Reader, ext string, baseURI string) (string, error) {
 	baseURL, _ := url.Parse(baseURI)
-	isPls := ext == ".pls" || strings.Contains(ext, "scpls")
+	isPls := ext == ".pls"
 
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {

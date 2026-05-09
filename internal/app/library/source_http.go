@@ -53,8 +53,6 @@ func (r *HTTPResolver) resolve(ctx context.Context, uri string, depth int) (Sour
 	if err != nil {
 		return Source{}, err
 	}
-	// We might need to pretend to be a standard browser or player, some radios block Go-http-client
-	req.Header.Set("User-Agent", "tmus/1.0")
 
 	resp, err := r.Client.Do(req)
 	if err != nil {

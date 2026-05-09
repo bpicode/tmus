@@ -269,15 +269,11 @@ func (e *Engine) playPath(uri string) {
 	})))
 }
 
-func durationFor(streamer beep.Streamer, format beep.Format) time.Duration {
+func durationFor(streamer beep.StreamSeekCloser, format beep.Format) time.Duration {
 	if format.SampleRate <= 0 {
 		return 0
 	}
-	length, ok := streamer.(interface{ Len() int })
-	if !ok {
-		return 0
-	}
-	frames := length.Len()
+	frames := streamer.Len()
 	if frames <= 0 {
 		return 0
 	}

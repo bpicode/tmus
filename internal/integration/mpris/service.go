@@ -322,7 +322,7 @@ func (s *Service) rootProperties() map[string]dbus.Variant {
 		"CanRaise":            dbus.MakeVariant(false),
 		"HasTrackList":        dbus.MakeVariant(false),
 		"Identity":            dbus.MakeVariant("tmus"),
-		"SupportedUriSchemes": dbus.MakeVariant([]string{"file"}),
+		"SupportedUriSchemes": dbus.MakeVariant([]string{"file", "http", "https"}),
 		"SupportedMimeTypes": dbus.MakeVariant([]string{
 			"audio/mpeg",
 			"audio/flac",
@@ -404,8 +404,12 @@ func (s *Service) metadataMap(state core.State) map[string]dbus.Variant {
 		metadata["mpris:length"] = dbus.MakeVariant(toMicroseconds(state.PlayDuration))
 	}
 	if track.Path != "" {
-		if uri := fileURI(track.Path); uri != "" {
-			metadata["xesam:url"] = dbus.MakeVariant(uri)
+		trackURI := track.Path
+		if !library.IsRemote(track.Path) {
+			trackURI = fileURI(track.Path)
+		}
+		if trackURI != "" {
+			metadata["xesam:url"] = dbus.MakeVariant(trackURI)
 		}
 	}
 	return metadata

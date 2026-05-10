@@ -19,6 +19,7 @@ var supportedAudioExt = map[string]struct{}{
 // IsAudio reports whether the path is a supported audio file (including archive entries).
 func IsAudio(path string) bool {
 	if IsRemote(path) {
+		// Remote URLs are accepted optimistically; format validation defers to the decoder.
 		return true
 	}
 	ext := filepath.Ext(path)

@@ -79,9 +79,10 @@ type Engine struct {
 	sourceRate  beep.SampleRate
 	trackDur    time.Duration
 
-	resolvers []library.SourceResolver
-	ctx       context.Context
-	cancel    context.CancelFunc
+	resolvers  []library.SourceResolver
+	ctx        context.Context
+	cancel     context.CancelFunc
+	playCancel context.CancelFunc
 }
 
 func NewEngine(opts Options) *Engine {
@@ -213,7 +214,12 @@ func (e *Engine) playPath(uri string) {
 		e.sendEvent(Event{Type: EventTrackError, Path: uri, Err: err})
 		return
 	}
-	source, err := resolver.Resolve(e.ctx, uri)
+	playCtx, playCancel := context.WithCancel(e.ctx)
+	e.mu.Lock()
+	e.playCancel = playCancel
+	e.mu.Unlock()
+
+	source, err := resolver.Resolve(playCtx, uri)
 	if err != nil {
 		e.sendEvent(Event{Type: EventTrackError, Path: uri, Err: err})
 		return
@@ -282,6 +288,10 @@ func durationFor(streamer beep.StreamSeekCloser, format beep.Format) time.Durati
 
 func (e *Engine) stopCurrent() {
 	e.mu.Lock()
+	if e.playCancel != nil {
+		e.playCancel()
+		e.playCancel = nil
+	}
 	streamer := e.streamer
 	current := e.current
 	e.ctrl = nil

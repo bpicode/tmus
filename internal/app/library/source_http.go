@@ -148,9 +148,6 @@ func extFromContentType(ct string) string {
 	if strings.Contains(ct, "audio/ogg") || strings.Contains(ct, "application/ogg") {
 		return ".ogg"
 	}
-	if strings.Contains(ct, "audio/aac") {
-		return ".m4a" // Let m4a/aac decode it
-	}
 	if strings.Contains(ct, "audio/wav") {
 		return ".wav"
 	}

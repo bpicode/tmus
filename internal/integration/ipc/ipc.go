@@ -2,7 +2,6 @@ package ipc
 
 import (
 	"errors"
-	"path/filepath"
 
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
@@ -32,23 +31,12 @@ func buildTracks(paths []string) []core.Track {
 	}
 	tracks := make([]core.Track, 0, len(paths))
 	for _, value := range paths {
-		if value == "" {
-			continue
+		if resolvedPath, name, ok := library.ResolvePlayable(value); ok {
+			tracks = append(tracks, core.Track{
+				Name: name,
+				Path: resolvedPath,
+			})
 		}
-		path := value
-		if !library.IsURI(value) {
-			path = filepath.Clean(value)
-			if abs, err := filepath.Abs(path); err == nil {
-				path = abs
-			}
-		}
-		if !library.IsAudio(path) {
-			continue
-		}
-		tracks = append(tracks, core.Track{
-			Name: library.BaseName(path),
-			Path: path,
-		})
 	}
 	return tracks
 }

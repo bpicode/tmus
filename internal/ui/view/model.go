@@ -230,23 +230,12 @@ func (m *Model) openFiles(openFiles []string) {
 	startIndex := len(m.app.State().Playlist)
 	tracks := make([]core.Track, 0, len(openFiles))
 	for _, file := range openFiles {
-		if file == "" {
-			continue
+		if resolvedPath, name, ok := library.ResolvePlayable(file); ok {
+			tracks = append(tracks, core.Track{
+				Name: name,
+				Path: resolvedPath,
+			})
 		}
-		cleanPath := file
-		if !library.IsURI(file) {
-			cleanPath = filepath.Clean(file)
-			if abs, err := filepath.Abs(cleanPath); err == nil {
-				cleanPath = abs
-			}
-		}
-		if !library.IsAudio(cleanPath) {
-			continue
-		}
-		tracks = append(tracks, core.Track{
-			Name: library.BaseName(cleanPath),
-			Path: cleanPath,
-		})
 	}
 	if len(tracks) == 0 {
 		return

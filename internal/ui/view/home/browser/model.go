@@ -321,12 +321,14 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 		return cmd, true
 	case "enter":
 		if selected, ok := m.selected(); ok && !selected.IsDir && selected.IsAudio {
-			cmd := core.Command{
-				Type:  core.CmdAdd,
-				Track: core.Track{Name: selected.Name, Path: selected.Path},
+			if resolvedPath, name, ok := library.ResolvePlayable(selected.Path); ok {
+				cmd := core.Command{
+					Type:  core.CmdAdd,
+					Track: core.Track{Name: name, Path: resolvedPath},
+				}
+				_ = m.app.Dispatch(cmd)
+				return nil, true
 			}
-			_ = m.app.Dispatch(cmd)
-			return nil, true
 		}
 		return m.openSelection(), true
 	case "backspace", "left", "h":
@@ -334,12 +336,14 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 	case "a":
 		if selected, ok := m.selected(); ok {
 			if !selected.IsDir && selected.IsAudio {
-				cmd := core.Command{
-					Type:  core.CmdAdd,
-					Track: core.Track{Name: selected.Name, Path: selected.Path},
+				if resolvedPath, name, ok := library.ResolvePlayable(selected.Path); ok {
+					cmd := core.Command{
+						Type:  core.CmdAdd,
+						Track: core.Track{Name: name, Path: resolvedPath},
+					}
+					_ = m.app.Dispatch(cmd)
+					return nil, true
 				}
-				_ = m.app.Dispatch(cmd)
-				return nil, true
 			}
 		}
 		return nil, true
@@ -350,7 +354,9 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 			if entry.IsDir || !entry.IsAudio {
 				continue
 			}
-			tracks = append(tracks, core.Track{Name: entry.Name, Path: entry.Path})
+			if resolvedPath, name, ok := library.ResolvePlayable(entry.Path); ok {
+				tracks = append(tracks, core.Track{Name: name, Path: resolvedPath})
+			}
 		}
 		if len(tracks) > 0 {
 			cmd := core.Command{Type: core.CmdAddAll, Tracks: tracks}

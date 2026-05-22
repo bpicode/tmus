@@ -6,14 +6,16 @@ import (
 )
 
 var supportedAudioExt = map[string]struct{}{
-	".mp3":  {},
-	".wav":  {},
-	".flac": {},
-	".opus": {},
-	".ogg":  {},
-	".oga":  {},
-	".m4a":  {},
-	".mp4":  {},
+	".mp3":    {},
+	".wav":    {},
+	".flac":   {},
+	".opus":   {},
+	".ogg":    {},
+	".oga":    {},
+	".m4a":    {},
+	".mp4":    {},
+	".url":    {},
+	".stream": {},
 }
 
 // IsAudio reports whether the path is a supported audio file (including archive entries).

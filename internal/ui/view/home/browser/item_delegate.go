@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strings"
 
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
@@ -37,6 +38,9 @@ func (i itemDelegate) Render(w io.Writer, m list.Model, index int, item list.Ite
 		return
 	}
 
+	ext := strings.ToLower(filepath.Ext(entry.entry.Path))
+	isStream := ext == ".url" || ext == ".stream"
+
 	name := entry.entry.Name
 	if entry.entry.IsDir {
 		name = "📁 " + entry.entry.Name + string(filepath.Separator)
@@ -45,7 +49,11 @@ func (i itemDelegate) Render(w io.Writer, m list.Model, index int, item list.Ite
 		name = "📦 " + entry.entry.Name
 	}
 	if entry.entry.IsAudio {
-		name = "🎵 " + entry.entry.Name
+		if isStream {
+			name = "📻 " + entry.entry.Name
+		} else {
+			name = "🎵 " + entry.entry.Name
+		}
 	}
 
 	style := lipgloss.NewStyle()

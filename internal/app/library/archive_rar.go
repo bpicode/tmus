@@ -11,23 +11,23 @@ import (
 
 type rarHandler struct{}
 
-func NewRarHandler() ArchiveHandler {
+func newRarHandler() archiveHandler {
 	return &rarHandler{}
 }
 
-func (h *rarHandler) Scheme() string {
+func (h *rarHandler) scheme() string {
 	return "rar"
 }
 
-func (h *rarHandler) IsArchivePath(value string) bool {
+func (h *rarHandler) isArchivePath(value string) bool {
 	if strings.HasPrefix(value, "arch://rar:") {
 		return true
 	}
 	return strings.HasSuffix(strings.ToLower(value), ".rar")
 }
 
-func (h *rarHandler) List(value string, showHidden bool) ([]Entry, error) {
-	archivePath, inner, err := splitArchivePath(h.Scheme(), value)
+func (h *rarHandler) list(value string, showHidden bool) ([]Entry, error) {
+	archivePath, inner, err := splitArchivePath(h.scheme(), value)
 	if err != nil {
 		return nil, err
 	}
@@ -52,20 +52,19 @@ func (h *rarHandler) List(value string, showHidden bool) ([]Entry, error) {
 		if inner != "" {
 			entryPath = path.Join(inner, name)
 		}
-		path := BuildArchivePath(h.Scheme(), archivePath, entryPath)
-		items = append(items, Entry{
-			Name:    name,
-			Path:    path,
-			IsDir:   entry.IsDir(),
-			IsAudio: IsAudio(path),
+		path := buildArchivePath(h.scheme(), archivePath, entryPath)
+		items = append(items, archiveEntry{
+			name:  name,
+			path:  path,
+			isDir: entry.IsDir(),
 		})
 	}
 
 	return items, nil
 }
 
-func (h *rarHandler) Open(value string) (io.ReadCloser, error) {
-	archivePath, inner, err := splitArchivePath(h.Scheme(), value)
+func (h *rarHandler) open(value string) (io.ReadCloser, error) {
+	archivePath, inner, err := splitArchivePath(h.scheme(), value)
 	if err != nil {
 		return nil, err
 	}

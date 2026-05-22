@@ -12,7 +12,7 @@ import (
 	"github.com/dhowden/tag"
 )
 
-// Picture captures embedded album artwork data.
+// Picture captures embedded artwork from an audio file.
 type Picture struct {
 	MIMEType    string
 	Type        string
@@ -20,7 +20,7 @@ type Picture struct {
 	Data        []byte
 }
 
-// Metadata captures audio tags for display.
+// Metadata captures audio tags and related display data.
 type Metadata struct {
 	Artist      string
 	Title       string
@@ -35,7 +35,7 @@ type Metadata struct {
 	Picture     *Picture
 }
 
-// TrackInfo is a minimal view of track fields used for metadata enrichment.
+// TrackInfo is the track identity used for metadata enrichment.
 type TrackInfo struct {
 	Path   string
 	Name   string
@@ -44,7 +44,7 @@ type TrackInfo struct {
 	Album  string
 }
 
-// ReadMetadataBasic reads basic audio tags (artist/title/album).
+// ReadMetadataBasic reads artist, title, album, and duration metadata.
 func ReadMetadataBasic(path string) (Metadata, error) {
 	meta, err := readMetadata(path)
 	if err != nil {
@@ -61,17 +61,17 @@ func ReadMetadataBasic(path string) (Metadata, error) {
 	}, nil
 }
 
-// ReadMetadataExtended reads all supported audio tags (including artwork).
+// ReadMetadataExtended reads all supported metadata, including artwork.
 func ReadMetadataExtended(path string) (Metadata, error) {
 	return readMetadata(path)
 }
 
 func readMetadata(path string) (Metadata, error) {
-	if IsRemote(path) {
+	if isRemote(path) {
 		return Metadata{}, errors.New("remote metadata not supported")
 	}
-	if handler := DefaultArchiveRegistry().FindHandler(path); handler != nil {
-		rc, err := handler.Open(path)
+	if handler := archiveHandlers().findHandler(path); handler != nil {
+		rc, err := handler.open(path)
 		if err != nil {
 			return Metadata{}, fmt.Errorf("open archived file: %w", err)
 		}

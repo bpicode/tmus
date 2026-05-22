@@ -2,8 +2,6 @@ package browser
 
 import (
 	"os"
-	"path"
-	"path/filepath"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
@@ -98,40 +96,28 @@ func (m *Model) loadHomeDir() tea.Cmd {
 func (m *Model) openSelection() tea.Cmd {
 	m.errorView.SetErr(nil)
 	selected, ok := m.selected()
-	if !ok || !selected.IsDir {
-		if ok && !library.IsArchivePath(selected.Path) {
-			if archivePath, ok := library.OpenArchiveRoot(selected.Path); ok {
-				m.clearSearch()
-				return m.loadDir(archivePath)
-			}
-		}
+	if !ok {
+		return nil
+	}
+	browsePath, ok := selected.BrowsePath()
+	if !ok {
 		return nil
 	}
 	m.clearSearch()
-	return m.loadDir(selected.Path)
+	return m.loadDir(browsePath)
 }
 
 func (m *Model) upDir() tea.Cmd {
 	m.errorView.SetErr(nil)
-	if library.IsArchivePath(m.Cwd) {
-		scheme, archivePath, inner, err := library.SplitArchivePath(m.Cwd)
-		if err != nil {
-			m.errorView.SetErr(err)
-			return nil
-		}
-		if inner == "" {
-			m.clearSearch()
-			return m.loadDir(filepath.Dir(archivePath))
-		}
-		parent := path.Dir(inner)
-		if parent == "." {
-			parent = ""
-		}
-		m.clearSearch()
-		return m.loadDir(library.BuildArchivePath(scheme, archivePath, parent))
+
+	entry, err := library.EntryFromPath(m.Cwd)
+	if err != nil {
+		m.errorView.SetErr(err)
+		return nil
 	}
-	parent := filepath.Dir(m.Cwd)
-	if parent == m.Cwd {
+
+	parent := entry.Parent()
+	if parent == "" || parent == m.Cwd {
 		return nil
 	}
 	m.clearSearch()
@@ -146,7 +132,7 @@ func (m *Model) toggleHidden() tea.Cmd {
 func (m *Model) selected() (library.Entry, bool) {
 	item, ok := m.list.SelectedItem().(browserListItem)
 	if !ok {
-		return library.Entry{}, false
+		return nil, false
 	}
 	return item.entry, true
 }
@@ -320,10 +306,10 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 		m.list, cmd = m.list.Update(msg)
 		return cmd, true
 	case "enter":
-		if selected, ok := m.selected(); ok && !selected.IsDir && selected.IsAudio {
+		if selected, ok := m.selected(); ok && !selected.IsDir() && selected.IsAudio() {
 			cmd := core.Command{
 				Type:  core.CmdAdd,
-				Track: core.Track{Name: selected.Name, Path: selected.Path},
+				Track: core.Track{Name: selected.Name(), Path: selected.Path()},
 			}
 			_ = m.app.Dispatch(cmd)
 			return nil, true
@@ -333,10 +319,10 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 		return m.upDir(), true
 	case "a":
 		if selected, ok := m.selected(); ok {
-			if !selected.IsDir && selected.IsAudio {
+			if !selected.IsDir() && selected.IsAudio() {
 				cmd := core.Command{
 					Type:  core.CmdAdd,
-					Track: core.Track{Name: selected.Name, Path: selected.Path},
+					Track: core.Track{Name: selected.Name(), Path: selected.Path()},
 				}
 				_ = m.app.Dispatch(cmd)
 				return nil, true
@@ -347,10 +333,10 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 		visible := m.visibleEntries()
 		tracks := make([]core.Track, 0, len(visible))
 		for _, entry := range visible {
-			if entry.IsDir || !entry.IsAudio {
+			if entry.IsDir() || !entry.IsAudio() {
 				continue
 			}
-			tracks = append(tracks, core.Track{Name: entry.Name, Path: entry.Path})
+			tracks = append(tracks, core.Track{Name: entry.Name(), Path: entry.Path()})
 		}
 		if len(tracks) > 0 {
 			cmd := core.Command{Type: core.CmdAddAll, Tracks: tracks}
@@ -404,7 +390,7 @@ type browserListItem struct {
 }
 
 func (i browserListItem) FilterValue() string {
-	return i.entry.Name
+	return i.entry.Name()
 }
 
 func clamp(v, min, max int) int {

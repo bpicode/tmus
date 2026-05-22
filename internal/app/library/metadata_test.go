@@ -6,6 +6,7 @@ import (
 
 	_ "github.com/bpicode/tmus/testing"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReadMetadataBasic(t *testing.T) {
@@ -44,7 +45,7 @@ func TestReadMetadataBasic(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			path := filepath.Join("testdata", tt.file)
 			got, err := ReadMetadataBasic(path)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -59,7 +60,7 @@ func TestReadMetadataBasicError(t *testing.T) {
 func TestReadMetadataExtended(t *testing.T) {
 	path := filepath.Join("testdata", "Metalguy-ca - Master of Carpets.mp3")
 	m, err := ReadMetadataExtended(path)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Metalguy-ca", m.Artist)
 	assert.Equal(t, "Master of Carpets", m.Title)
 	assert.Equal(t, "MoC Deluxe Edition", m.Album)

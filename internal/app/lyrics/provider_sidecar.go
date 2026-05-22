@@ -27,14 +27,19 @@ func (p sidecarProvider) find(track TrackInfo) (Lyrics, error) {
 	if track.Path == "" {
 		return Lyrics{}, errors.New("track path is empty")
 	}
-	if library.IsRemote(track.Path) {
+	if isRemote(track.Path) {
 		return Lyrics{}, errors.New("sidecar files are not supported for remote tracks")
 	}
-	if library.IsArchivePath(track.Path) {
+	entry, err := library.EntryFromPath(track.Path)
+	if err != nil {
+		return Lyrics{}, err
+	}
+	filesystemPath, ok := entry.FilesystemPath()
+	if !ok || filesystemPath != track.Path {
 		return Lyrics{}, errors.New("sidecar files are not supported in archives")
 	}
-	dir := filepath.Dir(track.Path)
-	base := filepath.Base(track.Path)
+	dir := filepath.Dir(filesystemPath)
+	base := filepath.Base(filesystemPath)
 	ext := filepath.Ext(base)
 	name := strings.TrimSuffix(base, ext)
 	if name == "" {

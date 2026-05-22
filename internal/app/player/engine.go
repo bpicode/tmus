@@ -53,9 +53,6 @@ type Options struct {
 	SampleRate      int
 	ResampleQuality int
 	BufferDuration  time.Duration
-	// Resolvers is the ordered list of source resolvers consulted when opening
-	// a URI for playback. Defaults to [library.LocalResolver{}] when empty.
-	Resolvers []library.SourceResolver
 }
 
 // Engine runs audio playback in a background goroutine.
@@ -79,17 +76,12 @@ type Engine struct {
 	sourceRate  beep.SampleRate
 	trackDur    time.Duration
 
-	resolvers  []library.SourceResolver
 	ctx        context.Context
 	cancel     context.CancelFunc
 	playCancel context.CancelFunc
 }
 
 func NewEngine(opts Options) *Engine {
-	resolvers := opts.Resolvers
-	if len(resolvers) == 0 {
-		resolvers = []library.SourceResolver{library.LocalResolver{}}
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 	e := &Engine{
 		cmdCh:      make(chan command, 8),
@@ -97,7 +89,6 @@ func NewEngine(opts Options) *Engine {
 		targetRate: beep.SampleRate(opts.SampleRate),
 		resampleQ:  opts.ResampleQuality,
 		bufferDur:  opts.BufferDuration,
-		resolvers:  resolvers,
 		ctx:        ctx,
 		cancel:     cancel,
 	}
@@ -191,17 +182,6 @@ func (e *Engine) loop() {
 	}
 }
 
-// findResolver returns the first resolver that claims to handle the URI.
-// It returns an error when no registered resolver matches.
-func (e *Engine) findResolver(uri string) (library.SourceResolver, error) {
-	for _, r := range e.resolvers {
-		if r.CanResolve(uri) {
-			return r, nil
-		}
-	}
-	return nil, fmt.Errorf("no resolver registered for URI: %s", uri)
-}
-
 func (e *Engine) playPath(uri string) {
 	if e.closed.Load() {
 		return
@@ -209,22 +189,22 @@ func (e *Engine) playPath(uri string) {
 	playID := e.nextPlaybackID()
 	e.stopCurrent()
 
-	resolver, err := e.findResolver(uri)
-	if err != nil {
-		e.sendEvent(Event{Type: EventTrackError, Path: uri, Err: err})
-		return
-	}
 	playCtx, playCancel := context.WithCancel(e.ctx)
 	e.mu.Lock()
 	e.playCancel = playCancel
 	e.mu.Unlock()
 
-	source, err := resolver.Resolve(playCtx, uri)
+	entry, err := library.EntryFromPath(uri)
 	if err != nil {
 		e.sendEvent(Event{Type: EventTrackError, Path: uri, Err: err})
 		return
 	}
-	streamer, format, err := decodeSource(source)
+	audioSource, err := entry.Open(playCtx)
+	if err != nil {
+		e.sendEvent(Event{Type: EventTrackError, Path: uri, Err: err})
+		return
+	}
+	streamer, format, err := decodeSource(audioSource)
 	if err != nil {
 		e.sendEvent(Event{Type: EventTrackError, Path: uri, Err: err})
 		return

@@ -13,11 +13,24 @@ type loadDirMsg struct {
 
 func loadDirCmd(path string, showHidden bool) tea.Cmd {
 	return func() tea.Msg {
-		items, err := library.List(path, showHidden)
+		items, err := library.List(path)
+		if err == nil && !showHidden {
+			items = filterHiddenEntries(items)
+		}
 		return loadDirMsg{
 			Path:  path,
 			Items: items,
 			Err:   err,
 		}
 	}
+}
+
+func filterHiddenEntries(entries []library.Entry) []library.Entry {
+	items := make([]library.Entry, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.Hidden() {
+			items = append(items, entry)
+		}
+	}
+	return items
 }

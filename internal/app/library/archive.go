@@ -4,47 +4,42 @@ import (
 	"io"
 )
 
-// ArchiveHandler manages a specific archive format (zip, tar, etc.).
-type ArchiveHandler interface {
-	Scheme() string
-	IsArchivePath(path string) bool
-	List(path string, showHidden bool) ([]Entry, error)
-	Open(path string) (io.ReadCloser, error)
+type archiveHandler interface {
+	scheme() string
+	isArchivePath(path string) bool
+	list(path string, showHidden bool) ([]Entry, error)
+	open(path string) (io.ReadCloser, error)
 }
 
-// ArchiveRegistry is a collection of archive handlers.
-type ArchiveRegistry struct {
-	handlers []ArchiveHandler
+type archiveRegistry struct {
+	handlers []archiveHandler
 }
 
-var defaultArchiveRegistry = func() *ArchiveRegistry {
-	r := &ArchiveRegistry{}
-	r.Register(NewZipHandler())
-	r.Register(NewTarHandler())
-	r.Register(NewTarGzHandler())
-	r.Register(NewTarXzHandler())
-	r.Register(NewSevenZipHandler())
-	r.Register(NewRarHandler())
+var defaultArchiveRegistry = func() *archiveRegistry {
+	r := &archiveRegistry{}
+	r.register(newZipHandler())
+	r.register(newTarHandler())
+	r.register(newTarGzHandler())
+	r.register(newTarXzHandler())
+	r.register(newSevenZipHandler())
+	r.register(newRarHandler())
 	return r
 }()
 
-// DefaultArchiveRegistry returns the shared registry of built-in handlers.
-func DefaultArchiveRegistry() *ArchiveRegistry {
+func archiveHandlers() *archiveRegistry {
 	return defaultArchiveRegistry
 }
 
-// Register adds a handler. Later handlers are checked after earlier ones.
-func (r *ArchiveRegistry) Register(handler ArchiveHandler) {
+func (r *archiveRegistry) register(handler archiveHandler) {
 	if handler == nil {
 		return
 	}
 	r.handlers = append(r.handlers, handler)
 }
 
-// FindHandler returns a handler that recognizes the path.
-func (r *ArchiveRegistry) FindHandler(path string) ArchiveHandler {
+func (r *archiveRegistry) findHandler(path string) archiveHandler {
 	for _, h := range r.handlers {
-		if h.IsArchivePath(path) {
+		if h.isArchivePath(path) {
 			return h
 		}
 	}

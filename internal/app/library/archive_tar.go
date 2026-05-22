@@ -13,30 +13,30 @@ import (
 )
 
 type tarHandler struct {
-	scheme string
-	exts   []string
-	gzip   bool
-	xz     bool
+	schemeName string
+	exts       []string
+	gzip       bool
+	xz         bool
 }
 
-func NewTarHandler() ArchiveHandler {
-	return &tarHandler{scheme: "tar", exts: []string{".tar"}}
+func newTarHandler() archiveHandler {
+	return &tarHandler{schemeName: "tar", exts: []string{".tar"}}
 }
 
-func NewTarGzHandler() ArchiveHandler {
-	return &tarHandler{scheme: "targz", exts: []string{".tar.gz", ".tgz"}, gzip: true}
+func newTarGzHandler() archiveHandler {
+	return &tarHandler{schemeName: "targz", exts: []string{".tar.gz", ".tgz"}, gzip: true}
 }
 
-func NewTarXzHandler() ArchiveHandler {
-	return &tarHandler{scheme: "tarxz", exts: []string{".tar.xz", ".txz"}, xz: true}
+func newTarXzHandler() archiveHandler {
+	return &tarHandler{schemeName: "tarxz", exts: []string{".tar.xz", ".txz"}, xz: true}
 }
 
-func (h *tarHandler) Scheme() string {
-	return h.scheme
+func (h *tarHandler) scheme() string {
+	return h.schemeName
 }
 
-func (h *tarHandler) IsArchivePath(value string) bool {
-	prefix := "arch://" + h.scheme + ":"
+func (h *tarHandler) isArchivePath(value string) bool {
+	prefix := "arch://" + h.schemeName + ":"
 	if strings.HasPrefix(value, prefix) {
 		return true
 	}
@@ -49,8 +49,8 @@ func (h *tarHandler) IsArchivePath(value string) bool {
 	return false
 }
 
-func (h *tarHandler) List(value string, showHidden bool) ([]Entry, error) {
-	archivePath, inner, err := splitArchivePath(h.scheme, value)
+func (h *tarHandler) list(value string, showHidden bool) ([]Entry, error) {
+	archivePath, inner, err := splitArchivePath(h.schemeName, value)
 	if err != nil {
 		return nil, err
 	}
@@ -94,18 +94,17 @@ func (h *tarHandler) List(value string, showHidden bool) ([]Entry, error) {
 		}
 		entryPath := path.Join(inner, child)
 		if len(parts) > 1 || hdr.FileInfo().IsDir() {
-			path := BuildArchivePath(h.scheme, archivePath, strings.TrimSuffix(entryPath, "/"))
-			children[child] = Entry{
-				Name:  child,
-				Path:  path,
-				IsDir: true,
+			path := buildArchivePath(h.schemeName, archivePath, strings.TrimSuffix(entryPath, "/"))
+			children[child] = archiveEntry{
+				name:  child,
+				path:  path,
+				isDir: true,
 			}
 		} else {
-			path := BuildArchivePath(h.scheme, archivePath, entryPath)
-			children[child] = Entry{
-				Name:    child,
-				Path:    path,
-				IsAudio: IsAudio(path),
+			path := buildArchivePath(h.schemeName, archivePath, entryPath)
+			children[child] = archiveEntry{
+				name: child,
+				path: path,
 			}
 		}
 	}
@@ -117,8 +116,8 @@ func (h *tarHandler) List(value string, showHidden bool) ([]Entry, error) {
 	return entries, nil
 }
 
-func (h *tarHandler) Open(value string) (io.ReadCloser, error) {
-	archivePath, inner, err := splitArchivePath(h.scheme, value)
+func (h *tarHandler) open(value string) (io.ReadCloser, error) {
+	archivePath, inner, err := splitArchivePath(h.schemeName, value)
 	if err != nil {
 		return nil, err
 	}

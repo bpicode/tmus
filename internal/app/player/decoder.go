@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/gopxl/beep/v2"
@@ -13,18 +12,17 @@ import (
 	"github.com/gopxl/beep/v2/wav"
 )
 
-// decodeSource decodes a library.Source into a beep audio stream.
-// It takes ownership of Source.Reader, closing it on error or delegating
+// decodeSource decodes a library.AudioSource into a beep audio stream.
+// It takes ownership of AudioSource.Reader, closing it on error or delegating
 // responsibility to the returned streamer on success.
 //
-// If Source.Reader implements io.ReadSeekCloser (local files, buffered archive
+// If AudioSource.Reader implements io.ReadSeekCloser (local files, buffered archive
 // entries) the reader is passed directly to the format decoder, enabling
 // seeking on the returned stream. Otherwise the reader is passed as-is without
-// any buffering, and Seek on the returned stream will return an error — the
+// any buffering, and Seek on the returned stream will return an error - the
 // expected behaviour for non-seekable sources such as HTTP streams.
-func decodeSource(s library.Source) (beep.StreamSeekCloser, beep.Format, error) {
+func decodeSource(s library.AudioSource) (beep.StreamSeekCloser, beep.Format, error) {
 	rc := s.Reader
-	ext := strings.ToLower(s.Ext)
 
 	var (
 		streamer beep.StreamSeekCloser
@@ -32,21 +30,21 @@ func decodeSource(s library.Source) (beep.StreamSeekCloser, beep.Format, error) 
 		err      error
 	)
 
-	switch ext {
-	case ".mp3":
+	switch s.Format {
+	case library.FormatMP3:
 		streamer, format, err = mp3.Decode(rc)
-	case ".wav":
+	case library.FormatWAV:
 		streamer, format, err = wav.Decode(rc)
-	case ".flac":
+	case library.FormatFLAC:
 		streamer, format, err = flac.Decode(rc)
-	case ".opus", ".ogg", ".oga":
+	case library.FormatOPUS, library.FormatOGG, library.FormatOGA:
 		rsc, ok := rc.(io.ReadSeekCloser)
 		if !ok {
 			_ = rc.Close()
 			return nil, beep.Format{}, fmt.Errorf("ogg/opus decoding requires a seekable source")
 		}
 		streamer, format, err = decodeOgg(rsc)
-	case ".m4a", ".mp4":
+	case library.FormatM4A, library.FormatMP4:
 		rsc, ok := rc.(io.ReadSeekCloser)
 		if !ok {
 			_ = rc.Close()
@@ -55,12 +53,12 @@ func decodeSource(s library.Source) (beep.StreamSeekCloser, beep.Format, error) 
 		streamer, format, err = decodeM4a(rsc)
 	default:
 		_ = rc.Close()
-		return nil, beep.Format{}, fmt.Errorf("unsupported file type: %s", ext)
+		return nil, beep.Format{}, fmt.Errorf("unsupported file format: %v", s.Format)
 	}
 
 	if err != nil {
 		_ = rc.Close()
-		return nil, beep.Format{}, fmt.Errorf("decode %s: %w", ext, err)
+		return nil, beep.Format{}, fmt.Errorf("decode format %v: %w", s.Format, err)
 	}
 	if streamer == nil {
 		_ = rc.Close()

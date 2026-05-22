@@ -10,23 +10,23 @@ import (
 
 type zipHandler struct{}
 
-func NewZipHandler() ArchiveHandler {
+func newZipHandler() archiveHandler {
 	return &zipHandler{}
 }
 
-func (h *zipHandler) Scheme() string {
+func (h *zipHandler) scheme() string {
 	return "zip"
 }
 
-func (h *zipHandler) IsArchivePath(value string) bool {
+func (h *zipHandler) isArchivePath(value string) bool {
 	if strings.HasPrefix(value, "arch://zip:") {
 		return true
 	}
 	return strings.HasSuffix(strings.ToLower(value), ".zip")
 }
 
-func (h *zipHandler) List(value string, showHidden bool) ([]Entry, error) {
-	archivePath, inner, err := splitArchivePath(h.Scheme(), value)
+func (h *zipHandler) list(value string, showHidden bool) ([]Entry, error) {
+	archivePath, inner, err := splitArchivePath(h.scheme(), value)
 	if err != nil {
 		return nil, err
 	}
@@ -63,18 +63,17 @@ func (h *zipHandler) List(value string, showHidden bool) ([]Entry, error) {
 		}
 		entryPath := path.Join(inner, child)
 		if len(parts) > 1 || strings.HasSuffix(f.Name, "/") {
-			path := BuildArchivePath(h.Scheme(), archivePath, strings.TrimSuffix(entryPath, "/"))
-			children[child] = Entry{
-				Name:  child,
-				Path:  path,
-				IsDir: true,
+			path := buildArchivePath(h.scheme(), archivePath, strings.TrimSuffix(entryPath, "/"))
+			children[child] = archiveEntry{
+				name:  child,
+				path:  path,
+				isDir: true,
 			}
 		} else {
-			path := BuildArchivePath(h.Scheme(), archivePath, entryPath)
-			children[child] = Entry{
-				Name:    child,
-				Path:    path,
-				IsAudio: IsAudio(path),
+			path := buildArchivePath(h.scheme(), archivePath, entryPath)
+			children[child] = archiveEntry{
+				name: child,
+				path: path,
 			}
 		}
 	}
@@ -86,8 +85,8 @@ func (h *zipHandler) List(value string, showHidden bool) ([]Entry, error) {
 	return entries, nil
 }
 
-func (h *zipHandler) Open(value string) (io.ReadCloser, error) {
-	archivePath, inner, err := splitArchivePath(h.Scheme(), value)
+func (h *zipHandler) open(value string) (io.ReadCloser, error) {
+	archivePath, inner, err := splitArchivePath(h.scheme(), value)
 	if err != nil {
 		return nil, err
 	}

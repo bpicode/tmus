@@ -11,23 +11,23 @@ import (
 
 type sevenZipHandler struct{}
 
-func NewSevenZipHandler() ArchiveHandler {
+func newSevenZipHandler() archiveHandler {
 	return &sevenZipHandler{}
 }
 
-func (h *sevenZipHandler) Scheme() string {
+func (h *sevenZipHandler) scheme() string {
 	return "7z"
 }
 
-func (h *sevenZipHandler) IsArchivePath(value string) bool {
+func (h *sevenZipHandler) isArchivePath(value string) bool {
 	if strings.HasPrefix(value, "arch://7z:") {
 		return true
 	}
 	return strings.HasSuffix(strings.ToLower(value), ".7z")
 }
 
-func (h *sevenZipHandler) List(value string, showHidden bool) ([]Entry, error) {
-	archivePath, inner, err := splitArchivePath(h.Scheme(), value)
+func (h *sevenZipHandler) list(value string, showHidden bool) ([]Entry, error) {
+	archivePath, inner, err := splitArchivePath(h.scheme(), value)
 	if err != nil {
 		return nil, err
 	}
@@ -64,18 +64,17 @@ func (h *sevenZipHandler) List(value string, showHidden bool) ([]Entry, error) {
 		}
 		entryPath := path.Join(inner, child)
 		if len(parts) > 1 || f.FileInfo().IsDir() {
-			path := BuildArchivePath(h.Scheme(), archivePath, strings.TrimSuffix(entryPath, "/"))
-			children[child] = Entry{
-				Name:  child,
-				Path:  path,
-				IsDir: true,
+			path := buildArchivePath(h.scheme(), archivePath, strings.TrimSuffix(entryPath, "/"))
+			children[child] = archiveEntry{
+				name:  child,
+				path:  path,
+				isDir: true,
 			}
 		} else {
-			path := BuildArchivePath(h.Scheme(), archivePath, entryPath)
-			children[child] = Entry{
-				Name:    child,
-				Path:    path,
-				IsAudio: IsAudio(path),
+			path := buildArchivePath(h.scheme(), archivePath, entryPath)
+			children[child] = archiveEntry{
+				name: child,
+				path: path,
 			}
 		}
 	}
@@ -87,8 +86,8 @@ func (h *sevenZipHandler) List(value string, showHidden bool) ([]Entry, error) {
 	return entries, nil
 }
 
-func (h *sevenZipHandler) Open(value string) (io.ReadCloser, error) {
-	archivePath, inner, err := splitArchivePath(h.Scheme(), value)
+func (h *sevenZipHandler) open(value string) (io.ReadCloser, error) {
+	archivePath, inner, err := splitArchivePath(h.scheme(), value)
 	if err != nil {
 		return nil, err
 	}

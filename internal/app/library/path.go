@@ -24,14 +24,12 @@ func splitArchivePath(scheme, value string) (archivePath, inner string, err erro
 	return archivePath, inner, nil
 }
 
-// IsArchivePath reports whether the value is an archive URI.
-func IsArchivePath(value string) bool {
+func isArchivePath(value string) bool {
 	return strings.HasPrefix(value, "arch://")
 }
 
-// SplitArchivePath parses an archive URI into scheme, archive path, and inner path.
-func SplitArchivePath(value string) (scheme, archivePath, inner string, err error) {
-	if !IsArchivePath(value) {
+func splitArchiveURI(value string) (scheme, archivePath, inner string, err error) {
+	if !isArchivePath(value) {
 		return "", "", "", fmt.Errorf("not an archive path")
 	}
 	trimmed := strings.TrimPrefix(value, "arch://")
@@ -44,8 +42,7 @@ func SplitArchivePath(value string) (scheme, archivePath, inner string, err erro
 	return scheme, archivePath, inner, err
 }
 
-// BuildArchivePath builds an archive URI from scheme, archive path, and inner path.
-func BuildArchivePath(scheme, archivePath, inner string) string {
+func buildArchivePath(scheme, archivePath, inner string) string {
 	archivePath = filepath.Clean(archivePath)
 	if inner == "" {
 		return "arch://" + scheme + ":" + archivePath
@@ -53,9 +50,8 @@ func BuildArchivePath(scheme, archivePath, inner string) string {
 	return "arch://" + scheme + ":" + archivePath + "::" + inner
 }
 
-// EntryExt returns the file extension for the entry portion of an archive URI.
-func EntryExt(value string) string {
-	if !IsArchivePath(value) {
+func entryExt(value string) string {
+	if !isArchivePath(value) {
 		return ""
 	}
 	parts := strings.SplitN(strings.TrimPrefix(value, "arch://"), "::", 2)

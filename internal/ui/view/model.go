@@ -3,6 +3,7 @@ package view
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -53,12 +54,14 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 			cwd = wd
 		}
 	}
-	if !library.IsArchivePath(cwd) {
-		if abs, err := filepath.Abs(cwd); err == nil {
-			cwd = abs
-		}
-		if resolved, err := filepath.EvalSymlinks(cwd); err == nil {
-			cwd = resolved
+	if entry, err := library.EntryFromPath(cwd); err == nil {
+		if filesystemPath, ok := entry.FilesystemPath(); ok && filesystemPath == cwd {
+			if abs, err := filepath.Abs(cwd); err == nil {
+				cwd = abs
+			}
+			if resolved, err := filepath.EvalSymlinks(cwd); err == nil {
+				cwd = resolved
+			}
 		}
 	}
 
@@ -190,7 +193,9 @@ func (m *Model) restore(s State) {
 		}
 		name := entry.Name
 		if name == "" {
-			name = library.BaseName(entry.Path)
+			if libraryEntry, err := library.EntryFromPath(entry.Path); err == nil {
+				name = libraryEntry.Name()
+			}
 		}
 		tracks = append(tracks, core.Track{
 			Name:     name,
@@ -230,23 +235,13 @@ func (m *Model) openFiles(openFiles []string) {
 	startIndex := len(m.app.State().Playlist)
 	tracks := make([]core.Track, 0, len(openFiles))
 	for _, file := range openFiles {
-		if file == "" {
-			continue
+		entry, err := library.EntryFromPath(normalizeInputPath(file))
+		if err == nil && entry.IsAudio() {
+			tracks = append(tracks, core.Track{
+				Name: entry.Name(),
+				Path: entry.Path(),
+			})
 		}
-		cleanPath := file
-		if !library.IsURI(file) {
-			cleanPath = filepath.Clean(file)
-			if abs, err := filepath.Abs(cleanPath); err == nil {
-				cleanPath = abs
-			}
-		}
-		if !library.IsAudio(cleanPath) {
-			continue
-		}
-		tracks = append(tracks, core.Track{
-			Name: library.BaseName(cleanPath),
-			Path: cleanPath,
-		})
 	}
 	if len(tracks) == 0 {
 		return
@@ -254,6 +249,17 @@ func (m *Model) openFiles(openFiles []string) {
 	_ = m.app.Dispatch(core.Command{Type: core.CmdAddAll, Tracks: tracks})
 	_ = m.app.Dispatch(core.Command{Type: core.CmdSelectIndex, Index: startIndex})
 	_ = m.app.Dispatch(core.Command{Type: core.CmdPlayFromCursor})
+}
+
+func normalizeInputPath(value string) string {
+	if value == "" || strings.Contains(value, "://") {
+		return value
+	}
+	path := filepath.Clean(value)
+	if abs, err := filepath.Abs(path); err == nil {
+		return abs
+	}
+	return path
 }
 
 func (m *Model) SaveState() error {

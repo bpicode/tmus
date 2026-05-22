@@ -7,6 +7,7 @@ import (
 
 	_ "github.com/bpicode/tmus/testing"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestArchiveHandlers(t *testing.T) {
@@ -17,32 +18,32 @@ func TestArchiveHandlers(t *testing.T) {
 		"test-archive.7z",
 		"test-archive.rar",
 	}
-	registry := DefaultArchiveRegistry()
+	registry := archiveHandlers()
 
 	for _, testArchive := range testArchives {
 		t.Run(testArchive, func(t *testing.T) {
 			p := filepath.Join("testdata", testArchive)
-			h := registry.FindHandler(p)
-			assert.NotNil(t, h)
+			h := registry.findHandler(p)
+			require.NotNil(t, h)
 
-			l, err := h.List(p, false)
-			assert.NoError(t, err)
-			assert.Len(t, l, 1)
+			l, err := h.list(p, false)
+			require.NoError(t, err)
+			require.Len(t, l, 1)
 
 			dir := l[0]
-			assert.True(t, dir.IsDir)
+			assert.True(t, dir.IsDir())
 
-			l, err = h.List(dir.Path, false)
-			assert.NoError(t, err)
-			assert.Len(t, l, 1)
+			l, err = h.list(dir.Path(), false)
+			require.NoError(t, err)
+			require.Len(t, l, 1)
 
 			file := l[0]
-			assert.False(t, file.IsDir)
-			reader, err := h.Open(file.Path)
-			assert.NoError(t, err)
+			assert.False(t, file.IsDir())
+			reader, err := h.open(file.Path())
+			require.NoError(t, err)
 			defer reader.Close()
 			bytes, err := io.ReadAll(reader)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, "dummy-music-data\n", string(bytes))
 		})
 	}

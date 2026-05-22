@@ -14,10 +14,18 @@ type fileStat struct {
 }
 
 func statPath(path string) fileStat {
-	if path == "" || library.IsArchivePath(path) {
+	if path == "" {
 		return fileStat{}
 	}
-	info, err := os.Stat(path)
+	entry, err := library.EntryFromPath(path)
+	if err != nil {
+		return fileStat{}
+	}
+	filesystemPath, ok := entry.FilesystemPath()
+	if !ok || filesystemPath != path {
+		return fileStat{}
+	}
+	info, err := os.Stat(filesystemPath)
 	if err != nil {
 		return fileStat{}
 	}

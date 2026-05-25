@@ -325,14 +325,12 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 		return cmd, true
 	case "enter":
 		if selected, ok := m.selected(); ok && selected.Type() != library.EntryDir && selected.IsAudio() {
-			if resolvedPath, name, ok := library.ResolvePlayable(selected.Path()); ok {
-				cmd := core.Command{
-					Type:  core.CmdAdd,
-					Track: core.Track{Name: name, Path: resolvedPath},
-				}
-				_ = m.app.Dispatch(cmd)
-				return nil, true
+			cmd := core.Command{
+				Type:  core.CmdAdd,
+				Track: core.Track{Name: selected.Name(), Path: selected.Path()},
 			}
+			_ = m.app.Dispatch(cmd)
+			return nil, true
 		}
 		return m.openSelection(), true
 	case "backspace", "left", "h":
@@ -340,14 +338,12 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 	case "a":
 		if selected, ok := m.selected(); ok {
 			if selected.Type() != library.EntryDir && selected.IsAudio() {
-				if resolvedPath, name, ok := library.ResolvePlayable(selected.Path()); ok {
-					cmd := core.Command{
-						Type:  core.CmdAdd,
-						Track: core.Track{Name: name, Path: resolvedPath},
-					}
-					_ = m.app.Dispatch(cmd)
-					return nil, true
+				cmd := core.Command{
+					Type:  core.CmdAdd,
+					Track: core.Track{Name: selected.Name(), Path: selected.Path()},
 				}
+				_ = m.app.Dispatch(cmd)
+				return nil, true
 			}
 		}
 		return nil, true
@@ -358,9 +354,7 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 			if entry.Type() == library.EntryDir || !entry.IsAudio() {
 				continue
 			}
-			if resolvedPath, name, ok := library.ResolvePlayable(entry.Path()); ok {
-				tracks = append(tracks, core.Track{Name: name, Path: resolvedPath})
-			}
+			tracks = append(tracks, core.Track{Name: entry.Name(), Path: entry.Path()})
 		}
 		if len(tracks) > 0 {
 			cmd := core.Command{Type: core.CmdAddAll, Tracks: tracks}

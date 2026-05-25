@@ -13,6 +13,9 @@ func List2(path string) ([]Entry2, error) {
 }
 
 func EntryFromPath(path string) (Entry2, error) {
+	if IsRemote(path) {
+		return remoteEntry{path: path, name: BaseName(path)}, nil
+	}
 	if IsArchivePath(path) {
 		return archiveEntryFromPath(path)
 	}

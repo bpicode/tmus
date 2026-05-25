@@ -30,6 +30,7 @@ func TestEntryFromPathLocalEntries(t *testing.T) {
 		{name: "stream", path: filepath.Join(dir, "radio.stream"), want: EntryStream},
 		{name: "archive", path: filepath.Join(dir, "pack.zip"), want: EntryArchive},
 		{name: "unsupported", path: filepath.Join(dir, "notes.txt"), want: EntryOther},
+		{name: "remote", path: "https://example.com/live.mp3", want: EntryStream},
 	}
 
 	for _, tt := range tests {

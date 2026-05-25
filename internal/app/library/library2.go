@@ -22,15 +22,16 @@ func listDir2(path string) ([]Entry2, error) {
 		name := entry.Name()
 		entryPath := filepath.Join(path, name)
 		var item Entry2
-		if entry.IsDir() {
+		switch {
+		case entry.IsDir():
 			item = dirEntry{path: entryPath, name: name}
-		} else if DefaultArchiveRegistry().FindHandler(entryPath) != nil {
+		case DefaultArchiveRegistry().FindHandler(entryPath) != nil:
 			item = archiveFile{path: entryPath, name: name}
-		} else if isURLFile(entryPath) {
+		case isURLFile(entryPath):
 			item = urlFile{path: entryPath, name: name}
-		} else if isStreamFile(entryPath) {
+		case isStreamFile(entryPath):
 			item = streamFile{path: entryPath, name: name}
-		} else {
+		default:
 			item = audioFile{path: entryPath, name: name}
 		}
 		if includeEntry2(item) {

@@ -1,7 +1,10 @@
 package library
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
 	"path"
 	"path/filepath"
 	"strings"
@@ -72,11 +75,25 @@ func (a archiveEntry) Open(ctx context.Context) (AudioSource, error) {
 	if a.Type() == EntryStream {
 		return a.openShortcut(ctx)
 	}
-	source, err := LocalResolver{}.Resolve(ctx, a.path)
+	return a.openAudio()
+}
+
+func (a archiveEntry) openAudio() (AudioSource, error) {
+	handler := DefaultArchiveRegistry().FindHandler(a.path)
+	if handler == nil {
+		return AudioSource{}, errNotAudio
+	}
+	rc, err := handler.Open(a.path)
 	if err != nil {
 		return AudioSource{}, err
 	}
-	return AudioSource{Reader: source.Reader, Format: formatFromPath(a.path)}, nil
+	defer rc.Close()
+
+	data, err := io.ReadAll(rc)
+	if err != nil {
+		return AudioSource{}, fmt.Errorf("read archive entry: %w", err)
+	}
+	return AudioSource{Reader: nopSeekCloser{bytes.NewReader(data)}, Format: formatFromPath(a.path)}, nil
 }
 
 func (a archiveEntry) openShortcut(ctx context.Context) (AudioSource, error) {
@@ -120,3 +137,7 @@ func (a archiveEntry) Parent() string {
 	}
 	return BuildArchivePath(scheme, archivePath, parent)
 }
+
+type nopSeekCloser struct{ io.ReadSeeker }
+
+func (nopSeekCloser) Close() error { return nil }

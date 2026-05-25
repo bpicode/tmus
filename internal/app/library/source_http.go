@@ -34,34 +34,29 @@ func NewHTTPResolver() *HTTPResolver {
 	}
 }
 
-// CanResolve returns true if the URI is a remote HTTP/HTTPS resource.
-func (r *HTTPResolver) CanResolve(uri string) bool {
-	return IsRemote(uri)
-}
-
 // Resolve opens the remote stream, resolving playlists (.m3u, .pls) and mapping content types to extensions.
-func (r *HTTPResolver) Resolve(ctx context.Context, uri string) (Source, error) {
+func (r *HTTPResolver) Resolve(ctx context.Context, uri string) (AudioSource, error) {
 	return r.resolve(ctx, uri, 0)
 }
 
-func (r *HTTPResolver) resolve(ctx context.Context, uri string, depth int) (Source, error) {
+func (r *HTTPResolver) resolve(ctx context.Context, uri string, depth int) (AudioSource, error) {
 	if depth > 5 {
-		return Source{}, errors.New("playlist recursion limit exceeded")
+		return AudioSource{}, errors.New("playlist recursion limit exceeded")
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
 	if err != nil {
-		return Source{}, err
+		return AudioSource{}, err
 	}
 
 	resp, err := r.Client.Do(req)
 	if err != nil {
-		return Source{}, err
+		return AudioSource{}, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		_ = resp.Body.Close()
-		return Source{}, fmt.Errorf("http error: %s", resp.Status)
+		return AudioSource{}, fmt.Errorf("http error: %s", resp.Status)
 	}
 
 	contentType := resp.Header.Get("Content-Type")
@@ -79,16 +74,13 @@ func (r *HTTPResolver) resolve(ctx context.Context, uri string, depth int) (Sour
 		targetURI, err := parsePlaylist(resp.Body, ext, uri)
 		_ = resp.Body.Close()
 		if err != nil {
-			return Source{}, err
+			return AudioSource{}, err
 		}
 		// Resolve the target recursively
 		return r.resolve(ctx, targetURI, depth+1)
 	}
 
-	return Source{
-		Reader: resp.Body,
-		Ext:    ext,
-	}, nil
+	return AudioSource{Reader: resp.Body, Format: formatFromExt(ext)}, nil
 }
 
 func isPlaylist(contentType, ext string) bool {

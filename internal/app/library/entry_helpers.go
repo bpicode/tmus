@@ -86,9 +86,5 @@ func isStreamFile(path string) bool {
 }
 
 func openRemoteAudio(ctx context.Context, uri string) (AudioSource, error) {
-	source, err := NewHTTPResolver().Resolve(ctx, uri)
-	if err != nil {
-		return AudioSource{}, err
-	}
-	return AudioSource{Reader: source.Reader, Format: formatFromExt(source.Ext)}, nil
+	return NewHTTPResolver().Resolve(ctx, uri)
 }

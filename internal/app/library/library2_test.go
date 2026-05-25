@@ -2,6 +2,10 @@ package library
 
 import (
 	"archive/zip"
+	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -41,6 +45,8 @@ func TestList2FiltersAndSortsArchiveEntries(t *testing.T) {
 		"notes.txt":      "not audio",
 		"b.mp3":          "",
 		"A.flac":         "",
+		"radio.stream":   "https://example.com/radio.pls\n",
+		"station.url":    "[InternetShortcut]\nURL=https://example.com/station.pls\n",
 	})
 
 	archiveRoot, ok := OpenArchiveRoot(archivePath)
@@ -52,12 +58,84 @@ func TestList2FiltersAndSortsArchiveEntries(t *testing.T) {
 		t.Fatalf("List2() error = %v", err)
 	}
 
-	if got, want := entry2Names(entries), []string{"A-dir", "z-dir", "A.flac", "b.mp3"}; !reflect.DeepEqual(got, want) {
+	if got, want := entry2Names(entries), []string{"A-dir", "z-dir", "A.flac", "b.mp3", "radio.stream", "station.url"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("entry names = %v, want %v", got, want)
 	}
-	if got, want := entry2Types(entries), []EntryType{EntryDir, EntryDir, EntryFLAC, EntryMP3}; !reflect.DeepEqual(got, want) {
+	if got, want := entry2Types(entries), []EntryType{EntryDir, EntryDir, EntryFLAC, EntryMP3, EntryURL, EntryURL}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("entry types = %v, want %v", got, want)
 	}
+}
+
+func TestArchiveEntryOpenStreamShortcut(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "audio/mpeg")
+		_, _ = w.Write([]byte("audio data"))
+	}))
+	defer server.Close()
+
+	entry := archivedShortcutEntry(t, "radio.stream", server.URL+"\n")
+	source, err := entry.Open(context.Background())
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer source.Reader.Close()
+	if source.Format != FormatMP3 {
+		t.Fatalf("Format = %v, want %v", source.Format, FormatMP3)
+	}
+	data, err := io.ReadAll(source.Reader)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+	if got, want := string(data), "audio data"; got != want {
+		t.Fatalf("stream data = %q, want %q", got, want)
+	}
+}
+
+func TestArchiveEntryOpenURLShortcut(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "audio/flac")
+		_, _ = w.Write([]byte("flac data"))
+	}))
+	defer server.Close()
+
+	entry := archivedShortcutEntry(t, "station.url", "[InternetShortcut]\nURL="+server.URL+"\n")
+	source, err := entry.Open(context.Background())
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer source.Reader.Close()
+	if source.Format != FormatFLAC {
+		t.Fatalf("Format = %v, want %v", source.Format, FormatFLAC)
+	}
+	data, err := io.ReadAll(source.Reader)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+	if got, want := string(data), "flac data"; got != want {
+		t.Fatalf("stream data = %q, want %q", got, want)
+	}
+}
+
+func archivedShortcutEntry(t *testing.T, name, content string) Entry2 {
+	t.Helper()
+	dir := t.TempDir()
+	archivePath := filepath.Join(dir, "shortcuts.zip")
+	createZip(t, archivePath, map[string]string{name: content})
+	archiveRoot, ok := OpenArchiveRoot(archivePath)
+	if !ok {
+		t.Fatal("OpenArchiveRoot() did not recognize zip archive")
+	}
+	entries, err := List2(archiveRoot)
+	if err != nil {
+		t.Fatalf("List2() error = %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("len(entries) = %d, want 1", len(entries))
+	}
+	if entries[0].Type() != EntryURL {
+		t.Fatalf("entry type = %v, want %v", entries[0].Type(), EntryURL)
+	}
+	return entries[0]
 }
 
 func entry2Names(entries []Entry2) []string {

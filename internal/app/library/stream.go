@@ -2,6 +2,7 @@ package library
 
 import (
 	"bufio"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,45 +18,59 @@ func ParseStreamFile(path string) (string, error) {
 	}
 	defer file.Close()
 
-	ext := strings.ToLower(filepath.Ext(path))
-	scanner := bufio.NewScanner(file)
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".url":
+		return ParseURLShortcut(file)
+	case ".stream":
+		return ParseStreamShortcut(file)
+	default:
+		return "", os.ErrNotExist
+	}
+}
 
-	if ext == ".url" {
-		inSection := false
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			if line == "" {
-				continue
-			}
-			if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-				section := strings.ToLower(line)
-				if section == "[internetshortcut]" {
-					inSection = true
-				} else {
-					inSection = false
-				}
-				continue
-			}
-			if inSection || !strings.Contains(line, "[") {
-				if strings.HasPrefix(strings.ToLower(line), "url=") {
-					return strings.TrimSpace(line[4:]), nil
-				}
-			}
+// ParseURLShortcut parses a Windows Internet Shortcut stream and returns its URL.
+func ParseURLShortcut(r io.Reader) (string, error) {
+	scanner := bufio.NewScanner(r)
+	inSection := false
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
 		}
-	} else if ext == ".stream" {
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "//") {
-				continue
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			section := strings.ToLower(line)
+			if section == "[internetshortcut]" {
+				inSection = true
+			} else {
+				inSection = false
 			}
-			return line, nil
+			continue
+		}
+		if inSection || !strings.Contains(line, "[") {
+			if strings.HasPrefix(strings.ToLower(line), "url=") {
+				return strings.TrimSpace(line[4:]), nil
+			}
 		}
 	}
-
 	if err := scanner.Err(); err != nil {
 		return "", err
 	}
+	return "", os.ErrNotExist
+}
 
+// ParseStreamShortcut parses a .stream file and returns its first stream URL.
+func ParseStreamShortcut(r io.Reader) (string, error) {
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "//") {
+			continue
+		}
+		return line, nil
+	}
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
 	return "", os.ErrNotExist
 }
 

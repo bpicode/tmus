@@ -69,11 +69,44 @@ func (a archiveEntry) Open(ctx context.Context) (AudioSource, error) {
 	if !a.IsAudio() {
 		return AudioSource{}, errNotAudio
 	}
+	if a.Type() == EntryURL {
+		return a.openShortcut(ctx)
+	}
 	source, err := LocalResolver{}.Resolve(ctx, a.path)
 	if err != nil {
 		return AudioSource{}, err
 	}
 	return AudioSource{Reader: source.Reader, Format: formatFromPath(a.path)}, nil
+}
+
+func (a archiveEntry) openShortcut(ctx context.Context) (AudioSource, error) {
+	handler := DefaultArchiveRegistry().FindHandler(a.path)
+	if handler == nil {
+		return AudioSource{}, errNotAudio
+	}
+	rc, err := handler.Open(a.path)
+	if err != nil {
+		return AudioSource{}, err
+	}
+	defer rc.Close()
+
+	var uri string
+	switch strings.ToLower(EntryExt(a.path)) {
+	case ".url":
+		uri, err = ParseURLShortcut(rc)
+	case ".stream":
+		uri, err = ParseStreamShortcut(rc)
+	default:
+		return AudioSource{}, errNotAudio
+	}
+	if err != nil {
+		return AudioSource{}, err
+	}
+	source, err := NewHTTPResolver().Resolve(ctx, uri)
+	if err != nil {
+		return AudioSource{}, err
+	}
+	return AudioSource{Reader: source.Reader, Format: formatFromExt(source.Ext)}, nil
 }
 
 func (a archiveEntry) IsAudio() bool {

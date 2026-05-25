@@ -2,6 +2,7 @@ package library
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -28,7 +29,13 @@ func (u urlFile) Hidden() bool {
 }
 
 func (u urlFile) Open(ctx context.Context) (AudioSource, error) {
-	uri, err := ParseStreamFile(u.path)
+	file, err := os.Open(u.path)
+	if err != nil {
+		return AudioSource{}, err
+	}
+	defer file.Close()
+
+	uri, err := ParseURLShortcut(file)
 	if err != nil {
 		return AudioSource{}, err
 	}
@@ -69,7 +76,13 @@ func (s streamFile) Hidden() bool {
 }
 
 func (s streamFile) Open(ctx context.Context) (AudioSource, error) {
-	uri, err := ParseStreamFile(s.path)
+	file, err := os.Open(s.path)
+	if err != nil {
+		return AudioSource{}, err
+	}
+	defer file.Close()
+
+	uri, err := ParseStreamShortcut(file)
 	if err != nil {
 		return AudioSource{}, err
 	}

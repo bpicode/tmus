@@ -204,7 +204,7 @@ func (e *Engine) playPath(uri string) {
 		e.sendEvent(Event{Type: EventTrackError, Path: uri, Err: err})
 		return
 	}
-	streamer, format, err := decodeSource(sourceFromAudioSource(audioSource))
+	streamer, format, err := decodeSource(audioSource)
 	if err != nil {
 		e.sendEvent(Event{Type: EventTrackError, Path: uri, Err: err})
 		return

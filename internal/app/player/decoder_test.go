@@ -28,10 +28,11 @@ func Test_decodeFile(t *testing.T) {
 			wantFormat: beep.Format{SampleRate: 44100, NumChannels: 2, Precision: 2},
 		},
 	}
-	resolver := library.LocalResolver{}
 	for _, tt := range tests {
 		t.Run(tt.arg, func(t *testing.T) {
-			source, err := resolver.Resolve(context.Background(), tt.arg)
+			entry, err := library.EntryFromPath(tt.arg)
+			assert.NoError(t, err)
+			source, err := entry.Open(context.Background())
 			assert.NoError(t, err)
 			ssc, f, err := decodeSource(source)
 			assert.NoError(t, err)

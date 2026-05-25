@@ -2,7 +2,6 @@ package library
 
 import (
 	"context"
-	"errors"
 	"path/filepath"
 	"strings"
 )
@@ -29,7 +28,7 @@ func (d dirEntry) Hidden() bool {
 }
 
 func (d dirEntry) Open(_ context.Context) (AudioSource, error) {
-	return AudioSource{}, errors.New("not an audio file")
+	return AudioSource{}, errNotAudio
 }
 
 func (d dirEntry) IsAudio() bool {

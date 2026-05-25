@@ -1,0 +1,93 @@
+package library
+
+import (
+	"context"
+	"path"
+	"path/filepath"
+	"strings"
+)
+
+type archiveFile struct {
+	path string
+	name string
+}
+
+func (a archiveFile) Path() string {
+	return a.path
+}
+
+func (a archiveFile) Name() string {
+	return a.name
+}
+
+func (a archiveFile) Type() EntryType {
+	return EntryArchive
+}
+
+func (a archiveFile) Hidden() bool {
+	return strings.HasPrefix(a.name, ".")
+}
+
+func (a archiveFile) Open(_ context.Context) (AudioSource, error) {
+	return AudioSource{}, errNotAudio
+}
+
+func (a archiveFile) IsAudio() bool {
+	return false
+}
+
+func (a archiveFile) Parent() string {
+	return filepath.Dir(a.path)
+}
+
+type archiveEntry struct {
+	path  string
+	name  string
+	isDir bool
+}
+
+func (a archiveEntry) Path() string {
+	return a.path
+}
+
+func (a archiveEntry) Name() string {
+	return a.name
+}
+
+func (a archiveEntry) Type() EntryType {
+	if a.isDir {
+		return EntryDir
+	}
+	return entryTypeFromPath(a.path)
+}
+
+func (a archiveEntry) Hidden() bool {
+	return strings.HasPrefix(a.name, ".")
+}
+
+func (a archiveEntry) Open(ctx context.Context) (AudioSource, error) {
+	if !a.IsAudio() {
+		return AudioSource{}, errNotAudio
+	}
+	source, err := LocalResolver{}.Resolve(ctx, a.path)
+	if err != nil {
+		return AudioSource{}, err
+	}
+	return AudioSource{Reader: source.Reader, Format: formatFromPath(a.path)}, nil
+}
+
+func (a archiveEntry) IsAudio() bool {
+	return !a.isDir && entryTypeFromPath(a.path) != EntryOther
+}
+
+func (a archiveEntry) Parent() string {
+	scheme, archivePath, inner, err := SplitArchivePath(a.path)
+	if err != nil {
+		return ""
+	}
+	parent := path.Dir(inner)
+	if parent == "." {
+		parent = ""
+	}
+	return BuildArchivePath(scheme, archivePath, parent)
+}

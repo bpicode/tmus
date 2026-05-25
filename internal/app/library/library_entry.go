@@ -5,13 +5,16 @@ import (
 	"path/filepath"
 )
 
+// List returns browsable entries for a local directory or archive path.
 func List(path string) ([]Entry, error) {
 	if handler := DefaultArchiveRegistry().FindHandler(path); handler != nil {
-		return listArchive2(handler, path)
+		return listArchive(handler, path)
 	}
-	return listDir2(path)
+	return listDir(path)
 }
 
+// EntryFromPath reconstructs an entry from a durable path or URI without
+// validating filesystem or archive state.
 func EntryFromPath(path string) (Entry, error) {
 	if IsRemote(path) {
 		return remoteEntry{path: path, name: BaseName(path)}, nil
@@ -22,7 +25,7 @@ func EntryFromPath(path string) (Entry, error) {
 	return localEntryFromPath(path, false), nil
 }
 
-func listDir2(path string) ([]Entry, error) {
+func listDir(path string) ([]Entry, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
@@ -40,7 +43,7 @@ func listDir2(path string) ([]Entry, error) {
 	return items, nil
 }
 
-func listArchive2(handler ArchiveHandler, path string) ([]Entry, error) {
+func listArchive(handler ArchiveHandler, path string) ([]Entry, error) {
 	entries, err := handler.List(path, true)
 	if err != nil {
 		return nil, err

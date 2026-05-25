@@ -5,6 +5,7 @@ import (
 	"io"
 )
 
+// EntryType identifies the kind or audio format of a library entry.
 type EntryType int
 
 const (
@@ -22,6 +23,7 @@ const (
 	EntryOther
 )
 
+// FormatType identifies the audio decoder format for an opened source.
 type FormatType int
 
 const (
@@ -36,11 +38,13 @@ const (
 	FormatUnknown
 )
 
+// AudioSource is an opened audio byte stream and its decoder format.
 type AudioSource struct {
 	Reader io.ReadCloser
 	Format FormatType
 }
 
+// Entry represents a browsable library item.
 type Entry interface {
 	Path() string
 	Name() string

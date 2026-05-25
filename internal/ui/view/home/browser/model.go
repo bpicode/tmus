@@ -20,7 +20,7 @@ import (
 type Model struct {
 	Cwd        string
 	homeDir    string
-	entries    []library.Entry2
+	entries    []library.Entry
 	showHidden bool
 	width      int
 	height     int
@@ -147,7 +147,7 @@ func (m *Model) toggleHidden() tea.Cmd {
 	return m.loadDir(m.Cwd)
 }
 
-func (m *Model) selected() (library.Entry2, bool) {
+func (m *Model) selected() (library.Entry, bool) {
 	item, ok := m.list.SelectedItem().(browserListItem)
 	if !ok {
 		return nil, false
@@ -300,9 +300,9 @@ func (m *Model) searchView() string {
 	}
 }
 
-func (m *Model) visibleEntries() []library.Entry2 {
+func (m *Model) visibleEntries() []library.Entry {
 	items := m.list.VisibleItems()
-	entries := make([]library.Entry2, 0, len(items))
+	entries := make([]library.Entry, 0, len(items))
 	for _, item := range items {
 		browserItem, ok := item.(browserListItem)
 		if !ok {
@@ -404,7 +404,7 @@ func (m *Model) Focus(focus bool) {
 }
 
 type browserListItem struct {
-	entry library.Entry2
+	entry library.Entry
 }
 
 func (i browserListItem) FilterValue() string {

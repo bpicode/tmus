@@ -7,13 +7,13 @@ import (
 
 type loadDirMsg struct {
 	Path  string
-	Items []library.Entry2
+	Items []library.Entry
 	Err   error
 }
 
 func loadDirCmd(path string, showHidden bool) tea.Cmd {
 	return func() tea.Msg {
-		items, err := library.List2(path)
+		items, err := library.List(path)
 		if err == nil && !showHidden {
 			items = filterHiddenEntries(items)
 		}
@@ -25,8 +25,8 @@ func loadDirCmd(path string, showHidden bool) tea.Cmd {
 	}
 }
 
-func filterHiddenEntries(entries []library.Entry2) []library.Entry2 {
-	items := make([]library.Entry2, 0, len(entries))
+func filterHiddenEntries(entries []library.Entry) []library.Entry {
+	items := make([]library.Entry, 0, len(entries))
 	for _, entry := range entries {
 		if !entry.Hidden() {
 			items = append(items, entry)

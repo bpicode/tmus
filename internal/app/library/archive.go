@@ -4,11 +4,19 @@ import (
 	"io"
 )
 
+// ArchiveEntry represents a browsable item returned by an archive handler.
+type ArchiveEntry struct {
+	Name    string
+	Path    string
+	IsDir   bool
+	IsAudio bool
+}
+
 // ArchiveHandler manages a specific archive format (zip, tar, etc.).
 type ArchiveHandler interface {
 	Scheme() string
 	IsArchivePath(path string) bool
-	List(path string, showHidden bool) ([]Entry, error)
+	List(path string, showHidden bool) ([]ArchiveEntry, error)
 	Open(path string) (io.ReadCloser, error)
 }
 

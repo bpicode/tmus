@@ -41,7 +41,7 @@ type AudioSource struct {
 	Format FormatType
 }
 
-type Entry2 interface {
+type Entry interface {
 	Path() string
 	Name() string
 	Type() EntryType

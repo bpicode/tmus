@@ -5,14 +5,14 @@ import (
 	"path/filepath"
 )
 
-func List2(path string) ([]Entry2, error) {
+func List(path string) ([]Entry, error) {
 	if handler := DefaultArchiveRegistry().FindHandler(path); handler != nil {
 		return listArchive2(handler, path)
 	}
 	return listDir2(path)
 }
 
-func EntryFromPath(path string) (Entry2, error) {
+func EntryFromPath(path string) (Entry, error) {
 	if IsRemote(path) {
 		return remoteEntry{path: path, name: BaseName(path)}, nil
 	}
@@ -22,49 +22,49 @@ func EntryFromPath(path string) (Entry2, error) {
 	return localEntryFromPath(path, false), nil
 }
 
-func listDir2(path string) ([]Entry2, error) {
+func listDir2(path string) ([]Entry, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]Entry2, 0, len(entries))
+	items := make([]Entry, 0, len(entries))
 	for _, entry := range entries {
 		name := entry.Name()
 		entryPath := filepath.Join(path, name)
 		item := localEntryFromPath(entryPath, entry.IsDir())
-		if includeEntry2(item) {
+		if includeEntry(item) {
 			items = append(items, item)
 		}
 	}
-	sortEntries2(items)
+	sortEntries(items)
 	return items, nil
 }
 
-func listArchive2(handler ArchiveHandler, path string) ([]Entry2, error) {
+func listArchive2(handler ArchiveHandler, path string) ([]Entry, error) {
 	entries, err := handler.List(path, true)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]Entry2, 0, len(entries))
+	items := make([]Entry, 0, len(entries))
 	for _, entry := range entries {
 		item := archiveEntry{
 			path:  entry.Path,
 			name:  entry.Name,
 			isDir: entry.IsDir,
 		}
-		if includeEntry2(item) {
+		if includeEntry(item) {
 			items = append(items, item)
 		}
 	}
-	sortEntries2(items)
+	sortEntries(items)
 	return items, nil
 }
 
-func includeEntry2(entry Entry2) bool {
+func includeEntry(entry Entry) bool {
 	return entry.Type() == EntryDir || entry.Type() == EntryArchive || entry.IsAudio()
 }
 
-func localEntryFromPath(path string, isDir bool) Entry2 {
+func localEntryFromPath(path string, isDir bool) Entry {
 	name := filepath.Base(path)
 	switch {
 	case isDir:
@@ -80,7 +80,7 @@ func localEntryFromPath(path string, isDir bool) Entry2 {
 	}
 }
 
-func archiveEntryFromPath(value string) (Entry2, error) {
+func archiveEntryFromPath(value string) (Entry, error) {
 	_, archivePath, inner, err := SplitArchivePath(value)
 	if err != nil {
 		return nil, err

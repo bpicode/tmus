@@ -100,9 +100,9 @@ func TestList2FiltersAndSortsDirectoryEntries(t *testing.T) {
 	mustWriteFile(t, filepath.Join(dir, ".hidden.mp3"), "")
 	mustWriteFile(t, filepath.Join(dir, "pack.zip"), "")
 
-	entries, err := List2(dir)
+	entries, err := List(dir)
 	if err != nil {
-		t.Fatalf("List2() error = %v", err)
+		t.Fatalf("List() error = %v", err)
 	}
 
 	if got, want := entry2Names(entries), []string{"A-dir", "z-dir", ".hidden.mp3", "A.flac", "b.mp3", "pack.zip", "radio.stream"}; !reflect.DeepEqual(got, want) {
@@ -130,9 +130,9 @@ func TestList2FiltersAndSortsArchiveEntries(t *testing.T) {
 	if !ok {
 		t.Fatal("OpenArchiveRoot() did not recognize zip archive")
 	}
-	entries, err := List2(archiveRoot)
+	entries, err := List(archiveRoot)
 	if err != nil {
-		t.Fatalf("List2() error = %v", err)
+		t.Fatalf("List() error = %v", err)
 	}
 
 	if got, want := entry2Names(entries), []string{"A-dir", "z-dir", "A.flac", "b.mp3", "radio.stream", "station.url"}; !reflect.DeepEqual(got, want) {
@@ -193,7 +193,7 @@ func TestArchiveEntryOpenURLShortcut(t *testing.T) {
 	}
 }
 
-func archivedShortcutEntry(t *testing.T, name, content string) Entry2 {
+func archivedShortcutEntry(t *testing.T, name, content string) Entry {
 	t.Helper()
 	dir := t.TempDir()
 	archivePath := filepath.Join(dir, "shortcuts.zip")
@@ -202,9 +202,9 @@ func archivedShortcutEntry(t *testing.T, name, content string) Entry2 {
 	if !ok {
 		t.Fatal("OpenArchiveRoot() did not recognize zip archive")
 	}
-	entries, err := List2(archiveRoot)
+	entries, err := List(archiveRoot)
 	if err != nil {
-		t.Fatalf("List2() error = %v", err)
+		t.Fatalf("List() error = %v", err)
 	}
 	if len(entries) != 1 {
 		t.Fatalf("len(entries) = %d, want 1", len(entries))
@@ -215,7 +215,7 @@ func archivedShortcutEntry(t *testing.T, name, content string) Entry2 {
 	return entries[0]
 }
 
-func entry2Names(entries []Entry2) []string {
+func entry2Names(entries []Entry) []string {
 	names := make([]string, 0, len(entries))
 	for _, entry := range entries {
 		names = append(names, entry.Name())
@@ -223,7 +223,7 @@ func entry2Names(entries []Entry2) []string {
 	return names
 }
 
-func entry2Types(entries []Entry2) []EntryType {
+func entry2Types(entries []Entry) []EntryType {
 	types := make([]EntryType, 0, len(entries))
 	for _, entry := range entries {
 		types = append(types, entry.Type())

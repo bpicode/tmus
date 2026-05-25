@@ -9,6 +9,7 @@ import (
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 )
 
@@ -38,30 +39,30 @@ func (i itemDelegate) Render(w io.Writer, m list.Model, index int, item list.Ite
 		return
 	}
 
-	ext := strings.ToLower(filepath.Ext(entry.entry.Path))
+	ext := strings.ToLower(filepath.Ext(entry.entry.Path()))
 	isStream := ext == ".url" || ext == ".stream"
 
-	name := entry.entry.Name
-	if entry.entry.IsDir {
-		name = "📁 " + entry.entry.Name + string(filepath.Separator)
+	name := entry.entry.Name()
+	if entry.entry.Type() == library.EntryDir {
+		name = "📁 " + entry.entry.Name() + string(filepath.Separator)
 	}
-	if entry.entry.IsArchive {
-		name = "📦 " + entry.entry.Name
+	if entry.entry.Type() == library.EntryArchive {
+		name = "📦 " + entry.entry.Name()
 	}
-	if entry.entry.IsAudio {
+	if entry.entry.IsAudio() {
 		if isStream {
-			name = "📻 " + entry.entry.Name
+			name = "📻 " + entry.entry.Name()
 		} else {
-			name = "🎵 " + entry.entry.Name
+			name = "🎵 " + entry.entry.Name()
 		}
 	}
 
 	style := lipgloss.NewStyle()
 	if index == m.Index() {
 		style = i.styles.selected
-	} else if entry.entry.IsDir {
+	} else if entry.entry.Type() == library.EntryDir {
 		style = i.styles.dir
-	} else if entry.entry.IsArchive {
+	} else if entry.entry.Type() == library.EntryArchive {
 		style = i.styles.archive
 	}
 	truncateRight := truncate.Right{Style: style}.MaxWidth(m.Width())

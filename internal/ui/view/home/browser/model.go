@@ -20,7 +20,7 @@ import (
 type Model struct {
 	Cwd        string
 	homeDir    string
-	entries    []library.Entry
+	entries    []library.Entry2
 	showHidden bool
 	width      int
 	height     int
@@ -98,17 +98,21 @@ func (m *Model) loadHomeDir() tea.Cmd {
 func (m *Model) openSelection() tea.Cmd {
 	m.errorView.SetErr(nil)
 	selected, ok := m.selected()
-	if !ok || !selected.IsDir {
-		if ok && !library.IsArchivePath(selected.Path) {
-			if archivePath, ok := library.OpenArchiveRoot(selected.Path); ok {
-				m.clearSearch()
-				return m.loadDir(archivePath)
-			}
+	if !ok {
+		return nil
+	}
+	if selected.Type() == library.EntryArchive {
+		if archivePath, ok := library.OpenArchiveRoot(selected.Path()); ok {
+			m.clearSearch()
+			return m.loadDir(archivePath)
 		}
 		return nil
 	}
+	if selected.Type() != library.EntryDir {
+		return nil
+	}
 	m.clearSearch()
-	return m.loadDir(selected.Path)
+	return m.loadDir(selected.Path())
 }
 
 func (m *Model) upDir() tea.Cmd {
@@ -143,10 +147,10 @@ func (m *Model) toggleHidden() tea.Cmd {
 	return m.loadDir(m.Cwd)
 }
 
-func (m *Model) selected() (library.Entry, bool) {
+func (m *Model) selected() (library.Entry2, bool) {
 	item, ok := m.list.SelectedItem().(browserListItem)
 	if !ok {
-		return library.Entry{}, false
+		return nil, false
 	}
 	return item.entry, true
 }
@@ -296,9 +300,9 @@ func (m *Model) searchView() string {
 	}
 }
 
-func (m *Model) visibleEntries() []library.Entry {
+func (m *Model) visibleEntries() []library.Entry2 {
 	items := m.list.VisibleItems()
-	entries := make([]library.Entry, 0, len(items))
+	entries := make([]library.Entry2, 0, len(items))
 	for _, item := range items {
 		browserItem, ok := item.(browserListItem)
 		if !ok {
@@ -320,8 +324,8 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 		m.list, cmd = m.list.Update(msg)
 		return cmd, true
 	case "enter":
-		if selected, ok := m.selected(); ok && !selected.IsDir && selected.IsAudio {
-			if resolvedPath, name, ok := library.ResolvePlayable(selected.Path); ok {
+		if selected, ok := m.selected(); ok && selected.Type() != library.EntryDir && selected.IsAudio() {
+			if resolvedPath, name, ok := library.ResolvePlayable(selected.Path()); ok {
 				cmd := core.Command{
 					Type:  core.CmdAdd,
 					Track: core.Track{Name: name, Path: resolvedPath},
@@ -335,8 +339,8 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 		return m.upDir(), true
 	case "a":
 		if selected, ok := m.selected(); ok {
-			if !selected.IsDir && selected.IsAudio {
-				if resolvedPath, name, ok := library.ResolvePlayable(selected.Path); ok {
+			if selected.Type() != library.EntryDir && selected.IsAudio() {
+				if resolvedPath, name, ok := library.ResolvePlayable(selected.Path()); ok {
 					cmd := core.Command{
 						Type:  core.CmdAdd,
 						Track: core.Track{Name: name, Path: resolvedPath},
@@ -351,10 +355,10 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 		visible := m.visibleEntries()
 		tracks := make([]core.Track, 0, len(visible))
 		for _, entry := range visible {
-			if entry.IsDir || !entry.IsAudio {
+			if entry.Type() == library.EntryDir || !entry.IsAudio() {
 				continue
 			}
-			if resolvedPath, name, ok := library.ResolvePlayable(entry.Path); ok {
+			if resolvedPath, name, ok := library.ResolvePlayable(entry.Path()); ok {
 				tracks = append(tracks, core.Track{Name: name, Path: resolvedPath})
 			}
 		}
@@ -406,11 +410,11 @@ func (m *Model) Focus(focus bool) {
 }
 
 type browserListItem struct {
-	entry library.Entry
+	entry library.Entry2
 }
 
 func (i browserListItem) FilterValue() string {
-	return i.entry.Name
+	return i.entry.Name()
 }
 
 func clamp(v, min, max int) int {

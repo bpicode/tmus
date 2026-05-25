@@ -12,6 +12,82 @@ import (
 	"testing"
 )
 
+func TestEntryFromPathLocalEntries(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "song.mp3"), "")
+	mustWriteFile(t, filepath.Join(dir, "station.url"), "[InternetShortcut]\nURL=https://example.com/station.pls\n")
+	mustWriteFile(t, filepath.Join(dir, "radio.stream"), "https://example.com/radio.pls\n")
+	mustWriteFile(t, filepath.Join(dir, "notes.txt"), "not audio")
+	mustWriteFile(t, filepath.Join(dir, "pack.zip"), "")
+
+	tests := []struct {
+		name string
+		path string
+		want EntryType
+	}{
+		{name: "audio", path: filepath.Join(dir, "song.mp3"), want: EntryMP3},
+		{name: "url", path: filepath.Join(dir, "station.url"), want: EntryStream},
+		{name: "stream", path: filepath.Join(dir, "radio.stream"), want: EntryStream},
+		{name: "archive", path: filepath.Join(dir, "pack.zip"), want: EntryArchive},
+		{name: "unsupported", path: filepath.Join(dir, "notes.txt"), want: EntryOther},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			entry, err := EntryFromPath(tt.path)
+			if err != nil {
+				t.Fatalf("EntryFromPath() error = %v", err)
+			}
+			if entry.Type() != tt.want {
+				t.Fatalf("entry type = %v, want %v", entry.Type(), tt.want)
+			}
+			if entry.Path() != tt.path {
+				t.Fatalf("entry path = %q, want %q", entry.Path(), tt.path)
+			}
+		})
+	}
+}
+
+func TestEntryFromPathArchiveEntries(t *testing.T) {
+	dir := t.TempDir()
+	archivePath := filepath.Join(dir, "music.zip")
+	createZip(t, archivePath, map[string]string{
+		"folder/song.mp3": "",
+		"radio.stream":    "https://example.com/radio.pls\n",
+	})
+	archiveRoot, ok := OpenArchiveRoot(archivePath)
+	if !ok {
+		t.Fatal("OpenArchiveRoot() did not recognize zip archive")
+	}
+	songPath := BuildArchivePath("zip", archivePath, "folder/song.mp3")
+	streamPath := BuildArchivePath("zip", archivePath, "radio.stream")
+
+	tests := []struct {
+		name string
+		path string
+		want EntryType
+	}{
+		{name: "archive root", path: archiveRoot, want: EntryArchive},
+		{name: "archive audio", path: songPath, want: EntryMP3},
+		{name: "archive stream", path: streamPath, want: EntryStream},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			entry, err := EntryFromPath(tt.path)
+			if err != nil {
+				t.Fatalf("EntryFromPath() error = %v", err)
+			}
+			if entry.Type() != tt.want {
+				t.Fatalf("entry type = %v, want %v", entry.Type(), tt.want)
+			}
+			if entry.Path() != tt.path && tt.path != archiveRoot {
+				t.Fatalf("entry path = %q, want %q", entry.Path(), tt.path)
+			}
+		})
+	}
+}
+
 func TestList2FiltersAndSortsDirectoryEntries(t *testing.T) {
 	dir := t.TempDir()
 	mustMkdir(t, filepath.Join(dir, "z-dir"))

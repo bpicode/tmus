@@ -76,6 +76,10 @@ func formatFromExt(ext string) FormatType {
 	}
 }
 
-func isStreamShortcut(path string) bool {
-	return entryTypeFromPath(path) == EntryURL
+func isURLFile(path string) bool {
+	return strings.EqualFold(filepath.Ext(path), ".url")
+}
+
+func isStreamFile(path string) bool {
+	return strings.EqualFold(filepath.Ext(path), ".stream")
 }

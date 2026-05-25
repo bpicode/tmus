@@ -21,16 +21,21 @@ func listDir2(path string) ([]Entry2, error) {
 	for _, entry := range entries {
 		name := entry.Name()
 		entryPath := filepath.Join(path, name)
+		var item Entry2
 		if entry.IsDir() {
-			items = append(items, dirEntry{path: entryPath, name: name})
+			item = dirEntry{path: entryPath, name: name}
 		} else if DefaultArchiveRegistry().FindHandler(entryPath) != nil {
-			items = append(items, archiveFile{path: entryPath, name: name})
+			item = archiveFile{path: entryPath, name: name}
 		} else if isStreamShortcut(entryPath) {
-			items = append(items, streamFile{path: entryPath, name: name})
+			item = streamFile{path: entryPath, name: name}
 		} else {
-			items = append(items, audioFile{path: entryPath, name: name})
+			item = audioFile{path: entryPath, name: name}
+		}
+		if includeEntry2(item) {
+			items = append(items, item)
 		}
 	}
+	sortEntries2(items)
 	return items, nil
 }
 
@@ -41,11 +46,19 @@ func listArchive2(handler ArchiveHandler, path string) ([]Entry2, error) {
 	}
 	items := make([]Entry2, 0, len(entries))
 	for _, entry := range entries {
-		items = append(items, archiveEntry{
+		item := archiveEntry{
 			path:  entry.Path,
 			name:  entry.Name,
 			isDir: entry.IsDir,
-		})
+		}
+		if includeEntry2(item) {
+			items = append(items, item)
+		}
 	}
+	sortEntries2(items)
 	return items, nil
+}
+
+func includeEntry2(entry Entry2) bool {
+	return entry.Type() == EntryDir || entry.Type() == EntryArchive || entry.IsAudio()
 }

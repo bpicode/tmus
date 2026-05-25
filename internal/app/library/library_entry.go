@@ -47,13 +47,8 @@ func listArchive2(handler ArchiveHandler, path string) ([]Entry, error) {
 	}
 	items := make([]Entry, 0, len(entries))
 	for _, entry := range entries {
-		item := archiveEntry{
-			path:  entry.Path,
-			name:  entry.Name,
-			isDir: entry.IsDir,
-		}
-		if includeEntry(item) {
-			items = append(items, item)
+		if includeEntry(entry) {
+			items = append(items, entry)
 		}
 	}
 	sortEntries(items)

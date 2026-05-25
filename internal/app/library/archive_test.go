@@ -30,15 +30,15 @@ func TestArchiveHandlers(t *testing.T) {
 			assert.Len(t, l, 1)
 
 			dir := l[0]
-			assert.True(t, dir.IsDir)
+			assert.Equal(t, EntryType(EntryDir), dir.Type())
 
-			l, err = h.List(dir.Path, false)
+			l, err = h.List(dir.Path(), false)
 			assert.NoError(t, err)
 			assert.Len(t, l, 1)
 
 			file := l[0]
-			assert.False(t, file.IsDir)
-			reader, err := h.Open(file.Path)
+			assert.NotEqual(t, EntryType(EntryDir), file.Type())
+			reader, err := h.Open(file.Path())
 			assert.NoError(t, err)
 			defer reader.Close()
 			bytes, err := io.ReadAll(reader)

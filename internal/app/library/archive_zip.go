@@ -25,7 +25,7 @@ func (h *zipHandler) IsArchivePath(value string) bool {
 	return strings.HasSuffix(strings.ToLower(value), ".zip")
 }
 
-func (h *zipHandler) List(value string, showHidden bool) ([]ArchiveEntry, error) {
+func (h *zipHandler) List(value string, showHidden bool) ([]Entry, error) {
 	archivePath, inner, err := splitArchivePath(h.Scheme(), value)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (h *zipHandler) List(value string, showHidden bool) ([]ArchiveEntry, error)
 		inner += "/"
 	}
 
-	children := map[string]ArchiveEntry{}
+	children := map[string]Entry{}
 	for _, f := range reader.File {
 		name := f.Name
 		if inner != "" {
@@ -64,22 +64,21 @@ func (h *zipHandler) List(value string, showHidden bool) ([]ArchiveEntry, error)
 		entryPath := path.Join(inner, child)
 		if len(parts) > 1 || strings.HasSuffix(f.Name, "/") {
 			path := BuildArchivePath(h.Scheme(), archivePath, strings.TrimSuffix(entryPath, "/"))
-			children[child] = ArchiveEntry{
-				Name:  child,
-				Path:  path,
-				IsDir: true,
+			children[child] = archiveEntry{
+				name:  child,
+				path:  path,
+				isDir: true,
 			}
 		} else {
 			path := BuildArchivePath(h.Scheme(), archivePath, entryPath)
-			children[child] = ArchiveEntry{
-				Name:    child,
-				Path:    path,
-				IsAudio: IsAudio(path),
+			children[child] = archiveEntry{
+				name: child,
+				path: path,
 			}
 		}
 	}
 
-	entries := make([]ArchiveEntry, 0, len(children))
+	entries := make([]Entry, 0, len(children))
 	for _, v := range children {
 		entries = append(entries, v)
 	}

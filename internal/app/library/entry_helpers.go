@@ -15,6 +15,10 @@ func entryTypeFromPath(path string) EntryType {
 			ext = innerExt
 		}
 	}
+	return entryTypeFromExt(ext)
+}
+
+func entryTypeFromExt(ext string) EntryType {
 	switch strings.ToLower(strings.TrimSpace(ext)) {
 	case ".mp3":
 		return EntryMP3
@@ -32,13 +36,25 @@ func entryTypeFromPath(path string) EntryType {
 		return EntryMP4
 	case ".wav":
 		return EntryWAV
+	case ".url", ".stream":
+		return EntryURL
 	default:
 		return EntryOther
 	}
 }
 
 func formatFromPath(path string) FormatType {
-	switch entryTypeFromPath(path) {
+	ext := filepath.Ext(path)
+	if IsArchivePath(path) {
+		if innerExt := EntryExt(path); innerExt != "" {
+			ext = innerExt
+		}
+	}
+	return formatFromExt(ext)
+}
+
+func formatFromExt(ext string) FormatType {
+	switch entryTypeFromExt(ext) {
 	case EntryMP3:
 		return FormatMP3
 	case EntryFLAC:
@@ -58,4 +74,8 @@ func formatFromPath(path string) FormatType {
 	default:
 		return FormatUnknown
 	}
+}
+
+func isStreamShortcut(path string) bool {
+	return entryTypeFromPath(path) == EntryURL
 }

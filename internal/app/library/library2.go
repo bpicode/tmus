@@ -25,6 +25,8 @@ func listDir2(path string) ([]Entry2, error) {
 			items = append(items, dirEntry{path: entryPath, name: name})
 		} else if DefaultArchiveRegistry().FindHandler(entryPath) != nil {
 			items = append(items, archiveFile{path: entryPath, name: name})
+		} else if isStreamShortcut(entryPath) {
+			items = append(items, streamFile{path: entryPath, name: name})
 		} else {
 			items = append(items, audioFile{path: entryPath, name: name})
 		}

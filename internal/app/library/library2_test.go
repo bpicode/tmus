@@ -31,7 +31,7 @@ func TestList2FiltersAndSortsDirectoryEntries(t *testing.T) {
 	if got, want := entry2Names(entries), []string{"A-dir", "z-dir", ".hidden.mp3", "A.flac", "b.mp3", "pack.zip", "radio.stream"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("entry names = %v, want %v", got, want)
 	}
-	if got, want := entry2Types(entries), []EntryType{EntryDir, EntryDir, EntryMP3, EntryFLAC, EntryMP3, EntryArchive, EntryURL}; !reflect.DeepEqual(got, want) {
+	if got, want := entry2Types(entries), []EntryType{EntryDir, EntryDir, EntryMP3, EntryFLAC, EntryMP3, EntryArchive, EntryStream}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("entry types = %v, want %v", got, want)
 	}
 }
@@ -61,7 +61,7 @@ func TestList2FiltersAndSortsArchiveEntries(t *testing.T) {
 	if got, want := entry2Names(entries), []string{"A-dir", "z-dir", "A.flac", "b.mp3", "radio.stream", "station.url"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("entry names = %v, want %v", got, want)
 	}
-	if got, want := entry2Types(entries), []EntryType{EntryDir, EntryDir, EntryFLAC, EntryMP3, EntryURL, EntryURL}; !reflect.DeepEqual(got, want) {
+	if got, want := entry2Types(entries), []EntryType{EntryDir, EntryDir, EntryFLAC, EntryMP3, EntryStream, EntryStream}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("entry types = %v, want %v", got, want)
 	}
 }
@@ -132,8 +132,8 @@ func archivedShortcutEntry(t *testing.T, name, content string) Entry2 {
 	if len(entries) != 1 {
 		t.Fatalf("len(entries) = %d, want 1", len(entries))
 	}
-	if entries[0].Type() != EntryURL {
-		t.Fatalf("entry type = %v, want %v", entries[0].Type(), EntryURL)
+	if entries[0].Type() != EntryStream {
+		t.Fatalf("entry type = %v, want %v", entries[0].Type(), EntryStream)
 	}
 	return entries[0]
 }

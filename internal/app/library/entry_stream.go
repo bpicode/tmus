@@ -21,7 +21,7 @@ func (u urlFile) Name() string {
 }
 
 func (u urlFile) Type() EntryType {
-	return EntryURL
+	return EntryStream
 }
 
 func (u urlFile) Hidden() bool {
@@ -64,7 +64,7 @@ func (s streamFile) Name() string {
 }
 
 func (s streamFile) Type() EntryType {
-	return EntryURL
+	return EntryStream
 }
 
 func (s streamFile) Hidden() bool {

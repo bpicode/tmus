@@ -38,7 +38,7 @@ func entryTypeFromExt(ext string) EntryType {
 	case ".wav":
 		return EntryWAV
 	case ".url", ".stream":
-		return EntryURL
+		return EntryStream
 	default:
 		return EntryOther
 	}

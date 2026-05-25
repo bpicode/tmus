@@ -69,7 +69,7 @@ func (a archiveEntry) Open(ctx context.Context) (AudioSource, error) {
 	if !a.IsAudio() {
 		return AudioSource{}, errNotAudio
 	}
-	if a.Type() == EntryURL {
+	if a.Type() == EntryStream {
 		return a.openShortcut(ctx)
 	}
 	source, err := LocalResolver{}.Resolve(ctx, a.path)

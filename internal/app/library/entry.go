@@ -18,7 +18,7 @@ const (
 	EntryM4A
 	EntryMP4
 	EntryWAV
-	EntryURL
+	EntryStream
 	EntryOther
 )
 

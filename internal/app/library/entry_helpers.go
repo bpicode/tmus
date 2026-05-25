@@ -1,6 +1,7 @@
 package library
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -82,4 +83,12 @@ func isURLFile(path string) bool {
 
 func isStreamFile(path string) bool {
 	return strings.EqualFold(filepath.Ext(path), ".stream")
+}
+
+func openRemoteAudio(ctx context.Context, uri string) (AudioSource, error) {
+	source, err := NewHTTPResolver().Resolve(ctx, uri)
+	if err != nil {
+		return AudioSource{}, err
+	}
+	return AudioSource{Reader: source.Reader, Format: formatFromExt(source.Ext)}, nil
 }

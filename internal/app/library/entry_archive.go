@@ -102,11 +102,7 @@ func (a archiveEntry) openShortcut(ctx context.Context) (AudioSource, error) {
 	if err != nil {
 		return AudioSource{}, err
 	}
-	source, err := NewHTTPResolver().Resolve(ctx, uri)
-	if err != nil {
-		return AudioSource{}, err
-	}
-	return AudioSource{Reader: source.Reader, Format: formatFromExt(source.Ext)}, nil
+	return openRemoteAudio(ctx, uri)
 }
 
 func (a archiveEntry) IsAudio() bool {

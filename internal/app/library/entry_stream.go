@@ -39,11 +39,7 @@ func (u urlFile) Open(ctx context.Context) (AudioSource, error) {
 	if err != nil {
 		return AudioSource{}, err
 	}
-	source, err := NewHTTPResolver().Resolve(ctx, uri)
-	if err != nil {
-		return AudioSource{}, err
-	}
-	return AudioSource{Reader: source.Reader, Format: formatFromExt(source.Ext)}, nil
+	return openRemoteAudio(ctx, uri)
 }
 
 func (u urlFile) IsAudio() bool {
@@ -86,11 +82,7 @@ func (s streamFile) Open(ctx context.Context) (AudioSource, error) {
 	if err != nil {
 		return AudioSource{}, err
 	}
-	source, err := NewHTTPResolver().Resolve(ctx, uri)
-	if err != nil {
-		return AudioSource{}, err
-	}
-	return AudioSource{Reader: source.Reader, Format: formatFromExt(source.Ext)}, nil
+	return openRemoteAudio(ctx, uri)
 }
 
 func (s streamFile) IsAudio() bool {

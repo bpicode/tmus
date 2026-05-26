@@ -43,6 +43,10 @@ func (d dirEntry) IsDir() bool {
 	return true
 }
 
+func (d dirEntry) IsArchive() bool {
+	return false
+}
+
 func (d dirEntry) CanBrowse() bool {
 	return true
 }

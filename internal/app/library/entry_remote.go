@@ -42,6 +42,10 @@ func (r remoteEntry) IsDir() bool {
 	return false
 }
 
+func (r remoteEntry) IsArchive() bool {
+	return false
+}
+
 func (r remoteEntry) CanBrowse() bool {
 	return false
 }

@@ -47,6 +47,10 @@ func (a archiveFile) IsDir() bool {
 	return false
 }
 
+func (a archiveFile) IsArchive() bool {
+	return true
+}
+
 func (a archiveFile) CanBrowse() bool {
 	return true
 }
@@ -156,6 +160,10 @@ func (a archiveEntry) Parent() string {
 
 func (a archiveEntry) IsDir() bool {
 	return a.isDir
+}
+
+func (a archiveEntry) IsArchive() bool {
+	return false
 }
 
 func (a archiveEntry) CanBrowse() bool {

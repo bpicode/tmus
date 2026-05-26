@@ -48,6 +48,10 @@ func (a audioFile) IsDir() bool {
 	return false
 }
 
+func (a audioFile) IsArchive() bool {
+	return false
+}
+
 func (a audioFile) CanBrowse() bool {
 	return false
 }

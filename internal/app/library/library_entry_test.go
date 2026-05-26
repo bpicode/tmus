@@ -173,14 +173,15 @@ func TestEntryBrowseIntent(t *testing.T) {
 	archiveEntryByName := mapEntriesByName(archiveEntries)
 
 	tests := []struct {
-		name       string
-		entry      Entry
-		wantDir    bool
-		wantBrowse bool
-		wantPath   string
+		name        string
+		entry       Entry
+		wantDir     bool
+		wantArchive bool
+		wantBrowse  bool
+		wantPath    string
 	}{
 		{name: "directory", entry: entryByName["albums"], wantDir: true, wantBrowse: true, wantPath: filepath.Join(dir, "albums")},
-		{name: "archive file", entry: entryByName["music.zip"], wantBrowse: true, wantPath: archiveRoot},
+		{name: "archive file", entry: entryByName["music.zip"], wantArchive: true, wantBrowse: true, wantPath: archiveRoot},
 		{name: "archive directory", entry: archiveEntryByName["folder"], wantDir: true, wantBrowse: true, wantPath: BuildArchivePath("zip", archivePath, "folder")},
 		{name: "audio file", entry: entryByName["song.mp3"]},
 		{name: "archive audio", entry: archiveEntryByName["root.mp3"]},
@@ -192,6 +193,7 @@ func TestEntryBrowseIntent(t *testing.T) {
 				return
 			}
 			assert.Equal(t, tt.wantDir, tt.entry.IsDir())
+			assert.Equal(t, tt.wantArchive, tt.entry.IsArchive())
 			assert.Equal(t, tt.wantBrowse, tt.entry.CanBrowse())
 
 			gotPath, gotOK := tt.entry.BrowsePath()

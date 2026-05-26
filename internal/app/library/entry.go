@@ -54,6 +54,7 @@ type Entry interface {
 	IsAudio() bool
 	Parent() string
 	IsDir() bool
+	IsArchive() bool
 	CanBrowse() bool
 	BrowsePath() (string, bool)
 }

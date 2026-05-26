@@ -54,6 +54,10 @@ func (u urlFile) IsDir() bool {
 	return false
 }
 
+func (u urlFile) IsArchive() bool {
+	return false
+}
+
 func (u urlFile) CanBrowse() bool {
 	return false
 }
@@ -106,6 +110,10 @@ func (s streamFile) Parent() string {
 }
 
 func (s streamFile) IsDir() bool {
+	return false
+}
+
+func (s streamFile) IsArchive() bool {
 	return false
 }
 

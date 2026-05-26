@@ -101,18 +101,12 @@ func (m *Model) openSelection() tea.Cmd {
 	if !ok {
 		return nil
 	}
-	if selected.Type() == library.EntryArchive {
-		if archivePath, ok := library.OpenArchiveRoot(selected.Path()); ok {
-			m.clearSearch()
-			return m.loadDir(archivePath)
-		}
-		return nil
-	}
-	if selected.Type() != library.EntryDir {
+	browsePath, ok := selected.BrowsePath()
+	if !ok {
 		return nil
 	}
 	m.clearSearch()
-	return m.loadDir(selected.Path())
+	return m.loadDir(browsePath)
 }
 
 func (m *Model) upDir() tea.Cmd {
@@ -324,7 +318,7 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 		m.list, cmd = m.list.Update(msg)
 		return cmd, true
 	case "enter":
-		if selected, ok := m.selected(); ok && selected.Type() != library.EntryDir && selected.IsAudio() {
+		if selected, ok := m.selected(); ok && !selected.IsDir() && selected.IsAudio() {
 			cmd := core.Command{
 				Type:  core.CmdAdd,
 				Track: core.Track{Name: selected.Name(), Path: selected.Path()},
@@ -337,7 +331,7 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 		return m.upDir(), true
 	case "a":
 		if selected, ok := m.selected(); ok {
-			if selected.Type() != library.EntryDir && selected.IsAudio() {
+			if !selected.IsDir() && selected.IsAudio() {
 				cmd := core.Command{
 					Type:  core.CmdAdd,
 					Track: core.Track{Name: selected.Name(), Path: selected.Path()},
@@ -351,7 +345,7 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 		visible := m.visibleEntries()
 		tracks := make([]core.Track, 0, len(visible))
 		for _, entry := range visible {
-			if entry.Type() == library.EntryDir || !entry.IsAudio() {
+			if entry.IsDir() || !entry.IsAudio() {
 				continue
 			}
 			tracks = append(tracks, core.Track{Name: entry.Name(), Path: entry.Path()})

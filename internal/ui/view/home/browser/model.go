@@ -2,8 +2,6 @@ package browser
 
 import (
 	"os"
-	"path"
-	"path/filepath"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
@@ -111,25 +109,15 @@ func (m *Model) openSelection() tea.Cmd {
 
 func (m *Model) upDir() tea.Cmd {
 	m.errorView.SetErr(nil)
-	if library.IsArchivePath(m.Cwd) {
-		scheme, archivePath, inner, err := library.SplitArchivePath(m.Cwd)
-		if err != nil {
-			m.errorView.SetErr(err)
-			return nil
-		}
-		if inner == "" {
-			m.clearSearch()
-			return m.loadDir(filepath.Dir(archivePath))
-		}
-		parent := path.Dir(inner)
-		if parent == "." {
-			parent = ""
-		}
-		m.clearSearch()
-		return m.loadDir(library.BuildArchivePath(scheme, archivePath, parent))
+
+	entry, err := library.EntryFromPath(m.Cwd)
+	if err != nil {
+		m.errorView.SetErr(err)
+		return nil
 	}
-	parent := filepath.Dir(m.Cwd)
-	if parent == m.Cwd {
+
+	parent := entry.Parent()
+	if parent == "" || parent == m.Cwd {
 		return nil
 	}
 	m.clearSearch()

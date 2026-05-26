@@ -53,4 +53,7 @@ type Entry interface {
 	Open(ctx context.Context) (AudioSource, error)
 	IsAudio() bool
 	Parent() string
+	IsDir() bool
+	CanBrowse() bool
+	BrowsePath() (string, bool)
 }

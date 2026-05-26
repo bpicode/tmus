@@ -43,6 +43,22 @@ func (a archiveFile) Parent() string {
 	return filepath.Dir(a.path)
 }
 
+func (a archiveFile) IsDir() bool {
+	return false
+}
+
+func (a archiveFile) CanBrowse() bool {
+	return true
+}
+
+func (a archiveFile) BrowsePath() (string, bool) {
+	handler := DefaultArchiveRegistry().FindHandler(a.path)
+	if handler == nil {
+		return "", false
+	}
+	return BuildArchivePath(handler.Scheme(), a.path, ""), true
+}
+
 type archiveEntry struct {
 	path  string
 	name  string
@@ -136,6 +152,21 @@ func (a archiveEntry) Parent() string {
 		parent = ""
 	}
 	return BuildArchivePath(scheme, archivePath, parent)
+}
+
+func (a archiveEntry) IsDir() bool {
+	return a.isDir
+}
+
+func (a archiveEntry) CanBrowse() bool {
+	return a.isDir
+}
+
+func (a archiveEntry) BrowsePath() (string, bool) {
+	if !a.CanBrowse() {
+		return "", false
+	}
+	return a.path, true
 }
 
 type nopSeekCloser struct{ io.ReadSeeker }

@@ -37,3 +37,15 @@ func (r remoteEntry) IsAudio() bool {
 func (r remoteEntry) Parent() string {
 	return ""
 }
+
+func (r remoteEntry) IsDir() bool {
+	return false
+}
+
+func (r remoteEntry) CanBrowse() bool {
+	return false
+}
+
+func (r remoteEntry) BrowsePath() (string, bool) {
+	return "", false
+}

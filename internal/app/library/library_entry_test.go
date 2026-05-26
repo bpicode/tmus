@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEntryFromPathLocalEntries(t *testing.T) {
@@ -143,6 +145,62 @@ func TestListFiltersAndSortsArchiveEntries(t *testing.T) {
 	}
 }
 
+func TestEntryBrowseIntent(t *testing.T) {
+	dir := t.TempDir()
+	mustMkdir(t, filepath.Join(dir, "albums"))
+	mustWriteFile(t, filepath.Join(dir, "song.mp3"), "")
+	archivePath := filepath.Join(dir, "music.zip")
+	createZip(t, archivePath, map[string]string{
+		"folder/song.mp3": "",
+		"root.mp3":        "",
+	})
+
+	archiveRoot, ok := OpenArchiveRoot(archivePath)
+	if !ok {
+		t.Fatal("OpenArchiveRoot() did not recognize zip archive")
+	}
+
+	entries, err := List(dir)
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+	entryByName := mapEntriesByName(entries)
+
+	archiveEntries, err := List(archiveRoot)
+	if err != nil {
+		t.Fatalf("List() archive error = %v", err)
+	}
+	archiveEntryByName := mapEntriesByName(archiveEntries)
+
+	tests := []struct {
+		name       string
+		entry      Entry
+		wantDir    bool
+		wantBrowse bool
+		wantPath   string
+	}{
+		{name: "directory", entry: entryByName["albums"], wantDir: true, wantBrowse: true, wantPath: filepath.Join(dir, "albums")},
+		{name: "archive file", entry: entryByName["music.zip"], wantBrowse: true, wantPath: archiveRoot},
+		{name: "archive directory", entry: archiveEntryByName["folder"], wantDir: true, wantBrowse: true, wantPath: BuildArchivePath("zip", archivePath, "folder")},
+		{name: "audio file", entry: entryByName["song.mp3"]},
+		{name: "archive audio", entry: archiveEntryByName["root.mp3"]},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if !assert.NotNil(t, tt.entry) {
+				return
+			}
+			assert.Equal(t, tt.wantDir, tt.entry.IsDir())
+			assert.Equal(t, tt.wantBrowse, tt.entry.CanBrowse())
+
+			gotPath, gotOK := tt.entry.BrowsePath()
+			assert.Equal(t, tt.wantBrowse, gotOK)
+			assert.Equal(t, tt.wantPath, gotPath)
+		})
+	}
+}
+
 func TestArchiveEntryOpenStreamShortcut(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "audio/mpeg")
@@ -229,6 +287,14 @@ func entryTypes(entries []Entry) []EntryType {
 		types = append(types, entry.Type())
 	}
 	return types
+}
+
+func mapEntriesByName(entries []Entry) map[string]Entry {
+	result := make(map[string]Entry, len(entries))
+	for _, entry := range entries {
+		result[entry.Name()] = entry
+	}
+	return result
 }
 
 func mustMkdir(t *testing.T, path string) {

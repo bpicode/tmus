@@ -38,3 +38,15 @@ func (d dirEntry) IsAudio() bool {
 func (d dirEntry) Parent() string {
 	return filepath.Dir(d.path)
 }
+
+func (d dirEntry) IsDir() bool {
+	return true
+}
+
+func (d dirEntry) CanBrowse() bool {
+	return true
+}
+
+func (d dirEntry) BrowsePath() (string, bool) {
+	return d.path, true
+}

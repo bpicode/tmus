@@ -43,3 +43,15 @@ func (a audioFile) IsAudio() bool {
 func (a audioFile) Parent() string {
 	return filepath.Dir(a.path)
 }
+
+func (a audioFile) IsDir() bool {
+	return false
+}
+
+func (a audioFile) CanBrowse() bool {
+	return false
+}
+
+func (a audioFile) BrowsePath() (string, bool) {
+	return "", false
+}

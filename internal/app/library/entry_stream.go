@@ -50,6 +50,18 @@ func (u urlFile) Parent() string {
 	return filepath.Dir(u.path)
 }
 
+func (u urlFile) IsDir() bool {
+	return false
+}
+
+func (u urlFile) CanBrowse() bool {
+	return false
+}
+
+func (u urlFile) BrowsePath() (string, bool) {
+	return "", false
+}
+
 type streamFile struct {
 	path string
 	name string
@@ -91,4 +103,16 @@ func (s streamFile) IsAudio() bool {
 
 func (s streamFile) Parent() string {
 	return filepath.Dir(s.path)
+}
+
+func (s streamFile) IsDir() bool {
+	return false
+}
+
+func (s streamFile) CanBrowse() bool {
+	return false
+}
+
+func (s streamFile) BrowsePath() (string, bool) {
+	return "", false
 }

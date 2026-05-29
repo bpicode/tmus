@@ -11,7 +11,7 @@ import (
 
 type sevenZipHandler struct{}
 
-func NewSevenZipHandler() ArchiveHandler {
+func newSevenZipHandler() archiveHandler {
 	return &sevenZipHandler{}
 }
 

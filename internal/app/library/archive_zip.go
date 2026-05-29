@@ -10,7 +10,7 @@ import (
 
 type zipHandler struct{}
 
-func NewZipHandler() ArchiveHandler {
+func newZipHandler() archiveHandler {
 	return &zipHandler{}
 }
 

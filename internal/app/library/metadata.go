@@ -70,7 +70,7 @@ func readMetadata(path string) (Metadata, error) {
 	if IsRemote(path) {
 		return Metadata{}, errors.New("remote metadata not supported")
 	}
-	if handler := DefaultArchiveRegistry().FindHandler(path); handler != nil {
+	if handler := archiveHandlers().findHandler(path); handler != nil {
 		rc, err := handler.Open(path)
 		if err != nil {
 			return Metadata{}, fmt.Errorf("open archived file: %w", err)

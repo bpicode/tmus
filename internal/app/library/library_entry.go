@@ -7,7 +7,7 @@ import (
 
 // List returns browsable entries for a local directory or archive path.
 func List(path string) ([]Entry, error) {
-	if handler := DefaultArchiveRegistry().FindHandler(path); handler != nil {
+	if handler := archiveHandlers().findHandler(path); handler != nil {
 		return listArchive(handler, path)
 	}
 	return listDir(path)
@@ -43,7 +43,7 @@ func listDir(path string) ([]Entry, error) {
 	return items, nil
 }
 
-func listArchive(handler ArchiveHandler, path string) ([]Entry, error) {
+func listArchive(handler archiveHandler, path string) ([]Entry, error) {
 	entries, err := handler.List(path, true)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func localEntryFromPath(path string, isDir bool) Entry {
 	switch {
 	case isDir:
 		return dirEntry{path: path, name: name}
-	case DefaultArchiveRegistry().FindHandler(path) != nil:
+	case archiveHandlers().findHandler(path) != nil:
 		return archiveFile{path: path, name: name}
 	case isURLFile(path):
 		return urlFile{path: path, name: name}

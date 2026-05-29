@@ -17,12 +17,12 @@ func TestArchiveHandlers(t *testing.T) {
 		"test-archive.7z",
 		"test-archive.rar",
 	}
-	registry := DefaultArchiveRegistry()
+	registry := archiveHandlers()
 
 	for _, testArchive := range testArchives {
 		t.Run(testArchive, func(t *testing.T) {
 			p := filepath.Join("testdata", testArchive)
-			h := registry.FindHandler(p)
+			h := registry.findHandler(p)
 			assert.NotNil(t, h)
 
 			l, err := h.List(p, false)

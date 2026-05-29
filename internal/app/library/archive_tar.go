@@ -19,15 +19,15 @@ type tarHandler struct {
 	xz     bool
 }
 
-func NewTarHandler() ArchiveHandler {
+func newTarHandler() archiveHandler {
 	return &tarHandler{scheme: "tar", exts: []string{".tar"}}
 }
 
-func NewTarGzHandler() ArchiveHandler {
+func newTarGzHandler() archiveHandler {
 	return &tarHandler{scheme: "targz", exts: []string{".tar.gz", ".tgz"}, gzip: true}
 }
 
-func NewTarXzHandler() ArchiveHandler {
+func newTarXzHandler() archiveHandler {
 	return &tarHandler{scheme: "tarxz", exts: []string{".tar.xz", ".txz"}, xz: true}
 }
 

@@ -11,7 +11,7 @@ import (
 
 type rarHandler struct{}
 
-func NewRarHandler() ArchiveHandler {
+func newRarHandler() archiveHandler {
 	return &rarHandler{}
 }
 

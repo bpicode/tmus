@@ -56,7 +56,7 @@ func (a archiveFile) CanBrowse() bool {
 }
 
 func (a archiveFile) BrowsePath() (string, bool) {
-	handler := DefaultArchiveRegistry().FindHandler(a.path)
+	handler := archiveHandlers().findHandler(a.path)
 	if handler == nil {
 		return "", false
 	}
@@ -99,7 +99,7 @@ func (a archiveEntry) Open(ctx context.Context) (AudioSource, error) {
 }
 
 func (a archiveEntry) openAudio() (AudioSource, error) {
-	handler := DefaultArchiveRegistry().FindHandler(a.path)
+	handler := archiveHandlers().findHandler(a.path)
 	if handler == nil {
 		return AudioSource{}, errNotAudio
 	}
@@ -117,7 +117,7 @@ func (a archiveEntry) openAudio() (AudioSource, error) {
 }
 
 func (a archiveEntry) openShortcut(ctx context.Context) (AudioSource, error) {
-	handler := DefaultArchiveRegistry().FindHandler(a.path)
+	handler := archiveHandlers().findHandler(a.path)
 	if handler == nil {
 		return AudioSource{}, errNotAudio
 	}

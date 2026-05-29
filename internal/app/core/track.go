@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/bpicode/tmus/internal/app/library"
@@ -22,7 +23,7 @@ type Track struct {
 
 // IsRemote reports whether the track is hosted externally (e.g., HTTP/HTTPS).
 func (t Track) IsRemote() bool {
-	return library.IsRemote(t.Path)
+	return strings.HasPrefix(t.Path, "http://") || strings.HasPrefix(t.Path, "https://")
 }
 
 // DisplayName returns the most user-friendly track name available.

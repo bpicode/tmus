@@ -406,7 +406,7 @@ func (s *Service) metadataMap(state core.State) map[string]dbus.Variant {
 	}
 	if track.Path != "" {
 		trackURI := track.Path
-		if !library.IsRemote(track.Path) {
+		if !track.IsRemote() {
 			trackURI = fileURI(track.Path)
 		}
 		if trackURI != "" {
@@ -514,13 +514,17 @@ func resolveURI(value string) (string, error) {
 		}
 		return path, nil
 	}
-	if library.IsRemote(value) {
+	if isRemoteURI(value) {
 		return value, nil
 	}
 	if filepath.IsAbs(value) {
 		return value, nil
 	}
 	return "", errors.New("unsupported uri")
+}
+
+func isRemoteURI(value string) bool {
+	return strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://")
 }
 
 func fileURI(path string) string {

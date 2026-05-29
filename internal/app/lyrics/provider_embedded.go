@@ -2,8 +2,7 @@ package lyrics
 
 import (
 	"errors"
-
-	"github.com/bpicode/tmus/internal/app/library"
+	"strings"
 )
 
 // RawLyricsReader returns raw embedded lyrics for a track path.
@@ -29,7 +28,7 @@ func (p embeddedProvider) find(track TrackInfo) (Lyrics, error) {
 	if track.Path == "" {
 		return Lyrics{}, errors.New("track path is empty")
 	}
-	if library.IsRemote(track.Path) {
+	if isRemote(track.Path) {
 		return Lyrics{}, errors.New("embedded lyrics are not supported for remote tracks")
 	}
 	if p.read == nil {
@@ -50,4 +49,8 @@ func (p embeddedProvider) find(track TrackInfo) (Lyrics, error) {
 		Source:     p.name(),
 		SourcePath: track.Path,
 	}, nil
+}
+
+func isRemote(path string) bool {
+	return strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://")
 }

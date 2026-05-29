@@ -1,6 +1,9 @@
 package core
 
 import (
+	"net/url"
+	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/bpicode/tmus/internal/app/library"
@@ -34,7 +37,21 @@ func (t Track) DisplayName() string {
 		return t.Name
 	}
 	if t.Path != "" {
-		return library.BaseName(t.Path)
+		if entry, err := library.EntryFromPath(t.Path); err == nil {
+			return entry.Name()
+		}
+		return fallbackTrackName(t.Path)
 	}
 	return ""
+}
+
+func fallbackTrackName(value string) string {
+	if parsed, err := url.Parse(value); err == nil && parsed.Scheme != "" && parsed.Path != "" {
+		name := path.Base(parsed.Path)
+		if name != "/" && name != "." {
+			return name
+		}
+		return value
+	}
+	return filepath.Base(value)
 }

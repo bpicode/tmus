@@ -190,7 +190,9 @@ func (m *Model) restore(s State) {
 		}
 		name := entry.Name
 		if name == "" {
-			name = library.BaseName(entry.Path)
+			if libraryEntry, err := library.EntryFromPath(entry.Path); err == nil {
+				name = libraryEntry.Name()
+			}
 		}
 		tracks = append(tracks, core.Track{
 			Name:     name,

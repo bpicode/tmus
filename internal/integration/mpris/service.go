@@ -214,12 +214,13 @@ func (s *Service) OpenUri(uri string) *dbus.Error {
 	if err != nil {
 		return dbus.MakeFailedError(err)
 	}
-	if !library.IsAudio(path) {
+	entry, err := library.EntryFromPath(path)
+	if err != nil || !entry.IsAudio() {
 		return dbus.MakeFailedError(fmt.Errorf("unsupported media: %s", path))
 	}
 	state := s.app.State()
 	index := len(state.Playlist)
-	track := core.Track{Name: library.BaseName(path), Path: path}
+	track := core.Track{Name: entry.Name(), Path: entry.Path()}
 	if err := s.dispatch(core.Command{Type: core.CmdAddAll, Tracks: []core.Track{track}}); err != nil {
 		return err
 	}

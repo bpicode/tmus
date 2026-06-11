@@ -16,6 +16,7 @@ func addConfigFlags(cmd *cobra.Command) {
 	cmd.Flags().Int("buffer-ms", 0, "override speaker buffer size in milliseconds")
 	cmd.Flags().Bool("mpris", true, "enable DBus/MPRIS media controls")
 	cmd.Flags().Int("fps", 0, "frames per second for the terminal UI (1-120)")
+	cmd.Flags().String("artwork-renderer", "", "album artwork renderer: auto, kitty, blocks, or none")
 }
 
 func loadConfigFromFlags(cmd *cobra.Command) (config.Config, error) {
@@ -66,6 +67,9 @@ func loadConfigFromFlags(cmd *cobra.Command) (config.Config, error) {
 
 	if tuiFps, _ := cmd.Flags().GetInt("fps"); cmd.Flags().Changed("fps") {
 		cfg.TUI.FPS = tuiFps
+	}
+	if artworkRenderer, _ := cmd.Flags().GetString("artwork-renderer"); cmd.Flags().Changed("artwork-renderer") {
+		cfg.TUI.ArtworkRenderer = artworkRenderer
 	}
 
 	if err := cfg.Validate(); err != nil {

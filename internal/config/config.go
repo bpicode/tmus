@@ -35,10 +35,11 @@ type ThemeConfig struct {
 }
 
 type TUIConfig struct {
-	FPS           int         `toml:"FPS" comment:"Frames per second for the terminal UI (1-120)."`
-	ArtworkAspect float64     `toml:"artwork_aspect" comment:"Artwork box width/height ratio for terminal cells (e.g., 2.0 looks square on most fonts)."`
-	BrowserHome   string      `toml:"browser_home" comment:"Default directory of music browser"`
-	Theme         ThemeConfig `toml:"theme"`
+	FPS             int         `toml:"FPS" comment:"Frames per second for the terminal UI (1-120)."`
+	ArtworkRenderer string      `toml:"artwork_renderer" comment:"Album artwork renderer: auto, kitty, blocks, or none."`
+	ArtworkAspect   float64     `toml:"artwork_aspect" comment:"Artwork box width/height ratio for terminal cells (e.g., 2.0 looks square on most fonts)."`
+	BrowserHome     string      `toml:"browser_home" comment:"Default directory of music browser"`
+	Theme           ThemeConfig `toml:"theme"`
 }
 
 type LyricsConfig struct {
@@ -79,8 +80,9 @@ func Default() Config {
 			Enabled: true,
 		},
 		TUI: TUIConfig{
-			FPS:           60,
-			ArtworkAspect: 2.0,
+			FPS:             60,
+			ArtworkRenderer: "auto",
+			ArtworkAspect:   2.0,
 			BrowserHome: func() string {
 				d, _ := os.UserHomeDir()
 				return d
@@ -183,6 +185,11 @@ func (c Config) Validate() error {
 	}
 	if c.TUI.ArtworkAspect <= 0 {
 		return fmt.Errorf("tui.artwork_aspect must be > 0")
+	}
+	switch c.TUI.ArtworkRenderer {
+	case "auto", "kitty", "blocks", "none":
+	default:
+		return fmt.Errorf("tui.artwork_renderer must be one of auto, kitty, blocks, none")
 	}
 	return nil
 }

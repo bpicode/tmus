@@ -70,7 +70,7 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 		app:       appRef,
 		home:      home.NewModel(home.Config{Cwd: cwd, HomeDir: cfg.BrowserHome, Theme: th, App: appRef}),
 		help:      help.NewModel(th),
-		trackInfo: track_info.NewModel(track_info.Config{Theme: th, App: appRef}),
+		trackInfo: track_info.NewModel(track_info.Config{Theme: th, ArtworkAspect: cfg.ArtworkAspect, ArtworkRenderer: cfg.ArtworkRenderer, App: appRef}),
 		lyrics:    lyrics.NewModel(lyrics.Config{Theme: th, App: appRef, FollowLine: st.Lyrics.FollowLine}),
 		styles:    newStyles(th),
 	}
@@ -133,8 +133,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
-			m.Shutdown()
-			cmds = append(cmds, tea.Quit)
+			cmds = append(cmds, tea.Sequence(m.Shutdown(), tea.Quit))
 		}
 		switch msg.Key().Text {
 		case "?":
@@ -154,7 +153,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case playlist.ToggleTrackInfoMsg:
 		if !m.lyrics.Visible() && !m.help.Visible() {
-			m.trackInfo.Show(true)
+			cmds = append(cmds, m.trackInfo.Show(true))
 		}
 	case tickMsg:
 		cmds = append(cmds, tickCmd())
@@ -302,7 +301,8 @@ func (m *Model) SaveState() error {
 	})
 }
 
-func (m *Model) Shutdown() {
+func (m *Model) Shutdown() tea.Cmd {
+	cleanupCmd := m.trackInfo.Show(false)
 	if m.events.unsubState != nil {
 		m.events.unsubState()
 		m.events.unsubState = nil
@@ -316,6 +316,7 @@ func (m *Model) Shutdown() {
 		m.events.unsubLyrics = nil
 	}
 	m.app.Shutdown()
+	return cleanupCmd
 }
 
 // stateClosedMsg is returned when the state event channel is closed.

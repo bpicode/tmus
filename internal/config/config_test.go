@@ -11,6 +11,21 @@ func TestDefaultConfigHasNoErrors(t *testing.T) {
 	cfg := Default()
 	err := cfg.Validate()
 	assert.NoError(t, err)
+	assert.Equal(t, "auto", cfg.TUI.ArtworkRenderer)
+}
+
+func TestArtworkRendererValidation(t *testing.T) {
+	for _, renderer := range []string{"auto", "kitty", "blocks", "none"} {
+		t.Run(renderer, func(t *testing.T) {
+			cfg := Default()
+			cfg.TUI.ArtworkRenderer = renderer
+			assert.NoError(t, cfg.Validate())
+		})
+	}
+
+	cfg := Default()
+	cfg.TUI.ArtworkRenderer = "sixel"
+	assert.ErrorContains(t, cfg.Validate(), "tui.artwork_renderer")
 }
 
 func TestWriteAndRead(t *testing.T) {

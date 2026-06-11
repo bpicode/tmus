@@ -33,9 +33,10 @@ type Model struct {
 }
 
 type Config struct {
-	Theme         theme.Theme
-	ArtworkAspect float64
-	App           *core.App
+	Theme           theme.Theme
+	ArtworkAspect   float64
+	ArtworkRenderer string
+	App             *core.App
 }
 
 func NewModel(cfg Config) *Model {
@@ -48,7 +49,7 @@ func NewModel(cfg Config) *Model {
 	styles := newStyles(cfg.Theme)
 	return &Model{
 		viewport: vp,
-		artwork:  terminalimage.NewModel(artworkAspect, "No artwork"),
+		artwork:  terminalimage.NewModel(artworkAspect, "No artwork", terminalimage.Renderer(cfg.ArtworkRenderer)),
 		app:      cfg.App,
 		styles:   styles,
 	}
@@ -74,7 +75,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 	m.width = msg.Width
 	m.height = msg.Height
-	return m, nil, false
+	return m, rawCmd(m.syncArtwork()), false
 }
 
 func (m *Model) handleMetadataEvent(event core.MetadataEvent) (*Model, tea.Cmd, bool) {
@@ -97,7 +98,7 @@ func (m *Model) handleMetadataEvent(event core.MetadataEvent) (*Model, tea.Cmd, 
 	}
 	m.err = ""
 	m.data = event.Metadata
-	return m, nil, false
+	return m, rawCmd(m.syncArtwork()), false
 }
 
 func (m *Model) handleKeyPressMsg(msg tea.KeyPressMsg) (*Model, tea.Cmd, bool) {
@@ -106,8 +107,7 @@ func (m *Model) handleKeyPressMsg(msg tea.KeyPressMsg) (*Model, tea.Cmd, bool) {
 	}
 	switch msg.String() {
 	case "q", "esc", "i":
-		m.Show(false)
-		return m, nil, true
+		return m, m.Show(false), true
 	case "up", "k":
 		m.viewport.ScrollUp(1)
 		return m, nil, true
@@ -131,22 +131,22 @@ func (m *Model) handleKeyPressMsg(msg tea.KeyPressMsg) (*Model, tea.Cmd, bool) {
 	}
 }
 
-func (m *Model) Show(show bool) {
+func (m *Model) Show(show bool) tea.Cmd {
 	if show {
 		state := m.app.State()
 		if len(state.Playlist) == 0 {
-			return
+			return nil
 		}
 		cursor := state.Playing
 		if state.Cursor != -1 {
 			cursor = state.Cursor
 		}
 		if cursor < 0 || cursor >= len(state.Playlist) {
-			return
+			return nil
 		}
 		track := state.Playlist[cursor]
 		if track.ID == 0 || track.Path == "" {
-			return
+			return nil
 		}
 
 		m.show = true
@@ -171,6 +171,7 @@ func (m *Model) Show(show bool) {
 		m.viewport.GotoTop()
 		m.data = library.Metadata{}
 	}
+	return rawCmd(m.syncArtwork())
 }
 
 func (m *Model) Visible() bool {
@@ -204,14 +205,6 @@ func (m *Model) View() string {
 	m.viewport.SetContentLines([]string{truncate.Right{}.MaxWidth(rightWidth).Render(rightLines)})
 
 	styleRight := m.styles.Artwork.Width(leftWidth).Height(areaHeight)
-	artworkWidth := leftWidth - m.styles.Artwork.GetHorizontalFrameSize()
-	artworkHeight := areaHeight - m.styles.Artwork.GetVerticalFrameSize()
-	m.artwork.SetSize(artworkWidth, artworkHeight)
-	if m.data.Picture != nil {
-		m.artwork.SetImage(&terminalimage.Data{Bytes: m.data.Picture.Data})
-	} else {
-		m.artwork.SetImage(nil)
-	}
 
 	leftBlock := ""
 	if leftWidth > 0 {
@@ -243,6 +236,41 @@ func (m *Model) innerSize() (int, int) {
 	contentWidth := max(m.width-m.styles.Overlay.GetHorizontalFrameSize(), 0)
 	contentHeight := max(m.height-m.styles.Overlay.GetVerticalFrameSize(), 0)
 	return contentWidth, contentHeight
+}
+
+func (m *Model) syncArtwork() string {
+	if !m.show {
+		return m.artwork.Clear()
+	}
+	contentWidth, contentHeight := m.innerSize()
+	if contentWidth < 1 || contentHeight < 1 {
+		return m.artwork.Clear()
+	}
+	headerHeight := min(len(m.headerLines(contentWidth)), contentHeight)
+	if contentHeight <= headerHeight {
+		return m.artwork.Clear()
+	}
+
+	areaHeight := contentHeight - headerHeight
+	fields := metadataFields(m.data)
+	leftWidth, _, _ := metadataColumnWidths(contentWidth, areaHeight, fields, m.artwork.Aspect())
+	artworkWidth := leftWidth - m.styles.Artwork.GetHorizontalFrameSize()
+	artworkHeight := areaHeight - m.styles.Artwork.GetVerticalFrameSize()
+
+	raw := m.artwork.SetSize(artworkWidth, artworkHeight)
+	if m.data.Picture != nil {
+		raw += m.artwork.SetImage(&terminalimage.Data{Bytes: m.data.Picture.Data})
+	} else {
+		raw += m.artwork.SetImage(nil)
+	}
+	return raw
+}
+
+func rawCmd(raw string) tea.Cmd {
+	if raw == "" {
+		return nil
+	}
+	return tea.Raw(raw)
 }
 
 func (m *Model) headerLines(maxWidth int) []string {

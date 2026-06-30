@@ -1,6 +1,6 @@
 # tmus
 
-`tmus` is a minimal terminal music player written in Go.
+`tmus` is a terminal music player written in Go.
 
 ![Demo usage](/images/demo.gif?raw=true "Demo usage")
 
@@ -8,6 +8,7 @@
 
 - Supports MP3, WAV, FLAC, Ogg Vorbis, Opus, and M4A/MP4
 - Plays audio directly from zip, tar, tar.gz/tgz, tar.xz/txz, rar, and 7z archives
+- Plays HTTP(S) streams directly or through `.url`/`.stream` shortcut files
 - Keyboard-driven playback controls (play/pause/next/prev/stop)
 - Multiple queue modes (Linear, Repeat All, Repeat One, Shuffle, Stop After Current)
 - Lyrics overlay (supports embedded metadata, sidecar `.lrc`/`.txt`, and online fetching via LRCLIB)

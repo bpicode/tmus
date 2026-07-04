@@ -7,6 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
+	"github.com/bpicode/tmus/internal/ui/components/sanitize"
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 )
 
@@ -38,9 +39,9 @@ func (m *statusModel) View() string {
 		return truncateLeft.Render(text)
 	}
 	elapsed := appState.Elapsed()
-	track := filepath.Base(appState.PlayTrack)
+	track := sanitize.TerminalText(filepath.Base(appState.PlayTrack))
 	if appState.Playing >= 0 && appState.Playing < len(appState.Playlist) {
-		track = appState.Playlist[appState.Playing].DisplayName()
+		track = sanitize.TerminalText(appState.Playlist[appState.Playing].DisplayName())
 	}
 	duration := fmt.Sprintf(" [%s]", formatDuration(elapsed))
 	if appState.PlayDuration > 0 {

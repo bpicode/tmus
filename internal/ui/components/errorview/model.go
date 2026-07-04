@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/bpicode/tmus/internal/ui/components/sanitize"
 )
 
 type Model struct {
@@ -40,7 +41,7 @@ func (m *Model) View() string {
 		sb.WriteString("\n")
 	}
 	for i, errItem := range unwrapped {
-		sb.WriteString(m.styles.Error.Render("    → " + errItem.Error()))
+		sb.WriteString(m.styles.Error.Render("    → " + sanitize.TerminalText(errItem.Error())))
 		if i < len(unwrapped)-1 {
 			sb.WriteString("\n")
 		}
@@ -49,7 +50,7 @@ func (m *Model) View() string {
 }
 
 func (m *Model) viewHeader() string {
-	return m.styles.Error.Render("❌ " + m.err.Error())
+	return m.styles.Error.Render("❌ " + sanitize.TerminalText(m.err.Error()))
 }
 
 func (m *Model) unwrapErr() []error {

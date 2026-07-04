@@ -11,9 +11,9 @@ import (
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/lyrics"
 	"github.com/bpicode/tmus/internal/ui/components/errorview"
+	"github.com/bpicode/tmus/internal/ui/components/sanitize"
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 	"github.com/bpicode/tmus/internal/ui/theme"
-	"github.com/charmbracelet/x/ansi"
 )
 
 type Model struct {
@@ -68,7 +68,7 @@ func (m *Model) View() string {
 	m.lyricsViewport.SetHeight(viewportHeight)
 
 	title := truncate.Right{Style: m.styles.title}.MaxWidth(availableWidth).Render("📜 Lyrics")
-	trackName := sanitizeTerminalText(displayNameForTrack(state, m.trackID, m.trackPath))
+	trackName := sanitize.TerminalText(displayNameForTrack(state, m.trackID, m.trackPath))
 	track := truncate.Right{Style: m.styles.track}.MaxWidth(availableWidth).Render(trackName)
 	pad := ""
 	headers := strings.Join([]string{title, track, pad}, "\n")
@@ -311,23 +311,9 @@ func lyricsLinesForWidth(lines []lyrics.Line, width int, active int, styles styl
 			style = styles.activeLine
 		}
 		truncateRight := truncate.Right{Style: style}.MaxWidth(width)
-		out = append(out, truncateRight.Render(sanitizeTerminalText(line.Text)))
+		out = append(out, truncateRight.Render(sanitize.TerminalText(line.Text)))
 	}
 	return out
-}
-
-func sanitizeTerminalText(value string) string {
-	if value == "" {
-		return ""
-	}
-	value = strings.ReplaceAll(value, "\t", "    ")
-	value = ansi.Strip(value)
-	return strings.Map(func(r rune) rune {
-		if r < 0x20 || r == 0x7f {
-			return -1
-		}
-		return r
-	}, value)
 }
 
 func lyricsTrackForOpen(state core.State) (core.Track, int, bool) {

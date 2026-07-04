@@ -12,6 +12,7 @@ import (
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/ui/components/errorview"
+	"github.com/bpicode/tmus/internal/ui/components/sanitize"
 	"github.com/bpicode/tmus/internal/ui/theme"
 )
 
@@ -152,7 +153,7 @@ func (m *Model) View() string {
 	sb.WriteString(title.Render("📂 Files"))
 	sb.WriteString("\n")
 	pathWidth := max(0, m.width-panelStyle.GetHorizontalFrameSize())
-	sb.WriteString(m.styles.cwd.MaxWidth(pathWidth).Render(m.Cwd))
+	sb.WriteString(m.styles.cwd.MaxWidth(pathWidth).Render(sanitize.TerminalText(m.Cwd)))
 	sb.WriteString("\n")
 	sb.WriteString(m.searchView())
 	sb.WriteString("\n")
@@ -276,7 +277,7 @@ func (m *Model) searchView() string {
 	case m.list.SettingFilter():
 		return m.list.FilterInput.View()
 	case m.list.IsFiltered():
-		return m.styles.searchActive.Render("Search: " + m.list.FilterValue())
+		return m.styles.searchActive.Render("Search: " + sanitize.TerminalText(m.list.FilterValue()))
 	default:
 		return m.styles.searchInactive.Render("Search: /")
 	}
@@ -390,7 +391,7 @@ type browserListItem struct {
 }
 
 func (i browserListItem) FilterValue() string {
-	return i.entry.Name()
+	return sanitize.TerminalText(i.entry.Name())
 }
 
 func clamp(v, min, max int) int {

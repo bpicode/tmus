@@ -13,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
+	"github.com/bpicode/tmus/internal/ui/components/sanitize"
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 	"github.com/bpicode/tmus/internal/ui/theme"
 )
@@ -213,7 +214,7 @@ func (m *Model) View() string {
 		m.styles.separator.Render(strings.Repeat("─", innerWidth)),
 	}
 	if state.PlaylistErr != nil {
-		lines = append(lines, m.styles.err.Render(state.PlaylistErr.Error()))
+		lines = append(lines, m.styles.err.Render(sanitize.TerminalText(state.PlaylistErr.Error())))
 	}
 
 	footerLines := 0
@@ -454,7 +455,7 @@ func (m *Model) searchView() string {
 	case m.list.SettingFilter():
 		return m.list.FilterInput.View()
 	case m.list.IsFiltered():
-		return m.styles.searchActive.Render("Search: " + m.list.FilterValue())
+		return m.styles.searchActive.Render("Search: " + sanitize.TerminalText(m.list.FilterValue()))
 	default:
 		return m.styles.searchInactive.Render("Search: /")
 	}
@@ -491,7 +492,7 @@ type playlistListItem struct {
 }
 
 func (i playlistListItem) FilterValue() string {
-	return i.track.DisplayName()
+	return sanitize.TerminalText(i.track.DisplayName())
 }
 
 type playlistDelegate struct {
@@ -519,7 +520,7 @@ func (d playlistDelegate) Render(w io.Writer, m list.Model, index int, item list
 	if !ok {
 		return
 	}
-	name := playlistItem.track.DisplayName()
+	name := sanitize.TerminalText(playlistItem.track.DisplayName())
 	prefix := "  "
 	isPlaying := playlistItem.index == d.model.playing && d.model.playState == core.PlaybackPlaying
 	if isPlaying {

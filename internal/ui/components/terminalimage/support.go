@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/bpicode/tmus/internal/ui/components/sanitize"
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 )
 
@@ -48,7 +49,7 @@ func (m *Model) renderPlaceholder(label string) string {
 		return ""
 	}
 	truncateRight := truncate.Right{}.MaxWidth(m.width)
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, truncateRight.Render(label))
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, truncateRight.Render(sanitize.TerminalText(label)))
 }
 
 func decode(imageData *Data) (image.Image, error) {

@@ -10,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
+	"github.com/bpicode/tmus/internal/ui/components/sanitize"
 	"github.com/bpicode/tmus/internal/ui/components/terminalimage"
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 	"github.com/bpicode/tmus/internal/ui/theme"
@@ -277,7 +278,7 @@ func (m *Model) headerLines(maxWidth int) []string {
 	lines := make([]string, 0, 3)
 	lines = append(lines, truncate.Right{Style: m.styles.Title}.MaxWidth(maxWidth).Render("🎵 Track info"))
 	if m.trackPath != "" {
-		lines = append(lines, truncate.Right{Style: m.styles.Subtitle}.MaxWidth(maxWidth).Render(m.trackPath))
+		lines = append(lines, truncate.Right{Style: m.styles.Subtitle}.MaxWidth(maxWidth).Render(sanitize.TerminalText(m.trackPath)))
 	}
 	lines = append(lines, "")
 	return lines
@@ -291,7 +292,7 @@ func (m *Model) rightLines(maxWidth int, fields []field) string {
 	case m.loading:
 		return m.styles.Subtitle.Render("Loading...")
 	case m.err != "":
-		return m.styles.Error.Render(m.err)
+		return m.styles.Error.Render(sanitize.TerminalText(m.err))
 	default:
 		return m.metadataFieldLines(fields)
 	}
@@ -319,6 +320,7 @@ func formatPicture(pic *library.Picture) string {
 }
 
 func normalizeMetadataValue(value string) string {
+	value = sanitize.TerminalText(value)
 	if value == "" {
 		return "-"
 	}

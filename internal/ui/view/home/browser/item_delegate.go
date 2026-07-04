@@ -9,6 +9,7 @@ import (
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/bpicode/tmus/internal/ui/components/sanitize"
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 )
 
@@ -41,18 +42,19 @@ func (i itemDelegate) Render(w io.Writer, m list.Model, index int, item list.Ite
 	ext := strings.ToLower(filepath.Ext(entry.entry.Path()))
 	isStream := ext == ".url" || ext == ".stream"
 
-	name := entry.entry.Name()
+	entryName := sanitize.TerminalText(entry.entry.Name())
+	name := entryName
 	if entry.entry.IsDir() {
-		name = "📁 " + entry.entry.Name() + string(filepath.Separator)
+		name = "📁 " + entryName + string(filepath.Separator)
 	}
 	if entry.entry.IsArchive() {
-		name = "📦 " + entry.entry.Name()
+		name = "📦 " + entryName
 	}
 	if entry.entry.IsAudio() {
 		if isStream {
-			name = "📻 " + entry.entry.Name()
+			name = "📻 " + entryName
 		} else {
-			name = "🎵 " + entry.entry.Name()
+			name = "🎵 " + entryName
 		}
 	}
 

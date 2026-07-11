@@ -59,13 +59,19 @@ type CacheConfig struct {
 	Dir string `toml:"dir" comment:"Base directory where cache files are stored"`
 }
 
+// LibraryConfig holds media library settings.
+type LibraryConfig struct {
+	MaxArchiveMemberSize ByteSize `toml:"max_archive_member_size" comment:"Maximum decoded size of one file inside an archive."`
+}
+
 // Config is the root configuration object.
 type Config struct {
-	Audio  AudioConfig  `toml:"audio"`
-	MPRIS  MPRISConfig  `toml:"mpris"`
-	TUI    TUIConfig    `toml:"tui"`
-	Lyrics LyricsConfig `toml:"lyrics"`
-	Cache  CacheConfig  `toml:"cache"`
+	Audio   AudioConfig   `toml:"audio"`
+	MPRIS   MPRISConfig   `toml:"mpris"`
+	TUI     TUIConfig     `toml:"tui"`
+	Lyrics  LyricsConfig  `toml:"lyrics"`
+	Cache   CacheConfig   `toml:"cache"`
+	Library LibraryConfig `toml:"library"`
 }
 
 // Default returns the default configuration.
@@ -114,6 +120,9 @@ func Default() Config {
 				}
 				return filepath.Join(d, "tmus")
 			}(),
+		},
+		Library: LibraryConfig{
+			MaxArchiveMemberSize: 512 * 1024 * 1024,
 		},
 	}
 }
@@ -190,6 +199,9 @@ func (c Config) Validate() error {
 	case "auto", "kitty", "blocks", "none":
 	default:
 		return fmt.Errorf("tui.artwork_renderer must be one of auto, kitty, blocks, none")
+	}
+	if c.Library.MaxArchiveMemberSize <= 0 {
+		return fmt.Errorf("library.max_archive_member_size must be > 0")
 	}
 	return nil
 }

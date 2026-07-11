@@ -23,6 +23,7 @@ func TestByteSizeUnmarshalTextUnits(t *testing.T) {
 		{name: "mebibytes", raw: "512MiB", want: 512 * 1024 * 1024},
 		{name: "gibibytes", raw: "3GiB", want: 3 * 1024 * 1024 * 1024},
 		{name: "tebibytes", raw: "1TiB", want: 1 * 1024 * 1024 * 1024 * 1024},
+		{name: "max int64 bytes", raw: "9223372036854775807B", want: 1<<63 - 1},
 	}
 
 	for _, tt := range tests {
@@ -38,7 +39,7 @@ func TestByteSizeUnmarshalTextUnits(t *testing.T) {
 }
 
 func TestByteSizeUnmarshalTextRejectsInvalidValues(t *testing.T) {
-	for _, raw := range []string{"512M", "512mb", "512 MiB", "", "9223372036854775808B"} {
+	for _, raw := range []string{"512M", "512mb", "512 MiB", "", "9223372036854775808B", "9223372036854776KB"} {
 		t.Run(raw, func(t *testing.T) {
 			var got ByteSize
 

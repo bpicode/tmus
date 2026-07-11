@@ -96,14 +96,14 @@ func parseByteSize(value string) (int64, error) {
 		return 0, fmt.Errorf("unsupported byte size unit %q", unit)
 	}
 
-	magnitude, err := strconv.ParseUint(number, 10, 64)
+	magnitude, err := strconv.ParseInt(number, 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("parse byte size: %w", err)
 	}
-	if magnitude > uint64(math.MaxInt64)/uint64(mult) {
+	if magnitude > math.MaxInt64/mult {
 		return 0, fmt.Errorf("byte size overflows int64")
 	}
 
-	bytes := int64(magnitude) * mult
+	bytes := magnitude * mult
 	return sign * bytes, nil
 }

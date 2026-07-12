@@ -46,7 +46,12 @@ type TrackInfo struct {
 
 // ReadMetadataBasic reads artist, title, album, and duration metadata.
 func ReadMetadataBasic(path string) (Metadata, error) {
-	meta, err := readMetadata(path)
+	return defaultLibrary.ReadMetadataBasic(path)
+}
+
+// ReadMetadataBasic reads artist, title, album, and duration metadata.
+func (l *Library) ReadMetadataBasic(path string) (Metadata, error) {
+	meta, err := l.readMetadata(path)
 	if err != nil {
 		return Metadata{}, err
 	}
@@ -63,14 +68,19 @@ func ReadMetadataBasic(path string) (Metadata, error) {
 
 // ReadMetadataExtended reads all supported metadata, including artwork.
 func ReadMetadataExtended(path string) (Metadata, error) {
-	return readMetadata(path)
+	return defaultLibrary.ReadMetadataExtended(path)
 }
 
-func readMetadata(path string) (Metadata, error) {
+// ReadMetadataExtended reads all supported metadata, including artwork.
+func (l *Library) ReadMetadataExtended(path string) (Metadata, error) {
+	return l.readMetadata(path)
+}
+
+func (l *Library) readMetadata(path string) (Metadata, error) {
 	if isRemote(path) {
 		return Metadata{}, errors.New("remote metadata not supported")
 	}
-	if handler := archiveHandlers().findHandler(path); handler != nil {
+	if handler := l.archive.findHandler(path); handler != nil {
 		rc, err := handler.open(path)
 		if err != nil {
 			return Metadata{}, fmt.Errorf("open archived file: %w", err)

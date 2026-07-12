@@ -11,6 +11,7 @@ import (
 )
 
 type archiveFile struct {
+	lib  *Library
 	path string
 	name string
 }
@@ -60,7 +61,11 @@ func (a archiveFile) CanBrowse() bool {
 }
 
 func (a archiveFile) BrowsePath() (string, bool) {
-	handler := archiveHandlers().findHandler(a.path)
+	lib := a.lib
+	if lib == nil {
+		lib = defaultLibrary
+	}
+	handler := lib.archive.findHandler(a.path)
 	if handler == nil {
 		return "", false
 	}
@@ -68,6 +73,7 @@ func (a archiveFile) BrowsePath() (string, bool) {
 }
 
 type archiveEntry struct {
+	lib   *Library
 	path  string
 	name  string
 	isDir bool
@@ -103,7 +109,7 @@ func (a archiveEntry) Open(ctx context.Context) (AudioSource, error) {
 }
 
 func (a archiveEntry) openAudio() (AudioSource, error) {
-	handler := archiveHandlers().findHandler(a.path)
+	handler := a.library().archive.findHandler(a.path)
 	if handler == nil {
 		return AudioSource{}, errNotAudio
 	}
@@ -121,7 +127,7 @@ func (a archiveEntry) openAudio() (AudioSource, error) {
 }
 
 func (a archiveEntry) openShortcut(ctx context.Context) (AudioSource, error) {
-	handler := archiveHandlers().findHandler(a.path)
+	handler := a.library().archive.findHandler(a.path)
 	if handler == nil {
 		return AudioSource{}, errNotAudio
 	}
@@ -183,6 +189,13 @@ func (a archiveEntry) BrowsePath() (string, bool) {
 		return "", false
 	}
 	return a.path, true
+}
+
+func (a archiveEntry) library() *Library {
+	if a.lib != nil {
+		return a.lib
+	}
+	return defaultLibrary
 }
 
 type nopSeekCloser struct{ io.ReadSeeker }

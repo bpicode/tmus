@@ -55,7 +55,7 @@ func (a *App) metadataWorker() {
 			}
 			continue
 		}
-		meta, err := readMetadataForScope(req.Path, req.Scope)
+		meta, err := a.readMetadataForScope(req.Path, req.Scope)
 		if err != nil {
 			// Only surface errors for explicit extended requests to avoid spamming
 			// subscribers with "no metadata" during background basic reads.
@@ -86,12 +86,12 @@ func (a *App) metadataWorker() {
 	}
 }
 
-func readMetadataForScope(path string, scope MetadataScope) (library.Metadata, error) {
+func (a *App) readMetadataForScope(path string, scope MetadataScope) (library.Metadata, error) {
 	switch scope {
 	case MetadataExtended:
-		return library.ReadMetadataExtended(path)
+		return a.lib.ReadMetadataExtended(path)
 	default:
-		return library.ReadMetadataBasic(path)
+		return a.lib.ReadMetadataBasic(path)
 	}
 }
 
@@ -99,7 +99,7 @@ func (a *App) readMetadataExtendedCached(path string) (library.Metadata, error) 
 	if meta, ok := a.getCachedMetadata(path, MetadataExtended); ok {
 		return meta, nil
 	}
-	meta, err := library.ReadMetadataExtended(path)
+	meta, err := a.lib.ReadMetadataExtended(path)
 	if err != nil {
 		return library.Metadata{}, err
 	}

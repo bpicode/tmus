@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/app/lyrics"
 	"github.com/bpicode/tmus/internal/app/player"
 	"github.com/bpicode/tmus/internal/config"
@@ -131,6 +132,7 @@ type App struct {
 
 	engine *player.Engine
 	queue  QueueStrategy
+	lib    *library.Library
 
 	lastVolume  int
 	nextTrackID uint64
@@ -182,12 +184,16 @@ type metadataRequest struct {
 // New constructs a new App.
 func New(cfg config.Config) *App {
 	ctx, cancel := context.WithCancel(context.Background())
+	lib := library.New(library.Options{
+		MaxArchiveMemberBytes: int64(cfg.Library.MaxArchiveMemberSize),
+	})
 	app := &App{
 		engine: player.NewEngine(player.Options{
 			SampleRate:      cfg.Audio.SampleRate,
 			ResampleQuality: cfg.Audio.ResampleQuality,
 			BufferDuration:  time.Duration(cfg.Audio.BufferMs) * time.Millisecond,
 		}),
+		lib: lib,
 		state: State{
 			Playing:   -1,
 			Cursor:    -1,

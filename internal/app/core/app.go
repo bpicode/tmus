@@ -192,6 +192,7 @@ func New(cfg config.Config) *App {
 			SampleRate:      cfg.Audio.SampleRate,
 			ResampleQuality: cfg.Audio.ResampleQuality,
 			BufferDuration:  time.Duration(cfg.Audio.BufferMs) * time.Millisecond,
+			Library:         lib,
 		}),
 		lib: lib,
 		state: State{

@@ -53,6 +53,8 @@ type Options struct {
 	SampleRate      int
 	ResampleQuality int
 	BufferDuration  time.Duration
+	// Library resolves playback paths. If nil, default library options are used.
+	Library *library.Library
 }
 
 // Engine runs audio playback in a background goroutine.
@@ -75,6 +77,7 @@ type Engine struct {
 	volumeLevel int
 	sourceRate  beep.SampleRate
 	trackDur    time.Duration
+	lib         *library.Library
 
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -83,12 +86,17 @@ type Engine struct {
 
 func NewEngine(opts Options) *Engine {
 	ctx, cancel := context.WithCancel(context.Background())
+	lib := opts.Library
+	if lib == nil {
+		lib = library.New(library.DefaultOptions())
+	}
 	e := &Engine{
 		cmdCh:      make(chan command, 8),
 		eventCh:    make(chan Event, 8),
 		targetRate: beep.SampleRate(opts.SampleRate),
 		resampleQ:  opts.ResampleQuality,
 		bufferDur:  opts.BufferDuration,
+		lib:        lib,
 		ctx:        ctx,
 		cancel:     cancel,
 	}
@@ -194,7 +202,7 @@ func (e *Engine) playPath(uri string) {
 	e.playCancel = playCancel
 	e.mu.Unlock()
 
-	entry, err := library.EntryFromPath(uri)
+	entry, err := e.lib.EntryFromPath(uri)
 	if err != nil {
 		e.sendEvent(Event{Type: EventTrackError, Path: uri, Err: err})
 		return

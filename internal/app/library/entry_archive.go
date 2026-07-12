@@ -109,11 +109,7 @@ func (a archiveEntry) Open(ctx context.Context) (AudioSource, error) {
 }
 
 func (a archiveEntry) openAudio() (AudioSource, error) {
-	handler := a.library().archive.findHandler(a.path)
-	if handler == nil {
-		return AudioSource{}, errNotAudio
-	}
-	rc, err := handler.open(a.path)
+	rc, err := a.library().openArchiveEntry(a.path)
 	if err != nil {
 		return AudioSource{}, err
 	}
@@ -127,11 +123,7 @@ func (a archiveEntry) openAudio() (AudioSource, error) {
 }
 
 func (a archiveEntry) openShortcut(ctx context.Context) (AudioSource, error) {
-	handler := a.library().archive.findHandler(a.path)
-	if handler == nil {
-		return AudioSource{}, errNotAudio
-	}
-	rc, err := handler.open(a.path)
+	rc, err := a.library().openArchiveEntry(a.path)
 	if err != nil {
 		return AudioSource{}, err
 	}

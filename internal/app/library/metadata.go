@@ -80,8 +80,8 @@ func (l *Library) readMetadata(path string) (Metadata, error) {
 	if isRemote(path) {
 		return Metadata{}, errors.New("remote metadata not supported")
 	}
-	if handler := l.archive.findHandler(path); handler != nil {
-		rc, err := handler.open(path)
+	if l.archive.findHandler(path) != nil {
+		rc, err := l.openArchiveEntry(path)
 		if err != nil {
 			return Metadata{}, fmt.Errorf("open archived file: %w", err)
 		}

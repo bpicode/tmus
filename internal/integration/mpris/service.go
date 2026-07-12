@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/bpicode/tmus/internal/app/core"
-	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/godbus/dbus/v5"
 )
 
@@ -214,7 +213,7 @@ func (s *Service) OpenUri(uri string) *dbus.Error {
 	if err != nil {
 		return dbus.MakeFailedError(err)
 	}
-	entry, err := library.EntryFromPath(path)
+	entry, err := s.app.Library().EntryFromPath(path)
 	if err != nil || !entry.IsAudio() {
 		return dbus.MakeFailedError(fmt.Errorf("unsupported media: %s", path))
 	}

@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
+	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/bpicode/tmus/internal/ui/view/home/browser"
 	"github.com/bpicode/tmus/internal/ui/view/home/playlist"
@@ -22,11 +23,12 @@ type Config struct {
 	HomeDir string
 	Theme   theme.Theme
 	App     *core.App
+	Library *library.Library
 }
 
 func NewModel(cfg Config) *Model {
 	return &Model{
-		browser:  browser.NewModel(browser.Config{Cwd: cfg.Cwd, HomeDir: cfg.HomeDir, Theme: cfg.Theme, App: cfg.App}),
+		browser:  browser.NewModel(browser.Config{Cwd: cfg.Cwd, HomeDir: cfg.HomeDir, Theme: cfg.Theme, App: cfg.App, Library: cfg.Library}),
 		playlist: playlist.NewModel(playlist.Config{Theme: cfg.Theme, App: cfg.App}),
 	}
 }

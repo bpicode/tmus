@@ -281,6 +281,11 @@ func (a *App) State() State {
 	return copyState(a.state)
 }
 
+// Library returns the configured library service used by the app.
+func (a *App) Library() *library.Library {
+	return a.lib
+}
+
 // Dispatch queues a command for processing.
 func (a *App) Dispatch(cmd Command) error {
 	select {

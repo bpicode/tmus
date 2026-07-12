@@ -20,6 +20,7 @@ import (
 
 type Model struct {
 	app       *core.App
+	lib       *library.Library
 	home      *home.Model
 	help      *help.Model
 	trackInfo *track_info.Model
@@ -44,6 +45,7 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 	if err != nil {
 		st = State{}
 	}
+	lib := appRef.Library()
 
 	cwd := startDir
 	if cwd == "" && st.Browser.Cwd != "" {
@@ -54,7 +56,7 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 			cwd = wd
 		}
 	}
-	if entry, err := library.EntryFromPath(cwd); err == nil {
+	if entry, err := lib.EntryFromPath(cwd); err == nil {
 		if filesystemPath, ok := entry.FilesystemPath(); ok && filesystemPath == cwd {
 			if abs, err := filepath.Abs(cwd); err == nil {
 				cwd = abs
@@ -68,7 +70,8 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 	th := theme.New(cfg.Theme)
 	m := &Model{
 		app:       appRef,
-		home:      home.NewModel(home.Config{Cwd: cwd, HomeDir: cfg.BrowserHome, Theme: th, App: appRef}),
+		lib:       lib,
+		home:      home.NewModel(home.Config{Cwd: cwd, HomeDir: cfg.BrowserHome, Theme: th, App: appRef, Library: lib}),
 		help:      help.NewModel(th),
 		trackInfo: track_info.NewModel(track_info.Config{Theme: th, ArtworkAspect: cfg.ArtworkAspect, ArtworkRenderer: cfg.ArtworkRenderer, App: appRef}),
 		lyrics:    lyrics.NewModel(lyrics.Config{Theme: th, App: appRef, FollowLine: st.Lyrics.FollowLine}),
@@ -192,7 +195,7 @@ func (m *Model) restore(s State) {
 		}
 		name := entry.Name
 		if name == "" {
-			if libraryEntry, err := library.EntryFromPath(entry.Path); err == nil {
+			if libraryEntry, err := m.lib.EntryFromPath(entry.Path); err == nil {
 				name = libraryEntry.Name()
 			}
 		}
@@ -234,7 +237,7 @@ func (m *Model) openFiles(openFiles []string) {
 	startIndex := len(m.app.State().Playlist)
 	tracks := make([]core.Track, 0, len(openFiles))
 	for _, file := range openFiles {
-		entry, err := library.EntryFromPath(normalizeInputPath(file))
+		entry, err := m.lib.EntryFromPath(normalizeInputPath(file))
 		if err == nil && entry.IsAudio() {
 			tracks = append(tracks, core.Track{
 				Name: entry.Name(),

@@ -11,9 +11,12 @@ type loadDirMsg struct {
 	Err   error
 }
 
-func loadDirCmd(path string, showHidden bool) tea.Cmd {
+func loadDirCmd(lib *library.Library, path string, showHidden bool) tea.Cmd {
+	if lib == nil {
+		lib = library.New(library.DefaultOptions())
+	}
 	return func() tea.Msg {
-		items, err := library.List(path)
+		items, err := lib.List(path)
 		if err == nil && !showHidden {
 			items = filterHiddenEntries(items)
 		}

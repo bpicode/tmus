@@ -26,6 +26,7 @@ type Model struct {
 	show       bool
 	focus      bool
 	app        *core.App
+	lib        *library.Library
 	list       list.Model
 	errorView  *errorview.Model
 	styles     styles
@@ -36,9 +37,14 @@ type Config struct {
 	HomeDir string
 	Theme   theme.Theme
 	App     *core.App
+	Library *library.Library
 }
 
 func NewModel(cfg Config) *Model {
+	lib := cfg.Library
+	if lib == nil {
+		lib = library.New(library.DefaultOptions())
+	}
 	styles := newStyles(cfg.Theme)
 	delegate := newEntryDelegate(styles)
 	browserList := list.New(nil, delegate, 0, 0)
@@ -70,6 +76,7 @@ func NewModel(cfg Config) *Model {
 		Cwd:       cfg.Cwd,
 		homeDir:   cfg.HomeDir,
 		app:       cfg.App,
+		lib:       lib,
 		list:      browserList,
 		errorView: errorview.New(errorview.Styles{Error: styles.err}),
 		styles:    styles,
@@ -79,7 +86,7 @@ func NewModel(cfg Config) *Model {
 
 func (m *Model) loadDir(path string) tea.Cmd {
 	m.Cwd = path
-	return loadDirCmd(path, m.showHidden)
+	return loadDirCmd(m.lib, path, m.showHidden)
 }
 
 func (m *Model) loadHomeDir() tea.Cmd {
@@ -111,7 +118,7 @@ func (m *Model) openSelection() tea.Cmd {
 func (m *Model) upDir() tea.Cmd {
 	m.errorView.SetErr(nil)
 
-	entry, err := library.EntryFromPath(m.Cwd)
+	entry, err := m.lib.EntryFromPath(m.Cwd)
 	if err != nil {
 		m.errorView.SetErr(err)
 		return nil
@@ -139,7 +146,7 @@ func (m *Model) selected() (library.Entry, bool) {
 }
 
 func (m *Model) Init() tea.Cmd {
-	return loadDirCmd(m.Cwd, m.showHidden)
+	return loadDirCmd(m.lib, m.Cwd, m.showHidden)
 }
 
 func (m *Model) View() string {

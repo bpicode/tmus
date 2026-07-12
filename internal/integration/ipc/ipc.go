@@ -27,13 +27,16 @@ type response struct {
 	Error string `json:"error,omitempty"`
 }
 
-func buildTracks(paths []string) []core.Track {
+func buildTracks(lib *library.Library, paths []string) []core.Track {
 	if len(paths) == 0 {
 		return nil
 	}
+	if lib == nil {
+		lib = library.New(library.DefaultOptions())
+	}
 	tracks := make([]core.Track, 0, len(paths))
 	for _, value := range paths {
-		entry, err := library.EntryFromPath(normalizeInputPath(value))
+		entry, err := lib.EntryFromPath(normalizeInputPath(value))
 		if err == nil && entry.IsAudio() {
 			tracks = append(tracks, core.Track{
 				Name: entry.Name(),

@@ -127,7 +127,7 @@ func handleConn(conn net.Conn, appRef *core.App) {
 		_ = enc.Encode(response{OK: false, Error: err.Error()})
 		return
 	}
-	tracks := buildTracks(req.Paths)
+	tracks := buildTracks(appRef.Library(), req.Paths)
 	if len(tracks) > 0 {
 		_ = appRef.Dispatch(core.Command{Type: core.CmdAddAll, Tracks: tracks})
 	}

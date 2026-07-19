@@ -39,7 +39,7 @@ func TestResolver_Find(t *testing.T) {
 		},
 		{
 			name:     "sidecar lrc file",
-			resolver: NewResolver(NewSidecarProvider()),
+			resolver: NewResolver(NewSidecarProvider(library.New(library.DefaultOptions()))),
 			track: TrackInfo{
 				Path: "testdata/Britney Sheers - Maybe One More Line.mp3",
 			},

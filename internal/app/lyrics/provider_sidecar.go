@@ -10,11 +10,16 @@ import (
 )
 
 // sidecarProvider resolves lyrics from .lrc or .txt files next to the track.
-type sidecarProvider struct{}
+type sidecarProvider struct {
+	lib *library.Library
+}
 
 // NewSidecarProvider creates a provider for sidecar lyric files.
-func NewSidecarProvider() Provider {
-	return sidecarProvider{}
+func NewSidecarProvider(lib *library.Library) Provider {
+	if lib == nil {
+		lib = library.New(library.DefaultOptions())
+	}
+	return sidecarProvider{lib: lib}
 }
 
 // Name returns the provider source.
@@ -30,7 +35,7 @@ func (p sidecarProvider) find(track TrackInfo) (Lyrics, error) {
 	if isRemote(track.Path) {
 		return Lyrics{}, errors.New("sidecar files are not supported for remote tracks")
 	}
-	entry, err := library.EntryFromPath(track.Path)
+	entry, err := p.lib.EntryFromPath(track.Path)
 	if err != nil {
 		return Lyrics{}, err
 	}

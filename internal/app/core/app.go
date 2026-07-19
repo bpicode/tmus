@@ -219,7 +219,7 @@ func New(cfg config.Config) *App {
 		stateEvents:    newTopic[StateEvent](),
 	}
 	app.lyricsResolver = lyrics.NewResolver(
-		lyrics.NewSidecarProvider(),
+		lyrics.NewSidecarProvider(lib),
 		lyrics.NewEmbeddedProvider(app.readLyricsFromTagsCached),
 		lyrics.NewLrcLibProvider(cfg.Lyrics.LrcLib, cfg.Cache.Dir),
 	)

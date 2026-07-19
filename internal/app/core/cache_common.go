@@ -2,9 +2,8 @@ package core
 
 import (
 	"os"
+	"strings"
 	"time"
-
-	"github.com/bpicode/tmus/internal/app/library"
 )
 
 type fileStat struct {
@@ -14,18 +13,10 @@ type fileStat struct {
 }
 
 func statPath(path string) fileStat {
-	if path == "" {
+	if path == "" || strings.Contains(path, "://") {
 		return fileStat{}
 	}
-	entry, err := library.EntryFromPath(path)
-	if err != nil {
-		return fileStat{}
-	}
-	filesystemPath, ok := entry.FilesystemPath()
-	if !ok || filesystemPath != path {
-		return fileStat{}
-	}
-	info, err := os.Stat(filesystemPath)
+	info, err := os.Stat(path)
 	if err != nil {
 		return fileStat{}
 	}

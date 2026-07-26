@@ -74,9 +74,9 @@ func (l *lrcLibProvider) find(track TrackInfo) (Lyrics, error) {
 	}
 
 	if err == nil && l.cacheEnabled {
-		if err := os.MkdirAll(l.cacheDir, 0o755); err == nil {
+		if err := os.MkdirAll(l.cacheDir, 0o700); err == nil {
 			if data, err := json.Marshal(res); err == nil {
-				_ = os.WriteFile(cacheFile, data, 0o644)
+				_ = os.WriteFile(cacheFile, data, 0o600)
 			}
 		}
 	}

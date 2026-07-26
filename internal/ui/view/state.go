@@ -94,14 +94,14 @@ func Save(path string, s State) error {
 	if dir == "" || dir == "." {
 		return fmt.Errorf("state path missing directory")
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
 	data, err := toml.Marshal(s)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	return os.WriteFile(path, data, 0o600)
 }
 
 // QueueModeString converts a queue mode into a persisted value.

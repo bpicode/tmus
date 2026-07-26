@@ -44,7 +44,8 @@ func TestReadMetadataBasic(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := filepath.Join("testdata", tt.file)
-			got, err := ReadMetadataBasic(path)
+			lib := New(DefaultOptions())
+			got, err := lib.ReadMetadataBasic(path)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 		})
@@ -53,13 +54,15 @@ func TestReadMetadataBasic(t *testing.T) {
 
 func TestReadMetadataBasicError(t *testing.T) {
 	path := filepath.Join("testdata", "does-not-exist.mp3")
-	_, err := ReadMetadataBasic(path)
+	lib := New(DefaultOptions())
+	_, err := lib.ReadMetadataBasic(path)
 	assert.Error(t, err)
 }
 
 func TestReadMetadataExtended(t *testing.T) {
 	path := filepath.Join("testdata", "Metalguy-ca - Master of Carpets.mp3")
-	m, err := ReadMetadataExtended(path)
+	lib := New(DefaultOptions())
+	m, err := lib.ReadMetadataExtended(path)
 	require.NoError(t, err)
 	assert.Equal(t, "Metalguy-ca", m.Artist)
 	assert.Equal(t, "Master of Carpets", m.Title)
@@ -70,6 +73,7 @@ func TestReadMetadataExtended(t *testing.T) {
 
 func TestReadMetadataExtendedError(t *testing.T) {
 	path := filepath.Join("testdata", "does-not-exist.mp3")
-	_, err := ReadMetadataExtended(path)
+	lib := New(DefaultOptions())
+	_, err := lib.ReadMetadataExtended(path)
 	assert.Error(t, err)
 }

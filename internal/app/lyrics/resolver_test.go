@@ -18,7 +18,8 @@ func TestResolver_Find(t *testing.T) {
 		{
 			name: "embedded ID3 tags",
 			resolver: NewResolver(NewEmbeddedProvider(func(path string) (string, error) {
-				m, err := library.ReadMetadataExtended(path)
+				lib := library.New(library.DefaultOptions())
+				m, err := lib.ReadMetadataExtended(path)
 				return m.Lyrics, err
 			})),
 			track: TrackInfo{

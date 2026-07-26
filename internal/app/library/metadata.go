@@ -45,11 +45,6 @@ type TrackInfo struct {
 }
 
 // ReadMetadataBasic reads artist, title, album, and duration metadata.
-func ReadMetadataBasic(path string) (Metadata, error) {
-	return defaultLibrary.ReadMetadataBasic(path)
-}
-
-// ReadMetadataBasic reads artist, title, album, and duration metadata.
 func (l *Library) ReadMetadataBasic(path string) (Metadata, error) {
 	meta, err := l.readMetadata(path)
 	if err != nil {
@@ -64,11 +59,6 @@ func (l *Library) ReadMetadataBasic(path string) (Metadata, error) {
 		Album:    meta.Album,
 		Duration: meta.Duration,
 	}, nil
-}
-
-// ReadMetadataExtended reads all supported metadata, including artwork.
-func ReadMetadataExtended(path string) (Metadata, error) {
-	return defaultLibrary.ReadMetadataExtended(path)
 }
 
 // ReadMetadataExtended reads all supported metadata, including artwork.

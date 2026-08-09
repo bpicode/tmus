@@ -59,10 +59,10 @@ func TestWriteAndRead(t *testing.T) {
 	tmpFilePath := filepath.Join(tempDir, "config.toml")
 
 	err := WriteDefault(tmpFilePath, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	loaded, err := Load(tmpFilePath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, Default(), loaded)
 }
 

@@ -339,9 +339,7 @@ func (s *Service) rootProperty(name string) (dbus.Variant, bool) {
 }
 
 func (s *Service) playerProperties(state core.State) map[string]dbus.Variant {
-	props := map[string]dbus.Variant{}
-	maps.Copy(props, s.playerPropertyMap(state))
-	return props
+	return maps.Clone(s.playerPropertyMap(state))
 }
 
 func (s *Service) playerProperty(name string, state core.State) (dbus.Variant, bool) {

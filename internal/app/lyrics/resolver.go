@@ -2,6 +2,7 @@ package lyrics
 
 import (
 	"fmt"
+	"slices"
 )
 
 // Resolver tries multiple providers in order.
@@ -12,7 +13,7 @@ type Resolver struct {
 // NewResolver creates a resolver with the given providers.
 // Providers are tried in the order they are given.
 func NewResolver(providers ...Provider) *Resolver {
-	return &Resolver{providers: append([]Provider(nil), providers...)}
+	return &Resolver{providers: slices.Clone(providers)}
 }
 
 // Find returns the first available lyrics from configured providers.

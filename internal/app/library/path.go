@@ -50,11 +50,12 @@ func entryExt(value string) string {
 	if !isArchivePath(value) {
 		return ""
 	}
-	parts := strings.SplitN(strings.TrimPrefix(value, "arch://"), "::", 2)
-	if len(parts) != 2 {
+	trimmed, _ := strings.CutPrefix(value, "arch://")
+	_, inner, ok := strings.Cut(trimmed, "::")
+	if !ok {
 		return ""
 	}
-	inner := strings.TrimPrefix(parts[1], "/")
+	inner = strings.TrimPrefix(inner, "/")
 	if inner == "" {
 		return ""
 	}

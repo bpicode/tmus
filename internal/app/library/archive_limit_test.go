@@ -1,7 +1,6 @@
 package library
 
 import (
-	"context"
 	"io"
 	"path/filepath"
 	"testing"
@@ -73,7 +72,7 @@ func TestArchiveLimitAppliesToAudioMetadataAndShortcuts(t *testing.T) {
 		entry, err := lib.EntryFromPath(entryPath)
 		require.NoError(t, err)
 
-		_, err = entry.Open(context.Background())
+		_, err = entry.Open(t.Context())
 		assert.ErrorIs(t, err, ErrArchiveMemberTooLarge)
 	})
 
@@ -89,7 +88,7 @@ func TestArchiveLimitAppliesToAudioMetadataAndShortcuts(t *testing.T) {
 		entry, err := lib.EntryFromPath(entryPath)
 		require.NoError(t, err)
 
-		_, err = entry.Open(context.Background())
+		_, err = entry.Open(t.Context())
 		assert.ErrorIs(t, err, ErrArchiveMemberTooLarge)
 	})
 }

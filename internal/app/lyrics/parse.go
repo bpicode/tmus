@@ -56,11 +56,11 @@ func isLrcTagLine(line string) bool {
 	if tag == "" {
 		return false
 	}
-	parts := strings.SplitN(tag, ":", 2)
-	if len(parts) != 2 {
+	name, _, ok := strings.Cut(tag, ":")
+	if !ok {
 		return false
 	}
-	switch strings.ToLower(parts[0]) {
+	switch strings.ToLower(name) {
 	case "ar", "ti", "al", "by", "offset", "length", "re", "ve":
 		return true
 	default:
@@ -94,12 +94,10 @@ func parseLrcLine(line string) ([]time.Duration, string, bool) {
 }
 
 func parseTimestamp(raw string) (time.Duration, bool) {
-	parts := strings.SplitN(raw, ":", 2)
-	if len(parts) != 2 {
+	minStr, secPart, ok := strings.Cut(raw, ":")
+	if !ok {
 		return 0, false
 	}
-	minStr := parts[0]
-	secPart := parts[1]
 	if minStr == "" || secPart == "" {
 		return 0, false
 	}

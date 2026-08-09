@@ -3,10 +3,13 @@ package library
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/ulikunitz/xz"
@@ -68,7 +71,7 @@ func (h *tarHandler) list(value string, showHidden bool) ([]Entry, error) {
 	children := map[string]Entry{}
 	for {
 		hdr, err := reader.next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -76,16 +79,16 @@ func (h *tarHandler) list(value string, showHidden bool) ([]Entry, error) {
 		}
 		name := hdr.Name
 		if inner != "" {
-			if !strings.HasPrefix(name, inner) {
+			var ok bool
+			name, ok = strings.CutPrefix(name, inner)
+			if !ok {
 				continue
 			}
-			name = strings.TrimPrefix(name, inner)
 		}
 		if name == "" {
 			continue
 		}
-		parts := strings.Split(name, "/")
-		child := parts[0]
+		child, _, hasMore := strings.Cut(name, "/")
 		if child == "" {
 			continue
 		}
@@ -93,7 +96,7 @@ func (h *tarHandler) list(value string, showHidden bool) ([]Entry, error) {
 			continue
 		}
 		entryPath := path.Join(inner, child)
-		if len(parts) > 1 || hdr.FileInfo().IsDir() {
+		if hasMore || hdr.FileInfo().IsDir() {
 			path := buildArchivePath(h.schemeName, archivePath, strings.TrimSuffix(entryPath, "/"))
 			children[child] = archiveEntry{
 				name:  child,
@@ -109,11 +112,7 @@ func (h *tarHandler) list(value string, showHidden bool) ([]Entry, error) {
 		}
 	}
 
-	entries := make([]Entry, 0, len(children))
-	for _, v := range children {
-		entries = append(entries, v)
-	}
-	return entries, nil
+	return slices.Collect(maps.Values(children)), nil
 }
 
 func (h *tarHandler) open(value string) (io.ReadCloser, error) {
@@ -132,7 +131,7 @@ func (h *tarHandler) open(value string) (io.ReadCloser, error) {
 
 	for {
 		hdr, err := reader.next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			reader.close()
 			return nil, fmt.Errorf("tar entry not found: %s", inner)
 		}

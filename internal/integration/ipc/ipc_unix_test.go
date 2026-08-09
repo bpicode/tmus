@@ -5,6 +5,7 @@ package ipc
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -38,7 +39,7 @@ func TestUnixSocketEncodesHandlerError(t *testing.T) {
 }
 
 func TestUnixSocketSessionHandsOffToPrimaryInstance(t *testing.T) {
-	runtimeDir := t.TempDir()
+	runtimeDir := privateTempDir(t)
 	t.Setenv("XDG_RUNTIME_DIR", runtimeDir)
 	ipcCfg := config.IPCConfig{SingleInstance: config.SingleInstanceUnixSocket}
 
@@ -47,7 +48,12 @@ func TestUnixSocketSessionHandsOffToPrimaryInstance(t *testing.T) {
 	require.False(t, primary.Handled())
 	t.Cleanup(func() { assert.NoError(t, primary.Close()) })
 
-	info, err := os.Stat(filepath.Join(runtimeDir, "tmus.sock"))
+	ipcDir := filepath.Join(runtimeDir, "tmus")
+	dirInfo, err := os.Stat(ipcDir)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o700), dirInfo.Mode().Perm())
+
+	info, err := os.Stat(filepath.Join(ipcDir, "tmus.sock"))
 	require.NoError(t, err)
 	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
 
@@ -72,7 +78,7 @@ func TestUnixSocketSessionHandsOffToPrimaryInstance(t *testing.T) {
 }
 
 func TestAutoClaimsUnixSocketWhenSupported(t *testing.T) {
-	runtimeDir := t.TempDir()
+	runtimeDir := privateTempDir(t)
 	t.Setenv("XDG_RUNTIME_DIR", runtimeDir)
 
 	session, err := Open(
@@ -83,14 +89,39 @@ func TestAutoClaimsUnixSocketWhenSupported(t *testing.T) {
 	require.False(t, session.Handled())
 	t.Cleanup(func() { assert.NoError(t, session.Close()) })
 
-	_, err = os.Stat(filepath.Join(runtimeDir, "tmus.sock"))
+	_, err = os.Stat(filepath.Join(runtimeDir, "tmus", "tmus.sock"))
 	assert.NoError(t, err)
 }
 
+func TestUnixSocketSessionUsesPrivateTemporaryDirectoryWithoutXDG(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv("XDG_RUNTIME_DIR", "")
+	t.Setenv("TMPDIR", tempDir)
+
+	session, err := Open(
+		config.IPCConfig{SingleInstance: config.SingleInstanceUnixSocket},
+		nil,
+	)
+	require.NoError(t, err)
+	require.False(t, session.Handled())
+	t.Cleanup(func() { assert.NoError(t, session.Close()) })
+
+	ipcDir := filepath.Join(tempDir, fmt.Sprintf("tmus-%d", os.Getuid()))
+	dirInfo, err := os.Stat(ipcDir)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o700), dirInfo.Mode().Perm())
+
+	socketInfo, err := os.Stat(filepath.Join(ipcDir, "tmus.sock"))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), socketInfo.Mode().Perm())
+}
+
 func TestUnixSocketSessionReclaimsStaleEndpoint(t *testing.T) {
-	runtimeDir := t.TempDir()
+	runtimeDir := privateTempDir(t)
 	t.Setenv("XDG_RUNTIME_DIR", runtimeDir)
-	socketPath := filepath.Join(runtimeDir, "tmus.sock")
+	ipcDir := filepath.Join(runtimeDir, "tmus")
+	require.NoError(t, os.Mkdir(ipcDir, 0o700))
+	socketPath := filepath.Join(ipcDir, "tmus.sock")
 	require.NoError(t, os.WriteFile(socketPath, nil, 0o600))
 
 	session, err := Open(
@@ -100,6 +131,80 @@ func TestUnixSocketSessionReclaimsStaleEndpoint(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, session.Handled())
 	assert.NoError(t, session.Close())
+}
+
+func TestIPCRuntimeDir(t *testing.T) {
+	t.Run("uses application directory under XDG runtime", func(t *testing.T) {
+		base := privateTempDir(t)
+		t.Setenv("XDG_RUNTIME_DIR", base)
+
+		dir, err := ipcRuntimeDir()
+		require.NoError(t, err)
+		assert.Equal(t, filepath.Join(base, "tmus"), dir)
+	})
+
+	t.Run("ignores relative XDG runtime", func(t *testing.T) {
+		base := t.TempDir()
+		t.Setenv("XDG_RUNTIME_DIR", "relative/runtime")
+		t.Setenv("TMPDIR", base)
+
+		dir, err := ipcRuntimeDir()
+		require.NoError(t, err)
+		assert.Equal(t, filepath.Join(base, fmt.Sprintf("tmus-%d", os.Getuid())), dir)
+	})
+
+	t.Run("rejects relative temporary directory", func(t *testing.T) {
+		t.Setenv("XDG_RUNTIME_DIR", "")
+		t.Setenv("TMPDIR", "relative/tmp")
+
+		_, err := ipcRuntimeDir()
+		assert.ErrorContains(t, err, "temporary directory is not absolute")
+	})
+
+	t.Run("rejects insecure XDG runtime", func(t *testing.T) {
+		base := t.TempDir()
+		require.NoError(t, os.Chmod(base, 0o755))
+		t.Setenv("XDG_RUNTIME_DIR", base)
+
+		_, err := ipcRuntimeDir()
+		assert.ErrorContains(t, err, "runtime directory must have mode 0700")
+	})
+}
+
+func privateTempDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	require.NoError(t, os.Chmod(dir, 0o700))
+	return dir
+}
+
+func TestPrepareRuntimeDir(t *testing.T) {
+	t.Run("creates owner-only directory", func(t *testing.T) {
+		dir := filepath.Join(t.TempDir(), "tmus")
+		require.NoError(t, prepareRuntimeDir(dir))
+
+		info, err := os.Stat(dir)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o700), info.Mode().Perm())
+	})
+
+	t.Run("rejects symbolic link", func(t *testing.T) {
+		base := t.TempDir()
+		target := filepath.Join(base, "target")
+		link := filepath.Join(base, "tmus")
+		require.NoError(t, os.Mkdir(target, 0o700))
+		require.NoError(t, os.Symlink(target, link))
+
+		assert.ErrorContains(t, prepareRuntimeDir(link), "must not be a symbolic link")
+	})
+
+	t.Run("rejects permissive directory", func(t *testing.T) {
+		dir := filepath.Join(t.TempDir(), "tmus")
+		require.NoError(t, os.Mkdir(dir, 0o700))
+		require.NoError(t, os.Chmod(dir, 0o755))
+
+		assert.ErrorContains(t, prepareRuntimeDir(dir), "must have mode 0700")
+	})
 }
 
 func TestRemoveStaleUnixSocket(t *testing.T) {

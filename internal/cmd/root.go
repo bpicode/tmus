@@ -23,19 +23,19 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		handled, err := handoffIPC(args)
-		if err != nil || handled {
-			return err
-		}
-
-		playerApp := core.New(cfg)
-
-		ipcServer, err := startIPCServer(playerApp)
+		ipcSession, err := ipc.Open(cfg.IPC, args)
 		if err != nil {
 			return err
 		}
-		if ipcServer != nil {
-			defer collectErr(&err, "ipc", ipcServer.Close)
+		if ipcSession.Handled() {
+			return nil
+		}
+		defer collectErr(&err, "ipc", ipcSession.Close)
+
+		playerApp := core.New(cfg)
+
+		if err := ipcSession.Serve(playerApp); err != nil {
+			return fmt.Errorf("serve ipc: %w", err)
 		}
 
 		if cfg.MPRIS.Enabled {
@@ -55,28 +55,6 @@ func collectErr(dst *error, label string, f func() error) {
 	if err := f(); err != nil {
 		*dst = errors.Join(*dst, fmt.Errorf("%s: %w", label, err))
 	}
-}
-
-func handoffIPC(args []string) (bool, error) {
-	err := ipc.Send(args)
-	if err == nil {
-		return true, nil
-	}
-	if errors.Is(err, ipc.ErrNoServer) || errors.Is(err, ipc.ErrNotSupported) {
-		return false, nil
-	}
-	return false, err
-}
-
-func startIPCServer(appRef *core.App) (*ipc.Server, error) {
-	server, err := ipc.StartServer(appRef)
-	if err == nil {
-		return server, nil
-	}
-	if errors.Is(err, ipc.ErrAlreadyRunning) || errors.Is(err, ipc.ErrNotSupported) {
-		return nil, nil
-	}
-	return nil, err
 }
 
 // Execute runs the root command.

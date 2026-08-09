@@ -19,7 +19,36 @@ func TestDefaultConfigValues(t *testing.T) {
 	cfg := Default()
 
 	assert.Equal(t, "auto", cfg.TUI.ArtworkRenderer)
+	assert.Equal(t, SingleInstanceAuto, cfg.IPC.SingleInstance)
 	assert.Equal(t, ByteSize(512*1024*1024), cfg.Library.MaxArchiveMemberSize)
+}
+
+func TestLoadAllowsDisablingIPC(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	err := os.WriteFile(path, []byte("[ipc]\nsingle_instance = 'off'\n"), 0o600)
+	require.NoError(t, err)
+
+	cfg, err := Load(path)
+	require.NoError(t, err)
+	assert.Equal(t, SingleInstanceOff, cfg.IPC.SingleInstance)
+}
+
+func TestSingleInstanceModeValidation(t *testing.T) {
+	for _, mode := range []SingleInstanceMode{
+		SingleInstanceAuto,
+		SingleInstanceUnixSocket,
+		SingleInstanceOff,
+	} {
+		t.Run(string(mode), func(t *testing.T) {
+			cfg := Default()
+			cfg.IPC.SingleInstance = mode
+			assert.NoError(t, cfg.Validate())
+		})
+	}
+
+	cfg := Default()
+	cfg.IPC.SingleInstance = "magic"
+	assert.ErrorContains(t, cfg.Validate(), "ipc.single_instance")
 }
 
 func TestArtworkRendererValidation(t *testing.T) {
@@ -77,6 +106,8 @@ func TestWriteDefaultIncludesLibraryConfig(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "[library]")
 	assert.Contains(t, string(data), `max_archive_member_size = '512MiB'`)
+	assert.Contains(t, string(data), "[ipc]")
+	assert.Contains(t, string(data), "single_instance = 'auto'")
 }
 
 func TestDefaultPath(t *testing.T) {

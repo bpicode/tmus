@@ -9,41 +9,140 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strings"
-	"sync"
 	"syscall"
-
-	"github.com/bpicode/tmus/internal/app/core"
+	"time"
 )
 
-type Server struct {
-	ln   net.Listener
-	path string
-	mu   sync.Mutex
+const (
+	maxUnixSocketClaimAttempts = 3
+	unixSocketRequestTimeout   = 5 * time.Second
+)
+
+type unixSocketSession struct {
+	ln *net.UnixListener
 }
 
-// Send tries to forward paths to an existing tmus instance.
-// Returns ErrNoServer if no instance is running.
-func Send(paths []string) error {
+type unixSocketResponse struct {
+	OK    bool   `json:"ok"`
+	Error string `json:"error,omitempty"`
+}
+
+func openUnixSocket(paths []string) (sessionBackend, bool, error) {
 	socketPath, err := socketPath()
 	if err != nil {
-		return err
+		return nil, false, err
 	}
+
+	handled, err := tryUnixSocketHandoff(socketPath, paths)
+	if err != nil {
+		return nil, false, fmt.Errorf("handoff to %s: %w", socketPath, err)
+	}
+	if handled {
+		return nil, true, nil
+	}
+
+	if err := os.MkdirAll(filepath.Dir(socketPath), 0o700); err != nil {
+		return nil, false, fmt.Errorf("create IPC directory: %w", err)
+	}
+	return claimUnixSocket(socketPath, paths)
+}
+
+// tryUnixSocketHandoff forwards paths when socketPath belongs to a reachable
+// server. A missing or refused endpoint means no server and is not an error.
+func tryUnixSocketHandoff(socketPath string, paths []string) (bool, error) {
+	err := sendUnixSocket(socketPath, paths)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, errNoServer) {
+		return false, nil
+	}
+	return false, err
+}
+
+// claimUnixSocket establishes which process is primary before Session.Serve
+// starts accepting requests. If another process wins the bind race, the paths
+// are handed to that process. Unreachable contended endpoints are treated as
+// stale and removed only after their filesystem identity is rechecked.
+func claimUnixSocket(socketPath string, paths []string) (sessionBackend, bool, error) {
+	var lastErr error
+	for range maxUnixSocketClaimAttempts {
+		ln, err := listenUnixSocket(socketPath)
+		if err == nil {
+			return &unixSocketSession{ln: ln}, false, nil
+		}
+		lastErr = err
+		if !errors.Is(err, syscall.EADDRINUSE) {
+			return nil, false, fmt.Errorf("listen on %s: %w", socketPath, err)
+		}
+
+		contendedEndpoint, err := os.Lstat(socketPath)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			return nil, false, fmt.Errorf("inspect contended IPC endpoint: %w", err)
+		}
+
+		handled, err := tryUnixSocketHandoff(socketPath, paths)
+		if err != nil {
+			return nil, false, fmt.Errorf("handoff after endpoint contention: %w", err)
+		}
+		if handled {
+			return nil, true, nil
+		}
+
+		if err := removeStaleUnixSocket(socketPath, contendedEndpoint); err != nil {
+			return nil, false, err
+		}
+	}
+	return nil, false, fmt.Errorf(
+		"claim IPC endpoint after %d attempts: %w",
+		maxUnixSocketClaimAttempts,
+		lastErr,
+	)
+}
+
+// removeStaleUnixSocket removes socketPath only when it still identifies the
+// endpoint observed before the failed handoff. A missing or replaced endpoint
+// is left alone so the claim loop can retry. The identity check narrows the
+// unavoidable race between inspecting and unlinking a filesystem path.
+func removeStaleUnixSocket(socketPath string, observed os.FileInfo) error {
+	current, err := os.Lstat(socketPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return fmt.Errorf("reinspect contended IPC endpoint: %w", err)
+	}
+	if !os.SameFile(observed, current) {
+		return nil
+	}
+	if err := os.Remove(socketPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove stale IPC endpoint: %w", err)
+	}
+	return nil
+}
+
+func sendUnixSocket(socketPath string, paths []string) error {
 	conn, err := net.Dial("unix", socketPath)
 	if err != nil {
 		if isNoServer(err) {
-			return ErrNoServer
+			return errNoServer
 		}
 		return err
 	}
 	defer conn.Close()
+	if err := conn.SetDeadline(time.Now().Add(unixSocketRequestTimeout)); err != nil {
+		return fmt.Errorf("set IPC request deadline: %w", err)
+	}
 
 	enc := json.NewEncoder(conn)
 	dec := json.NewDecoder(conn)
-	if err := enc.Encode(request{Paths: paths}); err != nil {
+	if err := enc.Encode(newRequest(paths)); err != nil {
 		return err
 	}
-	var resp response
+	var resp unixSocketResponse
 	if err := dec.Decode(&resp); err != nil {
 		return err
 	}
@@ -56,82 +155,55 @@ func Send(paths []string) error {
 	return nil
 }
 
-// StartServer listens for IPC requests to append tracks.
-func StartServer(appRef *core.App) (*Server, error) {
-	if appRef == nil {
-		return nil, errors.New("app is nil")
-	}
-	socketPath, err := socketPath()
+func listenUnixSocket(socketPath string) (*net.UnixListener, error) {
+	addr := &net.UnixAddr{Name: socketPath, Net: "unix"}
+	ln, err := net.ListenUnix("unix", addr)
 	if err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(filepath.Dir(socketPath), 0o755); err != nil {
-		return nil, err
+	ln.SetUnlinkOnClose(true)
+	if err := os.Chmod(socketPath, 0o600); err != nil {
+		return nil, errors.Join(err, ln.Close())
 	}
-
-	ln, err := net.Listen("unix", socketPath)
-	if err != nil {
-		if errors.Is(err, syscall.EADDRINUSE) {
-			conn, dialErr := net.Dial("unix", socketPath)
-			if dialErr == nil {
-				_ = conn.Close()
-				return nil, ErrAlreadyRunning
-			}
-			_ = os.Remove(socketPath)
-			ln, err = net.Listen("unix", socketPath)
-		}
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	server := &Server{ln: ln, path: socketPath}
-	go server.serve(appRef)
-	return server, nil
+	return ln, nil
 }
 
-// Close shuts down the IPC listener.
-func (s *Server) Close() error {
-	if s == nil {
-		return nil
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.ln == nil {
-		return nil
-	}
-	err := s.ln.Close()
-	s.ln = nil
-	if s.path != "" {
-		_ = os.Remove(s.path)
-	}
-	return err
+func (s *unixSocketSession) Serve(handle requestHandler) error {
+	go serveUnixSocket(s.ln, handle)
+	return nil
 }
 
-func (s *Server) serve(appRef *core.App) {
+func (s *unixSocketSession) Close() error {
+	return s.ln.Close()
+}
+
+func serveUnixSocket(ln net.Listener, handle requestHandler) {
 	for {
-		conn, err := s.ln.Accept()
+		conn, err := ln.Accept()
 		if err != nil {
 			return
 		}
-		go handleConn(conn, appRef)
+		go handleConn(conn, handle)
 	}
 }
 
-func handleConn(conn net.Conn, appRef *core.App) {
+func handleConn(conn net.Conn, handle requestHandler) {
 	defer conn.Close()
+	if err := conn.SetDeadline(time.Now().Add(unixSocketRequestTimeout)); err != nil {
+		return
+	}
 	dec := json.NewDecoder(conn)
 	enc := json.NewEncoder(conn)
 	var req request
 	if err := dec.Decode(&req); err != nil {
-		_ = enc.Encode(response{OK: false, Error: err.Error()})
+		_ = enc.Encode(unixSocketResponse{Error: err.Error()})
 		return
 	}
-	tracks := buildTracks(appRef.Library(), req.Paths)
-	if len(tracks) > 0 {
-		_ = appRef.Dispatch(core.Command{Type: core.CmdAddAll, Tracks: tracks})
+	if err := handle(req); err != nil {
+		_ = enc.Encode(unixSocketResponse{Error: err.Error()})
+		return
 	}
-	_ = enc.Encode(response{OK: true})
+	_ = enc.Encode(unixSocketResponse{OK: true})
 }
 
 func socketPath() (string, error) {
@@ -156,6 +228,5 @@ func isNoServer(err error) bool {
 	if errors.Is(err, os.ErrNotExist) {
 		return true
 	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "no such file") || strings.Contains(msg, "connection refused")
+	return errors.Is(err, syscall.ECONNREFUSED)
 }

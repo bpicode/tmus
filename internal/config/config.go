@@ -21,6 +21,33 @@ type MPRISConfig struct {
 	Enabled bool `toml:"enabled" comment:"Enable DBus/MPRIS integration for media controls."`
 }
 
+// IPCConfig holds single-instance IPC settings.
+type IPCConfig struct {
+	SingleInstance SingleInstanceMode `toml:"single_instance" comment:"Single-instance handoff method: auto, unix-socket, or off."`
+}
+
+// Validate ensures the configured IPC mode is recognized.
+func (c IPCConfig) Validate() error {
+	switch c.SingleInstance {
+	case SingleInstanceAuto, SingleInstanceUnixSocket, SingleInstanceOff:
+		return nil
+	default:
+		return fmt.Errorf("ipc.single_instance must be one of auto, unix-socket, off")
+	}
+}
+
+// SingleInstanceMode selects the IPC method used for single-instance handoff.
+type SingleInstanceMode string
+
+const (
+	// SingleInstanceAuto uses the platform's preferred supported IPC method.
+	SingleInstanceAuto SingleInstanceMode = "auto"
+	// SingleInstanceUnixSocket explicitly requires Unix-socket IPC.
+	SingleInstanceUnixSocket SingleInstanceMode = "unix-socket"
+	// SingleInstanceOff disables single-instance IPC handoff.
+	SingleInstanceOff SingleInstanceMode = "off"
+)
+
 type ThemeConfig struct {
 	Primary    string `toml:"primary" comment:"Main accent color (e.g., highlighting selected items)"`
 	Secondary  string `toml:"secondary" comment:"Secondary accent color (e.g., search highlights, minor elements)"`
@@ -68,6 +95,7 @@ type LibraryConfig struct {
 type Config struct {
 	Audio   AudioConfig   `toml:"audio"`
 	MPRIS   MPRISConfig   `toml:"mpris"`
+	IPC     IPCConfig     `toml:"ipc"`
 	TUI     TUIConfig     `toml:"tui"`
 	Lyrics  LyricsConfig  `toml:"lyrics"`
 	Cache   CacheConfig   `toml:"cache"`
@@ -84,6 +112,9 @@ func Default() Config {
 		},
 		MPRIS: MPRISConfig{
 			Enabled: true,
+		},
+		IPC: IPCConfig{
+			SingleInstance: SingleInstanceAuto,
 		},
 		TUI: TUIConfig{
 			FPS:             60,
@@ -191,6 +222,9 @@ func (c Config) Validate() error {
 	}
 	if c.Audio.BufferMs <= 0 {
 		return fmt.Errorf("audio.buffer_ms must be > 0")
+	}
+	if err := c.IPC.Validate(); err != nil {
+		return err
 	}
 	if c.TUI.ArtworkAspect <= 0 {
 		return fmt.Errorf("tui.artwork_aspect must be > 0")

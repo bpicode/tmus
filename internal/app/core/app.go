@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -528,9 +529,7 @@ func copyState(s State) State {
 	if len(s.Playlist) == 0 {
 		return s
 	}
-	playlist := make([]Track, len(s.Playlist))
-	copy(playlist, s.Playlist)
-	s.Playlist = playlist
+	s.Playlist = slices.Clone(s.Playlist)
 	return s
 }
 

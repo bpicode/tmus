@@ -139,9 +139,7 @@ func (a *App) selectPageUp(count int) {
 		a.state.Cursor = 0
 		return
 	}
-	if count < 1 {
-		count = 1
-	}
+	count = max(count, 1)
 	a.state.Cursor = clamp(a.state.Cursor-count, 0, len(a.state.Playlist)-1)
 }
 
@@ -154,9 +152,7 @@ func (a *App) selectPageDown(count int) {
 		a.state.Cursor = 0
 		return
 	}
-	if count < 1 {
-		count = 1
-	}
+	count = max(count, 1)
 	a.state.Cursor = clamp(a.state.Cursor+count, 0, len(a.state.Playlist)-1)
 }
 
@@ -165,13 +161,7 @@ func (a *App) selectIndex(index int) {
 		a.state.Cursor = -1
 		return
 	}
-	if index < 0 {
-		index = 0
-	}
-	if index >= len(a.state.Playlist) {
-		index = len(a.state.Playlist) - 1
-	}
-	a.state.Cursor = index
+	a.state.Cursor = min(max(index, 0), len(a.state.Playlist)-1)
 }
 
 func (a *App) playFromCursor() int {

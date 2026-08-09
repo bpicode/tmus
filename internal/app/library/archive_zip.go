@@ -4,7 +4,9 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"maps"
 	"path"
+	"slices"
 	"strings"
 )
 
@@ -45,16 +47,16 @@ func (h *zipHandler) list(value string, showHidden bool) ([]Entry, error) {
 	for _, f := range reader.File {
 		name := f.Name
 		if inner != "" {
-			if !strings.HasPrefix(name, inner) {
+			var ok bool
+			name, ok = strings.CutPrefix(name, inner)
+			if !ok {
 				continue
 			}
-			name = strings.TrimPrefix(name, inner)
 		}
 		if name == "" {
 			continue
 		}
-		parts := strings.Split(name, "/")
-		child := parts[0]
+		child, _, hasMore := strings.Cut(name, "/")
 		if child == "" {
 			continue
 		}
@@ -62,7 +64,7 @@ func (h *zipHandler) list(value string, showHidden bool) ([]Entry, error) {
 			continue
 		}
 		entryPath := path.Join(inner, child)
-		if len(parts) > 1 || strings.HasSuffix(f.Name, "/") {
+		if hasMore || strings.HasSuffix(f.Name, "/") {
 			path := buildArchivePath(h.scheme(), archivePath, strings.TrimSuffix(entryPath, "/"))
 			children[child] = archiveEntry{
 				name:  child,
@@ -78,11 +80,7 @@ func (h *zipHandler) list(value string, showHidden bool) ([]Entry, error) {
 		}
 	}
 
-	entries := make([]Entry, 0, len(children))
-	for _, v := range children {
-		entries = append(entries, v)
-	}
-	return entries, nil
+	return slices.Collect(maps.Values(children)), nil
 }
 
 func (h *zipHandler) open(value string) (io.ReadCloser, error) {

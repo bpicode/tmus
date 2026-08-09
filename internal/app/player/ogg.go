@@ -202,12 +202,7 @@ func (d *oggDecoder) Position() int { return int(d.granulePos) }
 
 // Seek seeks to the given sample position.
 func (d *oggDecoder) Seek(p int) error {
-	if p < 0 {
-		p = 0
-	}
-	if p > d.Len() {
-		p = d.Len()
-	}
+	p = min(max(p, 0), d.Len())
 
 	if err := d.ogg.SeekToGranule(int64(p)); err != nil {
 		return err

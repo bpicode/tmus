@@ -3,6 +3,7 @@
 package player
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -744,8 +745,7 @@ func newVorbisCodec(packet []byte) (*vorbisCodec, error) {
 	}
 
 	// Store a copy of the identification header
-	identHeader := make([]byte, len(packet))
-	copy(identHeader, packet)
+	identHeader := bytes.Clone(packet)
 
 	return &vorbisCodec{
 		channels:      int(packet[11]),
@@ -795,8 +795,7 @@ func (c *vorbisCodec) AddHeaderPacket(packet []byte) (bool, error) {
 	}
 
 	// Store a copy of the header packet
-	headerCopy := make([]byte, len(packet))
-	copy(headerCopy, packet)
+	headerCopy := bytes.Clone(packet)
 	c.headerPackets = append(c.headerPackets, headerCopy)
 
 	// Vorbis has 3 header packets: identification, comment, setup

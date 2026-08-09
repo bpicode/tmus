@@ -260,20 +260,12 @@ func (d *m4aDecoder) Position() int {
 	if bufferedSamples > 0 {
 		basePos -= bufferedSamples
 	}
-	if basePos < 0 {
-		basePos = 0
-	}
-	return basePos
+	return max(basePos, 0)
 }
 
 // Seek seeks to the given sample position.
 func (d *m4aDecoder) Seek(p int) error {
-	if p < 0 {
-		p = 0
-	}
-	if p > d.totalLen {
-		p = d.totalLen
-	}
+	p = min(max(p, 0), d.totalLen)
 
 	// Convert sample position to time
 	sampleRate := d.container.SampleRate()

@@ -8,11 +8,8 @@ import (
 
 func splitArchivePath(scheme, value string) (archivePath, inner string, err error) {
 	if trimmed, ok := strings.CutPrefix(value, "arch://"+scheme+":"); ok {
-		parts := strings.SplitN(trimmed, "::", 2)
-		archivePath = parts[0]
-		if len(parts) == 2 {
-			inner = strings.TrimPrefix(parts[1], "/")
-		}
+		archivePath, inner, _ = strings.Cut(trimmed, "::")
+		inner = strings.TrimPrefix(inner, "/")
 		if archivePath == "" {
 			return "", "", fmt.Errorf("archive path missing")
 		}

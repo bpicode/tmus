@@ -1,6 +1,9 @@
 package core
 
-import "math/rand/v2"
+import (
+	"math/rand/v2"
+	"slices"
+)
 
 // maxShuffleHistory is the maximum number of entries retained in the
 // shuffle back-navigation history. Older entries are discarded to prevent
@@ -94,11 +97,8 @@ func (s *ShuffleStrategy) buildDeck(total, current int) {
 	})
 	// Ensure the current track doesn't appear first in the new cycle.
 	if current >= 0 {
-		for i, v := range s.deck {
-			if v == current {
-				s.deck[i], s.deck[total-1] = s.deck[total-1], s.deck[i]
-				break
-			}
+		if i := slices.Index(s.deck, current); i >= 0 {
+			s.deck[i], s.deck[total-1] = s.deck[total-1], s.deck[i]
 		}
 	}
 	s.pos = 0

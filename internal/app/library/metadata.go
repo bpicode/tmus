@@ -113,13 +113,11 @@ func readMetadataFrom(r io.ReadSeeker) (Metadata, error) {
 		}
 	}
 	if pic := meta.Picture(); pic != nil {
-		data := make([]byte, len(pic.Data))
-		copy(data, pic.Data)
 		result.Picture = &Picture{
 			MIMEType:    pic.MIMEType,
 			Type:        fmt.Sprint(pic.Type),
 			Description: pic.Description,
-			Data:        data,
+			Data:        bytes.Clone(pic.Data),
 		}
 	}
 	return result, nil

@@ -3,6 +3,7 @@ package playlist
 import (
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -252,7 +253,7 @@ func (m *Model) View() string {
 			contentLines = availableLines
 		}
 	}
-	for i := contentLines; i < availableLines; i++ {
+	for range availableLines - contentLines {
 		lines = append(lines, "")
 	}
 
@@ -391,7 +392,7 @@ func (m *Model) updateItems(state core.State) {
 			displayName: track.DisplayName(),
 		})
 	}
-	if sameRows(m.rows, nextRows) {
+	if slices.Equal(m.rows, nextRows) {
 		return
 	}
 	m.rows = nextRows
@@ -472,18 +473,6 @@ type playlistRow struct {
 	id          uint64
 	path        string
 	displayName string
-}
-
-func sameRows(a, b []playlistRow) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i].id != b[i].id || a[i].path != b[i].path || a[i].displayName != b[i].displayName {
-			return false
-		}
-	}
-	return true
 }
 
 type playlistListItem struct {

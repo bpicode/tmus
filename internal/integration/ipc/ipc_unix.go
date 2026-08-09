@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -19,7 +20,13 @@ const (
 )
 
 type unixSocketSession struct {
-	ln *net.UnixListener
+	ln net.Listener
+
+	mu       sync.Mutex
+	closing  bool
+	conns    map[net.Conn]struct{}
+	workers  sync.WaitGroup
+	serveErr error
 }
 
 type unixSocketResponse struct {
@@ -69,7 +76,7 @@ func claimUnixSocket(socketPath string, paths []string) (sessionBackend, bool, e
 	for range maxUnixSocketClaimAttempts {
 		ln, err := listenUnixSocket(socketPath)
 		if err == nil {
-			return &unixSocketSession{ln: ln}, false, nil
+			return newUnixSocketSession(ln), false, nil
 		}
 		lastErr = err
 		if !errors.Is(err, syscall.EADDRINUSE) {
@@ -168,23 +175,85 @@ func listenUnixSocket(socketPath string) (*net.UnixListener, error) {
 	return ln, nil
 }
 
+func newUnixSocketSession(ln net.Listener) *unixSocketSession {
+	return &unixSocketSession{
+		ln:    ln,
+		conns: make(map[net.Conn]struct{}),
+	}
+}
+
 func (s *unixSocketSession) Serve(handle requestHandler) error {
-	go serveUnixSocket(s.ln, handle)
+	s.workers.Go(func() {
+		err := s.serve(handle)
+		s.mu.Lock()
+		s.serveErr = err
+		s.mu.Unlock()
+	})
 	return nil
 }
 
 func (s *unixSocketSession) Close() error {
-	return s.ln.Close()
+	s.mu.Lock()
+	s.closing = true
+	conns := make([]net.Conn, 0, len(s.conns))
+	for conn := range s.conns {
+		conns = append(conns, conn)
+	}
+	s.mu.Unlock()
+
+	var closeErr error
+	if err := s.ln.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+		closeErr = fmt.Errorf("close IPC listener: %w", err)
+	}
+	for _, conn := range conns {
+		// The handler may concurrently close the same connection. Either way,
+		// Close unblocks its I/O and workers.Wait observes its completion.
+		_ = conn.Close()
+	}
+
+	s.workers.Wait()
+	s.mu.Lock()
+	serveErr := s.serveErr
+	s.mu.Unlock()
+	return errors.Join(closeErr, serveErr)
 }
 
-func serveUnixSocket(ln net.Listener, handle requestHandler) {
+func (s *unixSocketSession) serve(handle requestHandler) error {
 	for {
-		conn, err := ln.Accept()
+		conn, err := s.ln.Accept()
 		if err != nil {
-			return
+			if s.isClosing() && errors.Is(err, net.ErrClosed) {
+				return nil
+			}
+			return fmt.Errorf("accept IPC connection: %w", err)
 		}
-		go handleConn(conn, handle)
+		if !s.startHandler(conn, handle) {
+			_ = conn.Close()
+			return nil
+		}
 	}
+}
+
+func (s *unixSocketSession) startHandler(conn net.Conn, handle requestHandler) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closing {
+		return false
+	}
+	s.conns[conn] = struct{}{}
+	s.workers.Go(func() {
+		handleConn(conn, handle)
+		s.mu.Lock()
+		delete(s.conns, conn)
+		s.mu.Unlock()
+	})
+	return true
+}
+
+func (s *unixSocketSession) isClosing() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.closing
 }
 
 func handleConn(conn net.Conn, handle requestHandler) {

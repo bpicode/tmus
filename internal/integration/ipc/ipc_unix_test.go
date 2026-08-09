@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,6 +18,23 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type stubListener struct {
+	accept func() (net.Conn, error)
+	close  func() error
+}
+
+func (l stubListener) Accept() (net.Conn, error) {
+	return l.accept()
+}
+
+func (l stubListener) Close() error {
+	return l.close()
+}
+
+func (stubListener) Addr() net.Addr {
+	return &net.UnixAddr{Name: "test", Net: "unix"}
+}
 
 func TestUnixSocketEncodesHandlerError(t *testing.T) {
 	server, client := net.Pipe()
@@ -36,6 +54,75 @@ func TestUnixSocketEncodesHandlerError(t *testing.T) {
 
 	assert.False(t, resp.OK)
 	assert.Equal(t, handlerErr.Error(), resp.Error)
+}
+
+func TestUnixSocketSessionCloseWaitsForActiveHandler(t *testing.T) {
+	server, client := net.Pipe()
+	t.Cleanup(func() { _ = client.Close() })
+
+	listenerClosed := make(chan struct{})
+	var closeListener sync.Once
+	accepted := false
+	ln := stubListener{
+		accept: func() (net.Conn, error) {
+			if !accepted {
+				accepted = true
+				return server, nil
+			}
+			<-listenerClosed
+			return nil, net.ErrClosed
+		},
+		close: func() error {
+			closeListener.Do(func() { close(listenerClosed) })
+			return nil
+		},
+	}
+
+	handling := make(chan struct{})
+	release := make(chan struct{})
+	released := false
+	t.Cleanup(func() {
+		if !released {
+			close(release)
+		}
+	})
+	session := newUnixSocketSession(ln)
+	require.NoError(t, session.Serve(func(request) error {
+		close(handling)
+		<-release
+		return nil
+	}))
+
+	require.NoError(t, json.NewEncoder(client).Encode(request{}))
+	<-handling
+	closed := make(chan error, 1)
+	go func() { closed <- session.Close() }()
+
+	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
+	var resp unixSocketResponse
+	assert.Error(t, json.NewDecoder(client).Decode(&resp))
+	select {
+	case err := <-closed:
+		t.Fatalf("Close returned while the handler was active: %v", err)
+	default:
+	}
+
+	close(release)
+	released = true
+	assert.NoError(t, <-closed)
+}
+
+func TestUnixSocketSessionCloseReportsAcceptError(t *testing.T) {
+	acceptErr := errors.New("accept failed")
+	session := newUnixSocketSession(stubListener{
+		accept: func() (net.Conn, error) { return nil, acceptErr },
+		close:  func() error { return nil },
+	})
+	require.NoError(t, session.Serve(func(request) error { return nil }))
+
+	err := session.Close()
+	assert.ErrorIs(t, err, acceptErr)
+	assert.ErrorContains(t, err, "accept IPC connection")
 }
 
 func TestUnixSocketSessionHandsOffToPrimaryInstance(t *testing.T) {

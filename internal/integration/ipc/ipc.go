@@ -23,6 +23,7 @@ var (
 
 type sessionBackend interface {
 	Serve(requestHandler) error
+	// Close stops accepting requests and waits for active handlers to return.
 	Close() error
 }
 
@@ -118,8 +119,9 @@ func (s *Session) Serve(appRef *core.App) error {
 	})
 }
 
-// Close releases any IPC endpoint claimed by the session. Close is
-// idempotent; a nil Session is also safe to close.
+// Close stops IPC handling and releases any endpoint claimed by the session.
+// When it returns, no handoff request can still call into the application.
+// Close is idempotent; a nil Session is also safe to close.
 func (s *Session) Close() error {
 	if s == nil {
 		return nil

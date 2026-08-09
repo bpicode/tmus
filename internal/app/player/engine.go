@@ -148,12 +148,7 @@ func (e *Engine) Close() {
 
 // SetVolume sets the playback volume (0-100).
 func (e *Engine) SetVolume(level int) {
-	if level < 0 {
-		level = 0
-	}
-	if level > 100 {
-		level = 100
-	}
+	level = min(max(level, 0), 100)
 	e.mu.Lock()
 	e.volumeLevel = level
 	vol := e.volume
@@ -342,9 +337,7 @@ func (e *Engine) seekTo(pos time.Duration) SeekResult {
 		return SeekResult{Ok: false}
 	}
 
-	if pos < 0 {
-		pos = 0
-	}
+	pos = max(pos, 0)
 
 	// beep.StreamSeekCloser always exposes Seek and Len directly.
 	// Non-seekable sources (e.g. HTTP streams) return an error from Seek.

@@ -21,7 +21,7 @@ func TestAppMetadataUsesConfiguredLibraryLimit(t *testing.T) {
 	cfg := config.Default()
 	cfg.Library.MaxArchiveMemberSize = 5
 	app := New(cfg)
-	defer app.Shutdown()
+	t.Cleanup(app.ShutdownAndWait)
 
 	_, err := app.readMetadataExtendedCached(entryPath)
 	assert.ErrorIs(t, err, library.ErrArchiveMemberTooLarge)

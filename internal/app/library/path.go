@@ -29,12 +29,11 @@ func splitArchiveURI(value string) (scheme, archivePath, inner string, err error
 	if !isArchivePath(value) {
 		return "", "", "", fmt.Errorf("not an archive path")
 	}
-	trimmed := strings.TrimPrefix(value, "arch://")
-	parts := strings.SplitN(trimmed, ":", 2)
-	if len(parts) != 2 || parts[0] == "" {
+	trimmed, _ := strings.CutPrefix(value, "arch://")
+	scheme, _, ok := strings.Cut(trimmed, ":")
+	if !ok || scheme == "" {
 		return "", "", "", fmt.Errorf("invalid archive path")
 	}
-	scheme = parts[0]
 	archivePath, inner, err = splitArchivePath(scheme, value)
 	return scheme, archivePath, inner, err
 }

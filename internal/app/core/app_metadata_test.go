@@ -31,10 +31,14 @@ func createZip(t *testing.T, path string, files map[string]string) {
 	t.Helper()
 	file, err := os.Create(path)
 	require.NoError(t, err)
-	defer file.Close()
+	defer func() {
+		require.NoError(t, file.Close())
+	}()
 
 	writer := zip.NewWriter(file)
-	defer writer.Close()
+	defer func() {
+		require.NoError(t, writer.Close())
+	}()
 	for name, content := range files {
 		entry, err := writer.Create(name)
 		require.NoError(t, err)

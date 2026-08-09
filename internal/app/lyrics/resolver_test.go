@@ -6,6 +6,7 @@ import (
 	"github.com/bpicode/tmus/internal/app/library"
 	_ "github.com/bpicode/tmus/testing"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestResolver_Find(t *testing.T) {
@@ -61,7 +62,7 @@ func TestResolver_Find(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			l, err := tt.resolver.Find(tt.track)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			for _, expectedLine := range tt.contains {
 				assert.Contains(t, l.Lines, expectedLine)
 			}

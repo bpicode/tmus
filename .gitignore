@@ -35,4 +35,6 @@ Thumbs.db
 
 # Temporary files
 /tmp/
-/.codex/config.toml
+
+# AI
+.codex

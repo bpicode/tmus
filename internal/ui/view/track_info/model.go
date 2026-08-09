@@ -364,9 +364,7 @@ func maxKeyWidth(fields []field) int {
 	for _, f := range fields {
 		label := f.label + ":"
 		width := lipgloss.Width(label)
-		if width > maxKW {
-			maxKW = width
-		}
+		maxKW = max(maxKW, width)
 	}
 	return maxKW
 }
@@ -389,9 +387,7 @@ func metadataColumnWidths(contentWidth, areaHeight int, fields []field, aspect f
 		maxLeft := max(1, int(float64(areaHeight)*aspect))
 		leftWidth = min(leftWidth, maxLeft)
 	}
-	if leftWidth > available-1 {
-		leftWidth = available - 1
-	}
+	leftWidth = min(leftWidth, available-1)
 	if leftWidth < 1 {
 		leftWidth = 0
 		rightWidth = contentWidth

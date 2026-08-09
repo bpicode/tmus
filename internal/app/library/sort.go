@@ -1,15 +1,19 @@
 package library
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strings"
 )
 
 func sortEntries(entries []Entry) {
-	sort.Slice(entries, func(i, j int) bool {
-		if entries[i].IsDir() != entries[j].IsDir() {
-			return entries[i].IsDir()
+	slices.SortFunc(entries, func(a, b Entry) int {
+		if a.IsDir() != b.IsDir() {
+			if a.IsDir() {
+				return -1
+			}
+			return 1
 		}
-		return strings.ToLower(entries[i].Name()) < strings.ToLower(entries[j].Name())
+		return cmp.Compare(strings.ToLower(a.Name()), strings.ToLower(b.Name()))
 	})
 }

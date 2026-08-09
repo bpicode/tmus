@@ -2,7 +2,6 @@ package library
 
 import (
 	"archive/zip"
-	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -183,7 +182,7 @@ func TestArchiveEntryOpenStreamShortcut(t *testing.T) {
 	defer server.Close()
 
 	entry := archivedShortcutEntry(t, "radio.stream", server.URL+"\n")
-	source, err := entry.Open(context.Background())
+	source, err := entry.Open(t.Context())
 	require.NoError(t, err)
 	defer source.Reader.Close()
 	assert.Equal(t, FormatMP3, source.Format)
@@ -200,7 +199,7 @@ func TestArchiveEntryOpenURLShortcut(t *testing.T) {
 	defer server.Close()
 
 	entry := archivedShortcutEntry(t, "station.url", "[InternetShortcut]\nURL="+server.URL+"\n")
-	source, err := entry.Open(context.Background())
+	source, err := entry.Open(t.Context())
 	require.NoError(t, err)
 	defer source.Reader.Close()
 	assert.Equal(t, FormatFLAC, source.Format)

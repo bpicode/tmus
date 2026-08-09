@@ -1,13 +1,13 @@
 package player
 
 import (
-	"context"
 	"testing"
 
 	"github.com/bpicode/tmus/internal/app/library"
 	_ "github.com/bpicode/tmus/testing"
 	"github.com/gopxl/beep/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_decodeFile(t *testing.T) {
@@ -31,13 +31,15 @@ func Test_decodeFile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.arg, func(t *testing.T) {
 			entry, err := library.EntryFromPath(tt.arg)
-			assert.NoError(t, err)
-			source, err := entry.Open(context.Background())
-			assert.NoError(t, err)
+			require.NoError(t, err)
+			source, err := entry.Open(t.Context())
+			require.NoError(t, err)
 			ssc, f, err := decodeSource(source)
-			assert.NoError(t, err)
-			defer ssc.Close()
-			assert.NotNil(t, ssc)
+			require.NoError(t, err)
+			require.NotNil(t, ssc)
+			t.Cleanup(func() {
+				require.NoError(t, ssc.Close())
+			})
 			assert.Equal(t, tt.wantFormat, f)
 		})
 	}

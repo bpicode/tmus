@@ -1,0 +1,12 @@
+#include <tunables/global>
+
+# This minimal profile starts in complain mode so missing rules are logged
+# without breaking playback while the policy is developed.
+profile tmus /usr/bin/tmus flags=(complain) {
+	#include <abstractions/base>
+
+	/usr/bin/tmus mr,
+
+	# Site-specific additions belong here, outside the packaged profile.
+	include if exists <local/usr.bin.tmus>
+}

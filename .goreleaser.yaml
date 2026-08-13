@@ -49,6 +49,14 @@ nfpms:
         dst: /usr/share/icons/hicolor/256x256/apps/tmus.png
       - src: packaging/icons/hicolor/512x512/apps/tmus.png
         dst: /usr/share/icons/hicolor/512x512/apps/tmus.png
+      - src: packaging/apparmor/usr.bin.tmus
+        dst: /etc/apparmor.d/usr.bin.tmus
+        type: "config|noreplace"
+        file_info:
+          mode: 0644
+    scripts:
+      postinstall: packaging/scripts/postinstall.sh
+      preremove: packaging/scripts/preremove.sh
     dependencies:
       - libasound2
 checksum:

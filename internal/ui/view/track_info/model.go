@@ -314,7 +314,7 @@ func formatPicture(pic *library.Picture) string {
 		label = "embedded"
 	}
 	if pic.Description != "" {
-		label = label + " - " + pic.Description
+		label = fmt.Sprintf("%s - %s", label, pic.Description)
 	}
 	return fmt.Sprintf("%s (%d bytes)", label, len(pic.Data))
 }

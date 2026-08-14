@@ -7,7 +7,7 @@ import (
 )
 
 func splitArchivePath(scheme, value string) (archivePath, inner string, err error) {
-	if trimmed, ok := strings.CutPrefix(value, "arch://"+scheme+":"); ok {
+	if trimmed, ok := strings.CutPrefix(value, fmt.Sprintf("arch://%s:", scheme)); ok {
 		archivePath, inner, _ = strings.Cut(trimmed, "::")
 		inner = strings.TrimPrefix(inner, "/")
 		if archivePath == "" {
@@ -41,9 +41,9 @@ func splitArchiveURI(value string) (scheme, archivePath, inner string, err error
 func buildArchivePath(scheme, archivePath, inner string) string {
 	archivePath = filepath.Clean(archivePath)
 	if inner == "" {
-		return "arch://" + scheme + ":" + archivePath
+		return fmt.Sprintf("arch://%s:%s", scheme, archivePath)
 	}
-	return "arch://" + scheme + ":" + archivePath + "::" + inner
+	return fmt.Sprintf("arch://%s:%s::%s", scheme, archivePath, inner)
 }
 
 func entryExt(value string) string {

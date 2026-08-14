@@ -39,7 +39,7 @@ func (h *tarHandler) scheme() string {
 }
 
 func (h *tarHandler) isArchivePath(value string) bool {
-	prefix := "arch://" + h.schemeName + ":"
+	prefix := fmt.Sprintf("arch://%s:", h.schemeName)
 	if strings.HasPrefix(value, prefix) {
 		return true
 	}

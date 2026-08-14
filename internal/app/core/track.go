@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -29,7 +30,7 @@ func (t Track) IsRemote() bool {
 // DisplayName returns the most user-friendly track name available.
 func (t Track) DisplayName() string {
 	if t.Artist != "" && t.Title != "" {
-		return t.Artist + " - " + t.Title
+		return fmt.Sprintf("%s - %s", t.Artist, t.Title)
 	}
 	if t.Title != "" {
 		return t.Title

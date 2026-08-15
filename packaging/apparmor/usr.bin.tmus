@@ -1,12 +1,52 @@
 #include <tunables/global>
 
-# This minimal profile starts in complain mode so missing rules are logged
-# without breaking playback while the policy is developed.
+# Security posture: pragmatic middle ground. tmus may read user-owned home
+# files and conventional media, and use standard audio, networking, and session
+# D-Bus facilities. Writes remain confined to tmus-owned config, cache, runtime,
+# and temporary namespaces. This limits accidental damage and some post-exploit
+# actions, but it is not a sandbox for hostile media: a compromised process can
+# read and exfiltrate the user's files and interact with the session bus.
+#
+# Complain mode logs policy misses without enforcing this boundary. Keep it
+# until representative systems and common feature paths have been exercised.
 profile tmus /usr/bin/tmus flags=(complain) {
 	#include <abstractions/base>
+	#include <abstractions/audio>
+	#include <abstractions/consoles>
+	#include <abstractions/dbus-session>
+	#include <abstractions/nameservice>
+	#include <abstractions/ssl_certs>
 
 	/usr/bin/tmus mr,
 
-	# Site-specific additions belong here, outside the packaged profile.
+	# Runtime system discovery.
+	owner @{PROC}/@{pid}/{cgroup,mountinfo} r,
+	@{PROC}/sys/net/core/somaxconn r,
+	@{sys}/kernel/mm/hugepages/{,**} r,
+
+	# File-browser navigation and library reads. Home-directory roots are
+	# normally owned by root, while owner limits recursive home access to the
+	# invoking user. Removable media relies on normal discretionary permissions.
+	/ r,
+	@{HOMEDIRS}/ r,
+	owner @{HOME}/ r,
+	owner @{HOME}/** r,
+	/{media,mnt}/ r,
+	/{media,mnt}/** r,
+	@{run}/media/ r,
+	@{run}/media/** r,
+
+	# Application-owned writable data. Custom XDG locations need site-specific
+	# rules because environment-derived paths cannot be expressed safely here.
+	owner @{HOME}/.config/ rw,
+	owner @{HOME}/.config/tmus/{,**} rw,
+	owner @{HOME}/.cache/ rw,
+	owner @{HOME}/.cache/tmus/{,**} rw,
+	owner @{run}/user/[0-9]*/ r,
+	owner @{run}/user/[0-9]*/tmus/{,**} rw,
+	owner /tmp/tmus{,-*}/{,**} rw,
+
+	# Site-specific library roots, custom XDG paths, and audio backends belong
+	# here so package upgrades do not overwrite administrator policy.
 	include if exists <local/usr.bin.tmus>
 }

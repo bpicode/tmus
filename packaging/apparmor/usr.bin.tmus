@@ -26,7 +26,8 @@ profile tmus /usr/bin/tmus flags=(complain) {
 
 	# File-browser navigation and library reads. Home-directory roots are
 	# normally owned by root, while owner limits recursive home access to the
-	# invoking user. Removable media relies on normal discretionary permissions.
+	# invoking user. Removable and user-mounted media rely on normal
+	# discretionary permissions.
 	/ r,
 	@{HOMEDIRS}/ r,
 	owner @{HOME}/ r,
@@ -35,6 +36,7 @@ profile tmus /usr/bin/tmus flags=(complain) {
 	/{media,mnt}/** r,
 	@{run}/media/ r,
 	@{run}/media/** r,
+	owner @{run}/user/[0-9]*/gvfs/{,**} r,
 
 	# Application-owned writable data. Custom XDG locations need site-specific
 	# rules because environment-derived paths cannot be expressed safely here.

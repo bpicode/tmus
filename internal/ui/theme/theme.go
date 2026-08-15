@@ -33,6 +33,7 @@ func New(cfg config.ThemeConfig) Theme {
 		Info:       toColor(cfg.Info),
 		Danger:     toColor(cfg.Danger),
 		Warning:    toColor(cfg.Warning),
+		Working:    toColor(cfg.Working),
 	}
 }
 

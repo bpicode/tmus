@@ -24,8 +24,8 @@ type styles struct {
 
 func newStyles(th theme.Theme) styles {
 	return styles{
-		titleUnfocused: lipgloss.NewStyle().Bold(true).Foreground(th.Primary),
-		titleFocused:   lipgloss.NewStyle().Bold(true).Foreground(th.Secondary),
+		titleUnfocused: lipgloss.NewStyle().Bold(true).Foreground(th.Secondary),
+		titleFocused:   lipgloss.NewStyle().Bold(true).Foreground(th.Primary),
 		separator:      lipgloss.NewStyle().Foreground(th.Muted),
 		cwd:            truncate.Left{Style: lipgloss.NewStyle().Foreground(th.Muted)},
 		dir:            lipgloss.NewStyle().Foreground(th.Primary),

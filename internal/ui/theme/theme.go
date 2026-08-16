@@ -4,7 +4,6 @@ import (
 	"image/color"
 
 	"charm.land/lipgloss/v2"
-	"github.com/bpicode/tmus/internal/config"
 )
 
 // Theme holds the pre-parsed lipgloss colors for the UI.
@@ -21,19 +20,18 @@ type Theme struct {
 	Working    color.Color
 }
 
-// New parses the string-based ThemeConfig into a usable lipgloss Theme.
-func New(cfg config.ThemeConfig) Theme {
+func newTheme(p palette) Theme {
 	return Theme{
-		Foreground: toColor(cfg.Foreground),
-		Background: toColor(cfg.Background),
-		Primary:    toColor(cfg.Primary),
-		Secondary:  toColor(cfg.Secondary),
-		Muted:      toColor(cfg.Muted),
-		Highlight:  toColor(cfg.Highlight),
-		Info:       toColor(cfg.Info),
-		Danger:     toColor(cfg.Danger),
-		Warning:    toColor(cfg.Warning),
-		Working:    toColor(cfg.Working),
+		Foreground: toColor(p.foreground),
+		Background: toColor(p.background),
+		Primary:    toColor(p.primary),
+		Secondary:  toColor(p.secondary),
+		Muted:      toColor(p.muted),
+		Highlight:  toColor(p.highlight),
+		Info:       toColor(p.info),
+		Danger:     toColor(p.danger),
+		Warning:    toColor(p.warning),
+		Working:    toColor(p.working),
 	}
 }
 

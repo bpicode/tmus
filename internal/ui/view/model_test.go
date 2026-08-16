@@ -11,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/config"
+	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/bpicode/tmus/internal/ui/view"
 	_ "github.com/bpicode/tmus/testing"
 	"github.com/charmbracelet/x/exp/teatest/v2"
@@ -99,13 +100,14 @@ func newTUITest(t *testing.T, fixtures ...string) *tuiTest {
 	cfg.Lyrics.LrcLib.Enabled = false
 	cfg.TUI.ArtworkRenderer = "none"
 	cfg.TUI.BrowserHome = startDir
+	th := theme.Resolve(cfg.TUI.Theme)
 
 	appRef := core.New(cfg)
 	t.Cleanup(appRef.ShutdownAndWait)
 
 	tm := teatest.NewTestModel(
 		t,
-		view.NewModel(appRef, startDir, nil, cfg.TUI),
+		view.NewModel(appRef, startDir, nil, cfg.TUI, th),
 		teatest.WithInitialTermSize(100, 30),
 	)
 	t.Cleanup(func() {

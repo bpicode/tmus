@@ -4,12 +4,14 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/config"
+	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/bpicode/tmus/internal/ui/view"
 )
 
 // Run starts the TUI program.
 func Run(appRef *core.App, startDir string, cfg config.TUIConfig, openFiles []string) error {
-	m := view.NewModel(appRef, startDir, openFiles, cfg)
+	th := theme.Resolve(cfg.Theme)
+	m := view.NewModel(appRef, startDir, openFiles, cfg, th)
 	final, err := tea.NewProgram(
 		m,
 		tea.WithFPS(cfg.FPS),

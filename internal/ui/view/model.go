@@ -40,7 +40,7 @@ type eventChannels struct {
 	unsubLyrics   func()
 }
 
-func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.TUIConfig) *Model {
+func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.TUIConfig, th theme.Theme) *Model {
 	st, err := loadState()
 	if err != nil {
 		st = State{}
@@ -67,7 +67,6 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 		}
 	}
 
-	th := theme.New(cfg.Theme)
 	m := &Model{
 		app:       appRef,
 		lib:       lib,

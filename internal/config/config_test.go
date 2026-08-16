@@ -20,6 +20,7 @@ func TestDefaultConfigValues(t *testing.T) {
 
 	assert.Equal(t, "auto", cfg.TUI.ArtworkRenderer)
 	assert.Equal(t, SingleInstanceAuto, cfg.IPC.SingleInstance)
+	assert.Equal(t, "default", cfg.TUI.Theme.Preset)
 	assert.Equal(t, ByteSize(512*1024*1024), cfg.Library.MaxArchiveMemberSize)
 }
 
@@ -108,6 +109,9 @@ func TestWriteDefaultIncludesLibraryConfig(t *testing.T) {
 	assert.Contains(t, string(data), `max_archive_member_size = '512MiB'`)
 	assert.Contains(t, string(data), "[ipc]")
 	assert.Contains(t, string(data), "single_instance = 'auto'")
+	assert.Contains(t, string(data), "[tui.theme]")
+	assert.Contains(t, string(data), "preset = 'default'")
+	assert.NotContains(t, string(data), "primary =")
 }
 
 func TestDefaultPath(t *testing.T) {

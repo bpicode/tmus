@@ -49,16 +49,17 @@ const (
 )
 
 type ThemeConfig struct {
-	Primary    string `toml:"primary" comment:"Main accent color (e.g., highlighting selected items)"`
-	Secondary  string `toml:"secondary" comment:"Secondary accent color (e.g., search highlights, minor elements)"`
-	Muted      string `toml:"muted" comment:"Faded or dimmed text"`
-	Highlight  string `toml:"highlight" comment:"Highlight color"`
-	Info       string `toml:"info" comment:"Info indications"`
-	Danger     string `toml:"danger" comment:"Danger indications"`
-	Warning    string `toml:"warning" comment:"Warning indications"`
-	Working    string `toml:"working" comment:"Working indications"`
-	Background string `toml:"background" comment:"Background color, leave empty for terminal default"`
-	Foreground string `toml:"foreground" comment:"Foreground color, leave empty for terminal default"`
+	Preset     string `toml:"preset" comment:"Built-in theme preset."`
+	Primary    string `toml:"primary,omitempty" comment:"Override the main accent color (e.g., highlighting selected items)."`
+	Secondary  string `toml:"secondary,omitempty" comment:"Override the secondary accent color (e.g., search highlights, minor elements)."`
+	Muted      string `toml:"muted,omitempty" comment:"Override faded or dimmed text."`
+	Highlight  string `toml:"highlight,omitempty" comment:"Override the highlight color."`
+	Info       string `toml:"info,omitempty" comment:"Override info indications."`
+	Danger     string `toml:"danger,omitempty" comment:"Override danger indications."`
+	Warning    string `toml:"warning,omitempty" comment:"Override warning indications."`
+	Working    string `toml:"working,omitempty" comment:"Override working indications."`
+	Background string `toml:"background,omitempty" comment:"Override the background color; use 'terminal' for the terminal default."`
+	Foreground string `toml:"foreground,omitempty" comment:"Override the foreground color; use 'terminal' for the terminal default."`
 }
 
 type TUIConfig struct {
@@ -124,16 +125,7 @@ func Default() Config {
 				d, _ := os.UserHomeDir()
 				return d
 			}(),
-			Theme: ThemeConfig{
-				Primary:   "6",
-				Secondary: "14",
-				Info:      "2",
-				Danger:    "1",
-				Warning:   "3",
-				Working:   "12",
-				Highlight: "13",
-				Muted:     "8",
-			},
+			Theme: ThemeConfig{Preset: "default"},
 		},
 		Lyrics: LyricsConfig{
 			LrcLib: LrcLibConfig{

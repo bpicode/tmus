@@ -39,6 +39,22 @@ var builtInPresets = [...]preset{
 		},
 	},
 	{
+		name: "github-light",
+		palette: palette{
+			foreground: "#1f2328", background: "#ffffff",
+			primary: "#0969da", secondary: "#8250df", muted: "#59636e", highlight: "#bf3989",
+			info: "#1a7f37", danger: "#d1242f", warning: "#9a6700", working: "#218bff",
+		},
+	},
+	{
+		name: "github-dark",
+		palette: palette{
+			foreground: "#f0f6fc", background: "#0d1117",
+			primary: "#4493f8", secondary: "#ab7df8", muted: "#9198a1", highlight: "#db61a2",
+			info: "#3fb950", danger: "#f85149", warning: "#d29922", working: "#79c0ff",
+		},
+	},
+	{
 		name: "catppuccin-latte",
 		palette: palette{
 			foreground: "#4c4f69", background: "#eff1f5",

@@ -18,6 +18,8 @@ func TestResolveColors(t *testing.T) {
 	}{
 		{name: "implicit default", primary: "6"},
 		{name: "default", preset: "default", primary: "6"},
+		{name: "GitHub light", preset: "github-light", primary: "#0969da", background: "#ffffff"},
+		{name: "GitHub dark", preset: "github-dark", primary: "#4493f8", background: "#0d1117"},
 		{name: "catppuccin latte", preset: "catppuccin-latte", primary: "#8839ef", background: "#eff1f5"},
 		{name: "catppuccin frappe", preset: "catppuccin-frappe", primary: "#ca9ee6", background: "#303446"},
 		{name: "catppuccin macchiato", preset: "catppuccin-macchiato", primary: "#c6a0f6", background: "#24273a"},
@@ -37,6 +39,37 @@ func TestResolveColors(t *testing.T) {
 			assert.NotEmpty(t, colors.danger)
 			assert.NotEmpty(t, colors.warning)
 			assert.NotEmpty(t, colors.working)
+		})
+	}
+}
+
+func TestGitHubPresetsMatchPrimerPrimitives(t *testing.T) {
+	tests := []struct {
+		name string
+		want palette
+	}{
+		{
+			name: "github-light",
+			want: palette{
+				foreground: "#1f2328", background: "#ffffff",
+				primary: "#0969da", secondary: "#8250df", muted: "#59636e", highlight: "#bf3989",
+				info: "#1a7f37", danger: "#d1242f", warning: "#9a6700", working: "#218bff",
+			},
+		},
+		{
+			name: "github-dark",
+			want: palette{
+				foreground: "#f0f6fc", background: "#0d1117",
+				primary: "#4493f8", secondary: "#ab7df8", muted: "#9198a1", highlight: "#db61a2",
+				info: "#3fb950", danger: "#f85149", warning: "#d29922", working: "#79c0ff",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			colors := resolveColors(config.ThemeConfig{Preset: tt.name}, func(int) int { return 0 })
+			assert.Equal(t, tt.want, colors)
 		})
 	}
 }

@@ -10,7 +10,14 @@ DESKTOP_FILE ?= packaging/tmus.desktop
 ICON_BASE ?= packaging/icons/hicolor
 ICON_SOURCE ?= packaging/icons/source/tmus.png
 
-.PHONY: build lint test install install-desktop install-icons icons uninstall demotape
+# Linux supplies the baseline runtime graph. The explicit packages add the
+# components that are linked only on macOS or Windows, yielding the reviewed
+# conservative union for all release targets.
+NOTICE_PACKAGES := . github.com/ebitengine/purego github.com/inconshreveable/mousetrap
+NOTICE_REPORT := go tool go-licenses report $(NOTICE_PACKAGES) --ignore github.com/bpicode/tmus
+NOTICE_CHECK := go tool go-licenses check $(NOTICE_PACKAGES) --ignore github.com/bpicode/tmus --ignore github.com/llehouerou/go-m4a
+
+.PHONY: build lint test notices notices-check install install-desktop install-icons icons uninstall demotape
 
 build:
 	go build -o $(BIN_NAME) .
@@ -22,6 +29,16 @@ lint:
 
 test:
 	go test -race ./...
+
+notices:
+	$(NOTICE_CHECK)
+	$(NOTICE_REPORT) --template=third_party_notices.tpl > THIRD_PARTY_NOTICES.md
+	$(NOTICE_REPORT) --template=packaging/debian/copyright.tpl > packaging/debian/copyright
+
+notices-check:
+	$(NOTICE_CHECK)
+	$(NOTICE_REPORT) --template=third_party_notices.tpl | diff -u THIRD_PARTY_NOTICES.md -
+	$(NOTICE_REPORT) --template=packaging/debian/copyright.tpl | diff -u packaging/debian/copyright -
 
 install: install-desktop
 	mkdir -p $(BIN_DIR)

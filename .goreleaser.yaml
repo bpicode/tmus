@@ -29,6 +29,11 @@ builds:
       - amd64
     ldflags:
       - -s -w
+archives:
+  - files:
+      - LICENSE
+      - README.md
+      - THIRD_PARTY_NOTICES.md
 nfpms:
   - id: linux-packages
     package_name: tmus
@@ -52,6 +57,21 @@ nfpms:
       - src: packaging/apparmor/usr.bin.tmus
         dst: /etc/apparmor.d/usr.bin.tmus
         type: "config|noreplace"
+        file_info:
+          mode: 0644
+      - src: packaging/debian/copyright
+        dst: /usr/share/doc/tmus/copyright
+        packager: deb
+        file_info:
+          mode: 0644
+      - src: LICENSE
+        dst: /usr/share/licenses/tmus/LICENSE
+        packager: rpm
+        file_info:
+          mode: 0644
+      - src: THIRD_PARTY_NOTICES.md
+        dst: /usr/share/licenses/tmus/THIRD_PARTY_NOTICES.md
+        packager: rpm
         file_info:
           mode: 0644
     scripts:

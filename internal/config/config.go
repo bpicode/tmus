@@ -16,6 +16,20 @@ type AudioConfig struct {
 	BufferMs        int `toml:"buffer_ms" comment:"Speaker buffer size in milliseconds (lower = lower latency, higher = more stable)."`
 }
 
+// Validate ensures audio settings are sane.
+func (c AudioConfig) Validate() error {
+	if c.SampleRate <= 0 {
+		return fmt.Errorf("audio.sample_rate must be > 0")
+	}
+	if c.ResampleQuality < 1 || c.ResampleQuality > 64 {
+		return fmt.Errorf("audio.resample_quality must be between 1 and 64")
+	}
+	if c.BufferMs <= 0 {
+		return fmt.Errorf("audio.buffer_ms must be > 0")
+	}
+	return nil
+}
+
 // MPRISConfig holds DBus/MPRIS integration settings.
 type MPRISConfig struct {
 	Enabled bool `toml:"enabled" comment:"Enable DBus/MPRIS integration for media controls."`
@@ -70,6 +84,19 @@ type TUIConfig struct {
 	Theme           ThemeConfig `toml:"theme"`
 }
 
+// Validate ensures TUI settings are sane.
+func (c TUIConfig) Validate() error {
+	if c.ArtworkAspect <= 0 {
+		return fmt.Errorf("tui.artwork_aspect must be > 0")
+	}
+	switch c.ArtworkRenderer {
+	case "auto", "kitty", "blocks", "none":
+	default:
+		return fmt.Errorf("tui.artwork_renderer must be one of auto, kitty, blocks, none")
+	}
+	return nil
+}
+
 type LyricsConfig struct {
 	LrcLib LrcLibConfig `toml:"lrclib"`
 }
@@ -90,6 +117,14 @@ type CacheConfig struct {
 // LibraryConfig holds media library settings.
 type LibraryConfig struct {
 	MaxArchiveMemberSize ByteSize `toml:"max_archive_member_size" comment:"Maximum decoded size of one file inside an archive."`
+}
+
+// Validate ensures library settings are sane.
+func (c LibraryConfig) Validate() error {
+	if c.MaxArchiveMemberSize <= 0 {
+		return fmt.Errorf("library.max_archive_member_size must be > 0")
+	}
+	return nil
 }
 
 // Config is the root configuration object.
@@ -206,28 +241,17 @@ func WriteDefault(path string, force bool) error {
 
 // Validate ensures configuration values are sane.
 func (c Config) Validate() error {
-	if c.Audio.SampleRate <= 0 {
-		return fmt.Errorf("audio.sample_rate must be > 0")
-	}
-	if c.Audio.ResampleQuality < 1 || c.Audio.ResampleQuality > 64 {
-		return fmt.Errorf("audio.resample_quality must be between 1 and 64")
-	}
-	if c.Audio.BufferMs <= 0 {
-		return fmt.Errorf("audio.buffer_ms must be > 0")
+	if err := c.Audio.Validate(); err != nil {
+		return err
 	}
 	if err := c.IPC.Validate(); err != nil {
 		return err
 	}
-	if c.TUI.ArtworkAspect <= 0 {
-		return fmt.Errorf("tui.artwork_aspect must be > 0")
+	if err := c.TUI.Validate(); err != nil {
+		return err
 	}
-	switch c.TUI.ArtworkRenderer {
-	case "auto", "kitty", "blocks", "none":
-	default:
-		return fmt.Errorf("tui.artwork_renderer must be one of auto, kitty, blocks, none")
-	}
-	if c.Library.MaxArchiveMemberSize <= 0 {
-		return fmt.Errorf("library.max_archive_member_size must be > 0")
+	if err := c.Library.Validate(); err != nil {
+		return err
 	}
 	return nil
 }

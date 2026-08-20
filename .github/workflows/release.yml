@@ -36,7 +36,9 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
       - name: Assets
-        run: make icons
+        run: |
+          make icons
+          make notices
       - name: GoReleaser
         uses: goreleaser/goreleaser-action@v7
         with:

@@ -15,6 +15,10 @@
 # Generated icons
 /packaging/icons/hicolor/*/apps/*.png
 
+# Generated license notices
+/THIRD_PARTY_NOTICES.md
+/packaging/debian/copyright
+
 # Go build cache directories (local)
 /bin/
 /pkg/

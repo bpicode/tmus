@@ -37,8 +37,6 @@ notices:
 
 notices-check:
 	$(NOTICE_CHECK)
-	$(NOTICE_REPORT) --template=third_party_notices.tpl | diff -u THIRD_PARTY_NOTICES.md -
-	$(NOTICE_REPORT) --template=packaging/debian/copyright.tpl | diff -u packaging/debian/copyright -
 
 install: install-desktop
 	mkdir -p $(BIN_DIR)

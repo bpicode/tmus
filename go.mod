@@ -20,7 +20,7 @@ require (
 	github.com/mholt/archives v0.1.5
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/spf13/cobra v1.10.2
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.1
 	github.com/ulikunitz/xz v0.5.16
 	golang.org/x/image v0.45.0
 )
@@ -69,7 +69,6 @@ require (
 	github.com/otiai10/copy v1.10.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.27 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sahilm/fuzzy v0.1.3 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
@@ -80,6 +79,7 @@ require (
 	github.com/tetratelabs/wazero v1.11.0 // indirect
 	github.com/xo/terminfo v1.0.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
@@ -87,7 +87,6 @@ require (
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/tools v0.48.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.90.1 // indirect
 )
 

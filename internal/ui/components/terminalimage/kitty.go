@@ -73,7 +73,7 @@ func (m *Model) uploadKitty() string {
 		Columns:          box.width,
 		Rows:             box.height,
 		VirtualPlacement: true,
-		Quite:            2,
+		Quiet:            2,
 		Chunk:            true,
 	})
 	if err != nil {
@@ -93,7 +93,7 @@ func (m *Model) deleteKitty(imageID int) string {
 		ID:              imageID,
 		Delete:          kitty.DeleteID,
 		DeleteResources: true,
-		Quite:           2,
+		Quiet:           2,
 	})
 	if err != nil {
 		return ""

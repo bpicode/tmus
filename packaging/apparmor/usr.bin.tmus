@@ -6,10 +6,7 @@
 # and temporary namespaces. This limits accidental damage and some post-exploit
 # actions, but it is not a sandbox for hostile media: a compromised process can
 # read and exfiltrate the user's files and interact with the session bus.
-#
-# Complain mode logs policy misses without enforcing this boundary. Keep it
-# until representative systems and common feature paths have been exercised.
-profile tmus /usr/bin/tmus flags=(complain) {
+profile tmus /usr/bin/tmus flags=(enforce) {
 	#include <abstractions/base>
 	#include <abstractions/audio>
 	#include <abstractions/consoles>

@@ -37,6 +37,8 @@ func decodeSource(s library.AudioSource) (beep.StreamSeekCloser, beep.Format, er
 		streamer, format, err = wav.Decode(rc)
 	case library.FormatFLAC:
 		streamer, format, err = flac.Decode(rc)
+	case library.FormatAAC:
+		streamer, format, err = decodeAAC(rc)
 	case library.FormatOPUS, library.FormatOGG, library.FormatOGA:
 		rsc, ok := rc.(io.ReadSeekCloser)
 		if !ok {

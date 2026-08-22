@@ -37,6 +37,8 @@ func entryTypeFromExt(ext string) entryType {
 		return entryMP4
 	case ".wav":
 		return entryWAV
+	case ".aac":
+		return entryAAC
 	case ".url", ".stream":
 		return entryStream
 	default:
@@ -72,6 +74,8 @@ func formatFromExt(ext string) FormatType {
 		return FormatMP4
 	case entryWAV:
 		return FormatWAV
+	case entryAAC:
+		return FormatAAC
 	default:
 		return FormatUnknown
 	}

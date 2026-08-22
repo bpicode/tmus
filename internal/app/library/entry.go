@@ -18,6 +18,7 @@ const (
 	entryM4A
 	entryMP4
 	entryWAV
+	entryAAC
 	entryStream
 	entryOther
 )
@@ -42,6 +43,8 @@ const (
 	FormatMP4
 	// FormatWAV identifies Waveform Audio File Format audio.
 	FormatWAV
+	// FormatAAC identifies raw AAC audio in an ADTS stream.
+	FormatAAC
 	// FormatUnknown indicates that no decoder format could be inferred.
 	FormatUnknown
 )

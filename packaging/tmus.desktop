@@ -8,4 +8,4 @@ Exec=tmus %F
 Terminal=true
 Icon=tmus
 Categories=AudioVideo;Audio;Music;Player;ConsoleOnly;
-MimeType=audio/mpeg;audio/mp3;audio/x-mp3;audio/wav;audio/x-wav;audio/flac;audio/x-flac;audio/ogg;application/ogg;audio/opus;audio/mp4;audio/m4a;audio/x-m4a;audio/x-aac
+MimeType=audio/mpeg;audio/mp3;audio/x-mp3;audio/wav;audio/x-wav;audio/flac;audio/x-flac;audio/ogg;application/ogg;audio/opus;audio/mp4;audio/m4a;audio/x-m4a;audio/aac;audio/x-aac;

@@ -328,6 +328,7 @@ func (s *Service) rootProperties() map[string]dbus.Variant {
 			"audio/flac",
 			"audio/ogg",
 			"audio/wav",
+			"audio/aac",
 		}),
 	}
 }

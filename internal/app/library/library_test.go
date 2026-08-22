@@ -16,6 +16,7 @@ import (
 func TestEntryFromPathLocalEntries(t *testing.T) {
 	dir := t.TempDir()
 	mustWriteFile(t, filepath.Join(dir, "song.mp3"), "")
+	mustWriteFile(t, filepath.Join(dir, "song.aac"), "")
 	mustWriteFile(t, filepath.Join(dir, "station.url"), "[InternetShortcut]\nURL=https://example.com/station.pls\n")
 	mustWriteFile(t, filepath.Join(dir, "radio.stream"), "https://example.com/radio.pls\n")
 	mustWriteFile(t, filepath.Join(dir, "notes.txt"), "not audio")
@@ -27,6 +28,7 @@ func TestEntryFromPathLocalEntries(t *testing.T) {
 		want entryType
 	}{
 		{name: "audio", path: filepath.Join(dir, "song.mp3"), want: entryMP3},
+		{name: "aac audio", path: filepath.Join(dir, "song.aac"), want: entryAAC},
 		{name: "url", path: filepath.Join(dir, "station.url"), want: entryStream},
 		{name: "stream", path: filepath.Join(dir, "radio.stream"), want: entryStream},
 		{name: "archive", path: filepath.Join(dir, "pack.zip"), want: entryArchive},
@@ -206,6 +208,44 @@ func TestArchiveEntryOpenURLShortcut(t *testing.T) {
 	data, err := io.ReadAll(source.Reader)
 	require.NoError(t, err)
 	assert.Equal(t, "flac data", string(data))
+}
+
+func TestRemoteAudioContentTypes(t *testing.T) {
+	tests := []struct {
+		name        string
+		contentType string
+		data        string
+		wantFormat  FormatType
+	}{
+		{name: "AAC", contentType: "audio/aac", data: "aac data", wantFormat: FormatAAC},
+		{name: "MP3", contentType: "audio/mpeg", data: "mp3 data", wantFormat: FormatMP3},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			headers := make(chan http.Header, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				headers <- r.Header.Clone()
+				w.Header().Set("Content-Type", tt.contentType)
+				_, _ = w.Write([]byte(tt.data))
+			}))
+			defer server.Close()
+
+			entry, err := EntryFromPath(server.URL)
+			require.NoError(t, err)
+			source, err := entry.Open(t.Context())
+			require.NoError(t, err)
+			defer source.Reader.Close()
+
+			requestHeaders := <-headers
+			assert.Equal(t, "tmus", requestHeaders.Get("User-Agent"))
+			assert.Equal(t, "1", requestHeaders.Get("Icy-MetaData"))
+			assert.Equal(t, tt.wantFormat, source.Format)
+			data, err := io.ReadAll(source.Reader)
+			require.NoError(t, err)
+			assert.Equal(t, tt.data, string(data))
+		})
+	}
 }
 
 func archivedShortcutEntry(t *testing.T, name, content string) Entry {

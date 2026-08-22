@@ -46,6 +46,7 @@ func (r *httpResolver) resolvePlaylist(ctx context.Context, uri string, depth in
 	if err != nil {
 		return AudioSource{}, err
 	}
+	req.Header.Set("User-Agent", "tmus")
 	req.Header.Set("Icy-MetaData", "1")
 
 	resp, err := r.client.Do(req)
@@ -161,6 +162,9 @@ func extFromContentType(ct string) string {
 	}
 	if strings.Contains(ct, "audio/flac") {
 		return ".flac"
+	}
+	if strings.Contains(ct, "audio/aac") {
+		return ".aac"
 	}
 	return ""
 }

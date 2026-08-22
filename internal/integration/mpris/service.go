@@ -144,7 +144,7 @@ func (s *Service) Quit() *dbus.Error {
 // Play starts or resumes playback.
 func (s *Service) Play() *dbus.Error {
 	state := s.app.State()
-	switch state.PlayState {
+	switch state.Playback.State {
 	case core.PlaybackPaused:
 		return s.dispatch(core.Command{Type: core.CmdTogglePause})
 	case core.PlaybackStopped:
@@ -157,7 +157,7 @@ func (s *Service) Play() *dbus.Error {
 // Pause pauses playback.
 func (s *Service) Pause() *dbus.Error {
 	state := s.app.State()
-	if state.PlayState == core.PlaybackPlaying {
+	if state.Playback.State == core.PlaybackPlaying {
 		return s.dispatch(core.Command{Type: core.CmdTogglePause})
 	}
 	return nil
@@ -166,7 +166,7 @@ func (s *Service) Pause() *dbus.Error {
 // PlayPause toggles playback state.
 func (s *Service) PlayPause() *dbus.Error {
 	state := s.app.State()
-	if state.PlayState == core.PlaybackStopped {
+	if state.Playback.State == core.PlaybackStopped {
 		return s.dispatch(core.Command{Type: core.CmdPlayFromCursor})
 	}
 	return s.dispatch(core.Command{Type: core.CmdTogglePause})
@@ -350,12 +350,12 @@ func (s *Service) playerProperty(name string, state core.State) (dbus.Variant, b
 
 func (s *Service) playerPropertyMap(state core.State) map[string]dbus.Variant {
 	metadata := s.metadataMap(state)
-	status := playbackStatus(state.PlayState)
+	status := playbackStatus(state.Playback.State)
 	loop := queueModeToLoopStatus(state.QueueMode)
 	shuffle := queueModeToShuffle(state.QueueMode)
 	canPlay := len(state.Playlist) > 0
 	canPause := len(state.Playlist) > 0
-	canSeek := state.PlayDuration > 0
+	canSeek := state.Playback.Duration > 0
 	canGo := len(state.Playlist) > 0
 	return map[string]dbus.Variant{
 		"PlaybackStatus": dbus.MakeVariant(status),
@@ -381,7 +381,7 @@ func (s *Service) metadataMap(state core.State) map[string]dbus.Variant {
 	trackID := currentTrackID(state)
 	metadata["mpris:trackid"] = dbus.MakeVariant(trackObjectPath(trackID))
 
-	if state.PlayState == core.PlaybackStopped || trackID == 0 {
+	if state.Playback.State == core.PlaybackStopped || trackID == 0 {
 		return metadata
 	}
 	track := state.Playlist[state.Playing]
@@ -398,8 +398,8 @@ func (s *Service) metadataMap(state core.State) map[string]dbus.Variant {
 	if track.Album != "" {
 		metadata["xesam:album"] = dbus.MakeVariant(track.Album)
 	}
-	if state.PlayDuration > 0 {
-		metadata["mpris:length"] = dbus.MakeVariant(toMicroseconds(state.PlayDuration))
+	if state.Playback.Duration > 0 {
+		metadata["mpris:length"] = dbus.MakeVariant(toMicroseconds(state.Playback.Duration))
 	}
 	if track.Path != "" {
 		trackURI := track.Path

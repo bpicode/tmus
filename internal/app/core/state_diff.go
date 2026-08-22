@@ -13,15 +13,18 @@ func DiffState(prev, next State) StateChange {
 	if prev.Cursor != next.Cursor {
 		changes |= StateChangeSelection
 	}
-	if prev.Playing != next.Playing || prev.PlayTrack != next.PlayTrack {
+	if prev.Playing != next.Playing || prev.Playback.Source != next.Playback.Source {
 		changes |= StateChangePlaying | StateChangeMetadata
 	}
-	if prev.PlayState != next.PlayState ||
-		prev.PlayStart != next.PlayStart ||
-		prev.PlayDuration != next.PlayDuration ||
-		prev.PausedAt != next.PausedAt ||
-		prev.PausedFor != next.PausedFor {
+	if prev.Playback.State != next.Playback.State ||
+		prev.Playback.StartedAt != next.Playback.StartedAt ||
+		prev.Playback.Duration != next.Playback.Duration ||
+		prev.Playback.PausedAt != next.Playback.PausedAt ||
+		prev.Playback.PausedFor != next.Playback.PausedFor {
 		changes |= StateChangePlayback
+	}
+	if prev.Playback.NowPlaying != next.Playback.NowPlaying {
+		changes |= StateChangeMetadata
 	}
 	if prev.PlaylistErr != next.PlaylistErr {
 		changes |= StateChangeError

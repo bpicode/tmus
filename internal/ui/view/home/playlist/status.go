@@ -32,20 +32,20 @@ func (m *statusModel) UpdateSize(width int) {
 
 func (m *statusModel) View() string {
 	appState := m.app.State()
-	playState := appState.PlayState
+	playState := appState.Playback.State
 	truncateLeft := truncate.Left{}.MaxWidth(m.width)
 	if playState == core.PlaybackStopped {
 		text := m.label + m.styles.statusNone.Render("none")
 		return truncateLeft.Render(text)
 	}
 	elapsed := appState.Elapsed()
-	track := sanitize.TerminalText(filepath.Base(appState.PlayTrack))
+	track := sanitize.TerminalText(filepath.Base(appState.Playback.Source))
 	if appState.Playing >= 0 && appState.Playing < len(appState.Playlist) {
 		track = sanitize.TerminalText(appState.Playlist[appState.Playing].DisplayName())
 	}
 	duration := fmt.Sprintf(" [%s]", formatDuration(elapsed))
-	if appState.PlayDuration > 0 {
-		duration = fmt.Sprintf(" [%s/%s]", formatDuration(elapsed), formatDuration(appState.PlayDuration))
+	if appState.Playback.Duration > 0 {
+		duration = fmt.Sprintf(" [%s/%s]", formatDuration(elapsed), formatDuration(appState.Playback.Duration))
 	}
 	stateStyle := playStateStyle(appState, m.styles)
 	text := m.label + stateStyle.Render(track) + m.styles.statusTime.Render(duration)
@@ -53,7 +53,7 @@ func (m *statusModel) View() string {
 }
 
 func playStateStyle(state core.State, styles styles) lipgloss.Style {
-	switch state.PlayState {
+	switch state.Playback.State {
 	case core.PlaybackPaused:
 		return styles.statusPause
 	case core.PlaybackPlaying:

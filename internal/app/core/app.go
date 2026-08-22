@@ -25,27 +25,18 @@ const (
 
 // State is the shared application state for the UI.
 type State struct {
-	Playlist     []Track
-	PlaylistErr  error
-	Playing      int
-	Cursor       int
-	QueueMode    QueueMode
-	PlayState    PlaybackState
-	PlayTrack    string
-	PlayStart    time.Time
-	PlayDuration time.Duration
-	PausedAt     time.Time
-	PausedFor    time.Duration
-	Volume       int
+	Playlist    []Track
+	PlaylistErr error
+	Playing     int
+	Cursor      int
+	QueueMode   QueueMode
+	Playback    Playback
+	Volume      int
 }
 
 // Elapsed returns the playback time elapsed for the current track.
 func (s *State) Elapsed() time.Duration {
-	elapsed := time.Since(s.PlayStart) - s.PausedFor
-	if s.PlayState == PlaybackPaused && !s.PausedAt.IsZero() {
-		elapsed = s.PausedAt.Sub(s.PlayStart) - s.PausedFor
-	}
-	return elapsed
+	return s.Playback.Elapsed()
 }
 
 // CommandType identifies a UI command.
@@ -200,8 +191,10 @@ func New(cfg config.Config) *App {
 			Playing:   -1,
 			Cursor:    -1,
 			QueueMode: QueueModeLinear,
-			PlayState: PlaybackStopped,
-			Volume:    DefaultVolume,
+			Playback: Playback{
+				State: PlaybackStopped,
+			},
+			Volume: DefaultVolume,
 		},
 		queue:          LinearStrategy{},
 		lastVolume:     DefaultVolume,
@@ -451,23 +444,23 @@ func (a *App) HandlePlayerEvent(event player.Event) {
 		}
 	case player.EventTrackStarted:
 		a.state.PlaylistErr = nil
-		a.state.PlayState = PlaybackPlaying
-		a.state.PlayTrack = event.Path
-		a.state.PlayStart = time.Now()
-		a.state.PlayDuration = event.Dur
-		a.state.PausedAt = time.Time{}
-		a.state.PausedFor = 0
+		a.state.Playback = Playback{
+			State:     PlaybackPlaying,
+			Source:    event.Path,
+			StartedAt: time.Now(),
+			Duration:  event.Dur,
+		}
 	case player.EventTrackPaused:
-		if a.state.PlayState == PlaybackPlaying {
-			a.state.PlayState = PlaybackPaused
-			a.state.PausedAt = time.Now()
+		if a.state.Playback.State == PlaybackPlaying {
+			a.state.Playback.State = PlaybackPaused
+			a.state.Playback.PausedAt = time.Now()
 		}
 	case player.EventTrackResumed:
-		if a.state.PlayState == PlaybackPaused {
-			a.state.PlayState = PlaybackPlaying
-			if !a.state.PausedAt.IsZero() {
-				a.state.PausedFor += time.Since(a.state.PausedAt)
-				a.state.PausedAt = time.Time{}
+		if a.state.Playback.State == PlaybackPaused {
+			a.state.Playback.State = PlaybackPlaying
+			if !a.state.Playback.PausedAt.IsZero() {
+				a.state.Playback.PausedFor += time.Since(a.state.Playback.PausedAt)
+				a.state.Playback.PausedAt = time.Time{}
 			}
 		}
 	case player.EventTrackStopped:
@@ -534,23 +527,18 @@ func copyState(s State) State {
 }
 
 func (a *App) resetPlaybackState() {
-	a.state.PlayState = PlaybackStopped
-	a.state.PlayTrack = ""
-	a.state.PlayStart = time.Time{}
-	a.state.PlayDuration = 0
-	a.state.PausedAt = time.Time{}
-	a.state.PausedFor = 0
+	a.state.Playback = Playback{State: PlaybackStopped}
 }
 
 func (a *App) seekBy(offset time.Duration) {
-	if a.state.PlayState == PlaybackStopped {
+	if a.state.Playback.State == PlaybackStopped {
 		return
 	}
 
 	elapsed := a.state.Elapsed()
 	target := max(elapsed+offset, 0)
 
-	if a.state.PlayDuration > 0 && target >= a.state.PlayDuration {
+	if a.state.Playback.Duration > 0 && target >= a.state.Playback.Duration {
 		index := a.next()
 		if index >= 0 {
 			a.playIndex(index)
@@ -570,14 +558,14 @@ func (a *App) seekBy(offset time.Duration) {
 		pos = result.Pos
 	}
 	if result.Dur > 0 {
-		a.state.PlayDuration = result.Dur
+		a.state.Playback.Duration = result.Dur
 	}
 
-	if a.state.PlayState == PlaybackPaused && !a.state.PausedAt.IsZero() {
-		a.state.PlayStart = a.state.PausedAt.Add(-a.state.PausedFor - pos)
+	if a.state.Playback.State == PlaybackPaused && !a.state.Playback.PausedAt.IsZero() {
+		a.state.Playback.StartedAt = a.state.Playback.PausedAt.Add(-a.state.Playback.PausedFor - pos)
 		return
 	}
-	a.state.PlayStart = time.Now().Add(-a.state.PausedFor - pos)
+	a.state.Playback.StartedAt = time.Now().Add(-a.state.Playback.PausedFor - pos)
 }
 
 func (a *App) playIndex(index int) {

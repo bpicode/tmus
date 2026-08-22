@@ -296,7 +296,7 @@ func (m *Model) Show(show bool) {
 func (m *Model) syncState() (*Model, tea.Cmd, bool) {
 	state := m.app.State()
 	m.playing = state.Playing
-	m.playState = state.PlayState
+	m.playState = state.Playback.State
 	m.updateItems(state)
 
 	cursor := selectedTrack(state)
@@ -536,7 +536,7 @@ func (d playlistDelegate) Render(w io.Writer, m list.Model, index int, item list
 }
 
 func playStateLabel(state core.State) string {
-	switch state.PlayState {
+	switch state.Playback.State {
 	case core.PlaybackPaused:
 		return "paused"
 	case core.PlaybackPlaying:

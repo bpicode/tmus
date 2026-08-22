@@ -112,8 +112,8 @@ func (a *App) trackInfoForLyrics(req lyricsRequest) lyrics.TrackInfo {
 		info.Title = track.Title
 		info.Album = track.Album
 		info.Duration = track.Duration
-		if info.Duration == 0 && a.state.PlayTrack == req.Path {
-			info.Duration = a.state.PlayDuration
+		if info.Duration == 0 && a.state.Playback.Source == req.Path {
+			info.Duration = a.state.Playback.Duration
 		}
 		break
 	}

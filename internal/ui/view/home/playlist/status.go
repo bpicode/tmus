@@ -43,6 +43,9 @@ func (m *statusModel) View() string {
 	if appState.Playing >= 0 && appState.Playing < len(appState.Playlist) {
 		track = sanitize.TerminalText(appState.Playlist[appState.Playing].DisplayName())
 	}
+	if nowPlaying := appState.Playback.NowPlaying.DisplayName(); nowPlaying != "" {
+		track = sanitize.TerminalText(nowPlaying)
+	}
 	duration := fmt.Sprintf(" [%s]", formatDuration(elapsed))
 	if appState.Playback.Duration > 0 {
 		duration = fmt.Sprintf(" [%s/%s]", formatDuration(elapsed), formatDuration(appState.Playback.Duration))

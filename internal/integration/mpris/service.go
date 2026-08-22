@@ -385,18 +385,35 @@ func (s *Service) metadataMap(state core.State) map[string]dbus.Variant {
 		return metadata
 	}
 	track := state.Playlist[state.Playing]
-	title := track.Title
+	title := state.Playback.NowPlaying.Title
+	if title == "" {
+		title = state.Playback.NowPlaying.DisplayTitle
+	}
+	if title == "" {
+		title = state.Playback.NowPlaying.SourceName
+	}
+	if title == "" {
+		title = track.Title
+	}
 	if title == "" {
 		title = track.Name
 	}
 	if title != "" {
 		metadata["xesam:title"] = dbus.MakeVariant(title)
 	}
-	if track.Artist != "" {
-		metadata["xesam:artist"] = dbus.MakeVariant([]string{track.Artist})
+	artist := state.Playback.NowPlaying.Artist
+	if artist == "" {
+		artist = track.Artist
 	}
-	if track.Album != "" {
-		metadata["xesam:album"] = dbus.MakeVariant(track.Album)
+	if artist != "" {
+		metadata["xesam:artist"] = dbus.MakeVariant([]string{artist})
+	}
+	album := state.Playback.NowPlaying.Album
+	if album == "" {
+		album = track.Album
+	}
+	if album != "" {
+		metadata["xesam:album"] = dbus.MakeVariant(album)
 	}
 	if state.Playback.Duration > 0 {
 		metadata["mpris:length"] = dbus.MakeVariant(toMicroseconds(state.Playback.Duration))

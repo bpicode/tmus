@@ -16,19 +16,22 @@ import (
 type EventType string
 
 const (
-	EventTrackStarted EventType = "track_started"
-	EventTrackEnded   EventType = "track_ended"
-	EventTrackError   EventType = "track_error"
-	EventTrackPaused  EventType = "track_paused"
-	EventTrackResumed EventType = "track_resumed"
-	EventTrackStopped EventType = "track_stopped"
+	EventTrackStarted   EventType = "track_started"
+	EventTrackEnded     EventType = "track_ended"
+	EventTrackError     EventType = "track_error"
+	EventTrackPaused    EventType = "track_paused"
+	EventTrackResumed   EventType = "track_resumed"
+	EventTrackStopped   EventType = "track_stopped"
+	EventSourceMetadata EventType = "source_metadata"
 )
 
 type Event struct {
-	Type EventType
-	Path string
-	Err  error
-	Dur  time.Duration
+	Type       EventType
+	Path       string
+	Err        error
+	Dur        time.Duration
+	PlaybackID uint64
+	Metadata   library.SourceMetadata
 }
 
 type commandType string
@@ -247,7 +250,10 @@ func (e *Engine) playPath(uri string) {
 	e.current = uri
 	e.mu.Unlock()
 
-	e.sendEvent(Event{Type: EventTrackStarted, Path: uri, Dur: trackDur})
+	e.sendEvent(Event{Type: EventTrackStarted, Path: uri, Dur: trackDur, PlaybackID: playID})
+	if audioSource.MetadataUpdates != nil {
+		go e.forwardSourceMetadata(playCtx, playID, uri, audioSource.MetadataUpdates)
+	}
 
 	speaker.Play(beep.Seq(e.ctrl, beep.Callback(func() {
 		_ = streamer.Close()
@@ -256,6 +262,25 @@ func (e *Engine) playPath(uri string) {
 		}
 		e.sendEvent(Event{Type: EventTrackEnded, Path: uri})
 	})))
+}
+
+func (e *Engine) forwardSourceMetadata(ctx context.Context, playID uint64, uri string, updates <-chan library.SourceMetadata) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case metadata, ok := <-updates:
+			if !ok || e.playID.Load() != playID {
+				return
+			}
+			e.sendEvent(Event{
+				Type:       EventSourceMetadata,
+				Path:       uri,
+				PlaybackID: playID,
+				Metadata:   metadata,
+			})
+		}
+	}
 }
 
 func durationFor(streamer beep.StreamSeekCloser, format beep.Format) time.Duration {

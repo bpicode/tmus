@@ -126,8 +126,9 @@ type App struct {
 	queue  QueueStrategy
 	lib    *library.Library
 
-	lastVolume  int
-	nextTrackID uint64
+	lastVolume       int
+	nextTrackID      uint64
+	activePlaybackID uint64
 
 	cmdChan      chan Command
 	commandWG    sync.WaitGroup
@@ -430,6 +431,8 @@ func (a *App) HandlePlayerEvent(event player.Event) {
 	a.stateMu.Lock()
 	switch event.Type {
 	case player.EventTrackEnded:
+		a.activePlaybackID = 0
+		a.state.Playback.NowPlaying = NowPlaying{}
 		index := a.next()
 		if index >= 0 {
 			a.playIndex(index)
@@ -437,6 +440,8 @@ func (a *App) HandlePlayerEvent(event player.Event) {
 			a.resetPlaybackState()
 		}
 	case player.EventTrackError:
+		a.activePlaybackID = 0
+		a.state.Playback.NowPlaying = NowPlaying{}
 		a.state.PlaylistErr = event.Err
 		index := a.next()
 		if index >= 0 {
@@ -449,6 +454,19 @@ func (a *App) HandlePlayerEvent(event player.Event) {
 			Source:    event.Path,
 			StartedAt: time.Now(),
 			Duration:  event.Dur,
+		}
+		a.activePlaybackID = event.PlaybackID
+	case player.EventSourceMetadata:
+		if a.state.Playback.State != PlaybackStopped &&
+			a.state.Playback.Source == event.Path &&
+			a.activePlaybackID == event.PlaybackID {
+			a.state.Playback.NowPlaying = NowPlaying{
+				DisplayTitle: event.Metadata.DisplayTitle,
+				Artist:       event.Metadata.Artist,
+				Title:        event.Metadata.Title,
+				Album:        event.Metadata.Album,
+				SourceName:   event.Metadata.SourceName,
+			}
 		}
 	case player.EventTrackPaused:
 		if a.state.Playback.State == PlaybackPlaying {
@@ -528,6 +546,7 @@ func copyState(s State) State {
 
 func (a *App) resetPlaybackState() {
 	a.state.Playback = Playback{State: PlaybackStopped}
+	a.activePlaybackID = 0
 }
 
 func (a *App) seekBy(offset time.Duration) {

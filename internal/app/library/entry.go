@@ -52,6 +52,19 @@ type AudioSource struct {
 	Reader io.ReadCloser
 	// Format identifies the decoder to use for Reader.
 	Format FormatType
+	// MetadataUpdates reports metadata changes while Reader is consumed. The
+	// producer owns and closes the channel when Reader is closed or exhausted.
+	MetadataUpdates <-chan SourceMetadata
+}
+
+// SourceMetadata describes presentation metadata emitted by an audio source.
+type SourceMetadata struct {
+	DisplayTitle string
+	Artist       string
+	Title        string
+	Album        string
+	SourceName   string
+	URL          string
 }
 
 // Entry represents a durable library item.

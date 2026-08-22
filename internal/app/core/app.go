@@ -446,6 +446,8 @@ func (a *App) HandlePlayerEvent(event player.Event) {
 		index := a.next()
 		if index >= 0 {
 			a.playIndex(index)
+		} else {
+			a.resetPlaybackState()
 		}
 	case player.EventTrackStarted:
 		a.state.PlaylistErr = nil

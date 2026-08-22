@@ -256,8 +256,17 @@ func (e *Engine) playPath(uri string) {
 	}
 
 	speaker.Play(beep.Seq(e.ctrl, beep.Callback(func() {
+		streamErr := streamer.Err()
 		_ = streamer.Close()
 		if e.playID.Load() != playID {
+			return
+		}
+		if streamErr != nil {
+			e.sendEvent(Event{
+				Type: EventTrackError,
+				Path: uri,
+				Err:  fmt.Errorf("stream playback: %w", streamErr),
+			})
 			return
 		}
 		e.sendEvent(Event{Type: EventTrackEnded, Path: uri})

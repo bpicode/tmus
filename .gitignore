@@ -19,6 +19,9 @@
 /THIRD_PARTY_NOTICES.md
 /packaging/debian/copyright
 
+# Generated shell completions
+/packaging/completions/
+
 # Go build cache directories (local)
 /bin/
 /pkg/

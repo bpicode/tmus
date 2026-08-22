@@ -39,6 +39,7 @@ jobs:
         run: |
           make icons
           make notices
+          make completions
       - name: GoReleaser
         uses: goreleaser/goreleaser-action@v7
         with:

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -45,6 +46,7 @@ func (r *httpResolver) resolvePlaylist(ctx context.Context, uri string, depth in
 	if err != nil {
 		return AudioSource{}, err
 	}
+	req.Header.Set("Icy-MetaData", "1")
 
 	resp, err := r.client.Do(req)
 	if err != nil {
@@ -76,7 +78,25 @@ func (r *httpResolver) resolvePlaylist(ctx context.Context, uri string, depth in
 		return r.resolvePlaylist(ctx, targetURI, depth+1)
 	}
 
-	return AudioSource{Reader: resp.Body, Format: formatFromExt(ext)}, nil
+	metadataInterval := resp.Header.Get("icy-metaint")
+	if metadataInterval == "" {
+		return AudioSource{Reader: resp.Body, Format: formatFromExt(ext)}, nil
+	}
+	interval, err := strconv.Atoi(metadataInterval)
+	if err != nil {
+		_ = resp.Body.Close()
+		return AudioSource{}, fmt.Errorf("invalid icy metadata interval %q", metadataInterval)
+	}
+	reader, err := newICYReader(resp.Body, interval, resp.Header.Get("icy-name"))
+	if err != nil {
+		_ = resp.Body.Close()
+		return AudioSource{}, fmt.Errorf("invalid icy metadata interval %q: %w", metadataInterval, err)
+	}
+	return AudioSource{
+		Reader:          reader,
+		Format:          formatFromExt(ext),
+		MetadataUpdates: reader.updates,
+	}, nil
 }
 
 func isPlaylist(contentType, ext string) bool {

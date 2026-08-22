@@ -43,6 +43,7 @@ require (
 	github.com/charmbracelet/x/windows v0.2.2 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/ebitengine/oto/v3 v3.4.0 // indirect
@@ -71,6 +72,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.27 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sahilm/fuzzy v0.1.3 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/sorairolake/lzip-go v0.3.8 // indirect

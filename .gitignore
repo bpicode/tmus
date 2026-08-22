@@ -22,6 +22,9 @@
 # Generated shell completions
 /packaging/completions/
 
+# Generated man pages
+/packaging/manpages/
+
 # Go build cache directories (local)
 /bin/
 /pkg/

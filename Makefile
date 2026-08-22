@@ -5,6 +5,7 @@ ICON_DIR ?= $(INSTALL_DIR)/share/icons/hicolor
 CACHE_DIR ?= $(HOME)/.cache/tmus
 CONFIG_DIR ?= $(HOME)/.config/tmus
 COMPLETION_DIR ?= packaging/completions
+MANPAGE_DIR ?= packaging/manpages
 
 BIN_NAME ?= tmus
 DESKTOP_FILE ?= packaging/tmus.desktop
@@ -18,7 +19,7 @@ NOTICE_PACKAGES := . github.com/ebitengine/purego github.com/inconshreveable/mou
 NOTICE_REPORT := go tool go-licenses report $(NOTICE_PACKAGES) --ignore github.com/bpicode/tmus
 NOTICE_CHECK := go tool go-licenses check $(NOTICE_PACKAGES) --ignore github.com/bpicode/tmus --ignore github.com/llehouerou/go-m4a
 
-.PHONY: build lint test notices notices-check completions install install-desktop install-icons icons uninstall demotape
+.PHONY: build lint test notices notices-check completions manpages install install-desktop install-icons icons uninstall demotape
 
 build:
 	go build -o $(BIN_NAME) .
@@ -44,6 +45,10 @@ completions:
 	go run . completion bash > $(COMPLETION_DIR)/tmus.bash
 	go run . completion fish > $(COMPLETION_DIR)/tmus.fish
 	go run . completion zsh > $(COMPLETION_DIR)/tmus.zsh
+
+manpages:
+	go run . man $(MANPAGE_DIR)
+	gzip -n -9 -f $(MANPAGE_DIR)/*.1
 
 install: install-desktop
 	mkdir -p $(BIN_DIR)

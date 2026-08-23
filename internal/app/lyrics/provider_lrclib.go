@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/bpicode/tmus/internal/config"
 )
+
+const maxLrcLibJSONBytes = 2 * 1024 * 1024
 
 type lrcLibProvider struct {
 	enabled      bool
@@ -55,11 +58,9 @@ func (l *lrcLibProvider) find(track TrackInfo) (Lyrics, error) {
 	cacheFile := filepath.Join(l.cacheDir, key+".json")
 
 	if l.cacheEnabled {
-		if data, err := os.ReadFile(cacheFile); err == nil {
-			var cached Lyrics
-			if err := json.Unmarshal(data, &cached); err == nil {
-				return cached, nil
-			}
+		var cached Lyrics
+		if err := decodeLrcLibJSONFile(cacheFile, &cached); err == nil {
+			return cached, nil
 		}
 	}
 
@@ -108,7 +109,7 @@ func (l *lrcLibProvider) search(track TrackInfo) (Lyrics, error) {
 	}
 
 	var results []lrcLibResponse
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
+	if err := newLimitedJsonDecoder(resp.Body).Decode(&results); err != nil {
 		return Lyrics{}, fmt.Errorf("decode lrclib search response failed: %w", err)
 	}
 	if len(results) == 0 {
@@ -143,7 +144,7 @@ func (l *lrcLibProvider) get(track TrackInfo) (Lyrics, error) {
 	}
 
 	var result lrcLibResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := newLimitedJsonDecoder(resp.Body).Decode(&result); err != nil {
 		return Lyrics{}, fmt.Errorf("decode lrclib response failed: %w", err)
 	}
 
@@ -174,6 +175,19 @@ func (l *lrcLibProvider) parseResponse(result lrcLibResponse, lrcLibURL string) 
 	}
 
 	return Lyrics{}, fmt.Errorf("cannot interpret lrclib record with id %d", result.ID)
+}
+
+func newLimitedJsonDecoder(r io.Reader) *json.Decoder {
+	return json.NewDecoder(io.LimitReader(r, maxLrcLibJSONBytes))
+}
+
+func decodeLrcLibJSONFile(path string, dst any) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return newLimitedJsonDecoder(f).Decode(dst)
 }
 
 type lrcLibResponse struct {

@@ -17,19 +17,21 @@ import (
 )
 
 type Model struct {
-	show           bool
-	width          int
-	height         int
-	lyricsViewport viewport.Model
-	trackID        uint64
-	trackPath      string
-	followPlay     bool
-	followLine     bool
-	loading        bool
-	data           lyrics.Lyrics
-	app            *core.App
-	errorView      *errorview.Model
-	styles         styles
+	show               bool
+	width              int
+	height             int
+	lyricsViewport     viewport.Model
+	trackID            uint64
+	trackPath          string
+	followPlay         bool
+	followLine         bool
+	loading            bool
+	data               lyrics.Lyrics
+	lineTickGeneration uint64
+	lineTickCancel     chan struct{}
+	app                *core.App
+	errorView          *errorview.Model
+	styles             styles
 }
 
 type Config struct {
@@ -95,7 +97,9 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 	case core.LyricsEvent:
 		return m.handleLyricsEvent(msg)
 	case core.StateEvent:
-		return m.handleStateEvent()
+		return m.handleStateEvent(msg)
+	case lineTickMsg:
+		return m.handleLineTick(msg)
 	default:
 		return m, nil, false
 	}
@@ -153,26 +157,32 @@ func (m *Model) handleLyricsEvent(event core.LyricsEvent) (*Model, tea.Cmd, bool
 	}
 	m.loading = false
 	if event.Err != nil {
+		m.invalidateLineTick()
 		m.errorView.SetErr(event.Err)
 		return m, nil, false
 	}
 	m.errorView.SetErr(nil)
 	m.data = event.Lyrics
-	return m, nil, false
+	return m, m.scheduleLineTick(), false
 }
 
-func (m *Model) handleStateEvent() (*Model, tea.Cmd, bool) {
+func (m *Model) handleStateEvent(event core.StateEvent) (*Model, tea.Cmd, bool) {
 	if !m.show || !m.followPlay {
+		return m, nil, false
+	}
+	if event.Changes&(core.StateChangePlaying|core.StateChangePlayback) == 0 {
 		return m, nil, false
 	}
 	state := m.app.State()
 	track, ok := lyricsPlayingTrack(state)
 	if !ok || track.ID == 0 || track.Path == "" {
+		m.invalidateLineTick()
 		return m, nil, false
 	}
 	if track.ID == m.trackID && track.Path == m.trackPath {
-		return m, nil, false
+		return m, m.scheduleLineTick(), false
 	}
+	m.invalidateLineTick()
 	m.trackID = track.ID
 	m.trackPath = track.Path
 	m.loading = true
@@ -187,7 +197,15 @@ func (m *Model) handleStateEvent() (*Model, tea.Cmd, bool) {
 	return m, nil, false
 }
 
+func (m *Model) handleLineTick(msg lineTickMsg) (*Model, tea.Cmd, bool) {
+	if msg.generation != m.lineTickGeneration {
+		return m, nil, false
+	}
+	return m, m.scheduleLineTick(), false
+}
+
 func (m *Model) Show(show bool) {
+	m.invalidateLineTick()
 	if show {
 		state := m.app.State()
 		track, index, ok := lyricsTrackForOpen(state)
@@ -225,6 +243,11 @@ func (m *Model) Visible() bool {
 
 func (m *Model) FollowLine() bool {
 	return m.followLine
+}
+
+// Shutdown stops background work owned by the lyrics view.
+func (m *Model) Shutdown() {
+	m.invalidateLineTick()
 }
 
 func (m *Model) innerSize() (int, int) {
@@ -292,15 +315,83 @@ func (m *Model) matchesPlaying(state core.State) bool {
 
 func activeLyricIndex(lines []lyrics.Line, elapsed time.Duration) int {
 	active := -1
+	var activeTime time.Duration
 	for i, line := range lines {
-		if !line.HasTime {
+		if !line.HasTime || line.Time > elapsed {
 			continue
 		}
-		if elapsed >= line.Time {
+		if active == -1 || line.Time >= activeTime {
 			active = i
+			activeTime = line.Time
 		}
 	}
 	return active
+}
+
+type lineTickMsg struct {
+	generation uint64
+}
+
+const minLineTickDelay = time.Second / 60
+
+func (m *Model) invalidateLineTick() {
+	m.lineTickGeneration++
+	if m.lineTickCancel != nil {
+		close(m.lineTickCancel)
+		m.lineTickCancel = nil
+	}
+}
+
+func (m *Model) scheduleLineTick() tea.Cmd {
+	m.invalidateLineTick()
+	generation := m.lineTickGeneration
+	if !m.show || !m.followPlay || !m.data.Timed {
+		return nil
+	}
+
+	state := m.app.State()
+	if state.Playback.State != core.PlaybackPlaying || !m.matchesPlaying(state) {
+		return nil
+	}
+	delay, ok := nextLyricDelay(m.data.Lines, state.Elapsed())
+	if !ok {
+		return nil
+	}
+	cancel := make(chan struct{})
+	m.lineTickCancel = cancel
+	return lineTickCmd(delay, generation, cancel)
+}
+
+func lineTickCmd(delay time.Duration, generation uint64, cancel <-chan struct{}) tea.Cmd {
+	return func() tea.Msg {
+		timer := time.NewTimer(delay)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+			return lineTickMsg{generation: generation}
+		case <-cancel:
+			return nil
+		}
+	}
+}
+
+func nextLyricDelay(lines []lyrics.Line, elapsed time.Duration) (time.Duration, bool) {
+	var next time.Duration
+	found := false
+	for _, line := range lines {
+		if !line.HasTime || line.Time <= elapsed {
+			continue
+		}
+		delay := line.Time - elapsed
+		if !found || delay < next {
+			next = delay
+			found = true
+		}
+	}
+	if found {
+		next = max(next, minLineTickDelay)
+	}
+	return next, found
 }
 
 func lyricsLinesForWidth(lines []lyrics.Line, width int, active int, styles styles) []string {

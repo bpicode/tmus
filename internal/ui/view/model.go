@@ -305,6 +305,7 @@ func (m *Model) SaveState() error {
 
 func (m *Model) Shutdown() tea.Cmd {
 	cleanupCmd := m.trackInfo.Show(false)
+	m.lyrics.Shutdown()
 	if m.events.unsubState != nil {
 		m.events.unsubState()
 		m.events.unsubState = nil

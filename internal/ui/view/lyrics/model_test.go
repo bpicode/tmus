@@ -24,7 +24,7 @@ func TestNextLyricDelay(t *testing.T) {
 		wantOK  bool
 	}{
 		{name: "before first", elapsed: 250 * time.Millisecond, want: 750 * time.Millisecond, wantOK: true},
-		{name: "within one frame", elapsed: 995 * time.Millisecond, want: minLineTickDelay, wantOK: true},
+		{name: "within update interval", elapsed: 995 * time.Millisecond, want: 100 * time.Millisecond, wantOK: true},
 		{name: "at first", elapsed: time.Second, want: 1250 * time.Millisecond, wantOK: true},
 		{name: "between lines", elapsed: 2 * time.Second, want: 250 * time.Millisecond, wantOK: true},
 		{name: "at duplicate lines", elapsed: 2250 * time.Millisecond, want: 750 * time.Millisecond, wantOK: true},

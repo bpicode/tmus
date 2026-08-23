@@ -332,7 +332,7 @@ type lineTickMsg struct {
 	generation uint64
 }
 
-const minLineTickDelay = time.Second / 60
+const minLineTickDelay = 100 * time.Millisecond
 
 func (m *Model) invalidateLineTick() {
 	m.lineTickGeneration++

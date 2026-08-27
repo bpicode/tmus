@@ -176,6 +176,7 @@ var keybindings = content{
 				},
 				{
 					key1:     "x",
+					key2:     "delete",
 					helpText: "remove item",
 				},
 				{

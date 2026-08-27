@@ -125,7 +125,7 @@ func (m *Model) handleKeyPressMsg(msg tea.KeyMsg) (*Model, tea.Cmd, bool) {
 	}
 
 	if m.focus {
-		switch msg.Key().Text {
+		switch msg.String() {
 		case "i":
 			return m, toggleTrackInfoCmd(), true
 		case "L":
@@ -133,7 +133,7 @@ func (m *Model) handleKeyPressMsg(msg tea.KeyMsg) (*Model, tea.Cmd, bool) {
 		case "c":
 			_ = m.app.Dispatch(core.Command{Type: core.CmdClear})
 			return m, nil, true
-		case "x":
+		case "x", "delete":
 			_ = m.app.Dispatch(core.Command{Type: core.CmdRemoveAt, Index: state.Cursor})
 			return m, nil, true
 		}

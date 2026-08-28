@@ -2,7 +2,6 @@
 
 package ipc
 
-func openUnixSocket(paths []string) (sessionBackend, bool, error) {
-	_ = paths
+func openUnixSocket(_ []string) (sessionBackend, bool, error) {
 	return nil, false, errNotSupported
 }

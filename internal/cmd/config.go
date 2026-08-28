@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
@@ -30,8 +29,8 @@ var configInitCmd = &cobra.Command{
 			return fmt.Errorf("write config: %w", err)
 		}
 
-		fmt.Fprintf(os.Stdout, "Wrote config to %s\n", configPath)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Wrote config to %s\n", configPath)
+		return err
 	},
 }
 
@@ -44,12 +43,14 @@ var configShowCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		data, err := toml.Marshal(cfg)
 		if err != nil {
 			return fmt.Errorf("marshal config: %w", err)
 		}
-		fmt.Fprintln(os.Stdout, string(data))
-		return nil
+
+		_, err = fmt.Fprintln(cmd.OutOrStdout(), string(data))
+		return err
 	},
 }
 

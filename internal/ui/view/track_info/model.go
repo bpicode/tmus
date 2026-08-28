@@ -185,7 +185,7 @@ func (m *Model) View() string {
 	}
 	contentWidth, contentHeight := m.innerSize()
 	if contentHeight < 1 || contentWidth < 1 {
-		return m.styles.Overlay.Width(m.width).Height(m.height).Render("")
+		return m.styles.overlay.Width(m.width).Height(m.height).Render("")
 	}
 
 	header := m.headerLines(contentWidth)
@@ -193,7 +193,7 @@ func (m *Model) View() string {
 	header = header[:headerHeight]
 	headerBlock := lipgloss.NewStyle().Width(contentWidth).Height(headerHeight).Render(strings.Join(header, "\n"))
 	if contentHeight <= headerHeight {
-		return m.styles.Overlay.Width(m.width).Height(m.height).Render(headerBlock)
+		return m.styles.overlay.Width(m.width).Height(m.height).Render(headerBlock)
 	}
 
 	areaHeight := contentHeight - headerHeight
@@ -205,7 +205,7 @@ func (m *Model) View() string {
 	m.viewport.SetHeight(max(areaHeight, 0))
 	m.viewport.SetContentLines([]string{truncate.Right{}.MaxWidth(rightWidth).Render(rightLines)})
 
-	styleRight := m.styles.Artwork.Width(leftWidth).Height(areaHeight)
+	styleRight := m.styles.artwork.Width(leftWidth).Height(areaHeight)
 
 	leftBlock := ""
 	if leftWidth > 0 {
@@ -230,12 +230,12 @@ func (m *Model) View() string {
 	}
 
 	inner := lipgloss.JoinVertical(lipgloss.Left, headerBlock, body)
-	return m.styles.Overlay.Width(m.width).Height(m.height).Render(inner)
+	return m.styles.overlay.Width(m.width).Height(m.height).Render(inner)
 }
 
 func (m *Model) innerSize() (int, int) {
-	contentWidth := max(m.width-m.styles.Overlay.GetHorizontalFrameSize(), 0)
-	contentHeight := max(m.height-m.styles.Overlay.GetVerticalFrameSize(), 0)
+	contentWidth := max(m.width-m.styles.overlay.GetHorizontalFrameSize(), 0)
+	contentHeight := max(m.height-m.styles.overlay.GetVerticalFrameSize(), 0)
 	return contentWidth, contentHeight
 }
 
@@ -255,8 +255,8 @@ func (m *Model) syncArtwork() string {
 	areaHeight := contentHeight - headerHeight
 	fields := metadataFields(m.data)
 	leftWidth, _, _ := metadataColumnWidths(contentWidth, areaHeight, fields, m.artwork.Aspect())
-	artworkWidth := leftWidth - m.styles.Artwork.GetHorizontalFrameSize()
-	artworkHeight := areaHeight - m.styles.Artwork.GetVerticalFrameSize()
+	artworkWidth := leftWidth - m.styles.artwork.GetHorizontalFrameSize()
+	artworkHeight := areaHeight - m.styles.artwork.GetVerticalFrameSize()
 
 	raw := m.artwork.SetSize(artworkWidth, artworkHeight)
 	if m.data.Picture != nil {
@@ -276,9 +276,9 @@ func rawCmd(raw string) tea.Cmd {
 
 func (m *Model) headerLines(maxWidth int) []string {
 	lines := make([]string, 0, 3)
-	lines = append(lines, truncate.Right{Style: m.styles.Title}.MaxWidth(maxWidth).Render("🎵 Track info"))
+	lines = append(lines, truncate.Right{Style: m.styles.title}.MaxWidth(maxWidth).Render("🎵 Track info"))
 	if m.trackPath != "" {
-		lines = append(lines, truncate.Right{Style: m.styles.Subtitle}.MaxWidth(maxWidth).Render(sanitize.TerminalText(m.trackPath)))
+		lines = append(lines, truncate.Right{Style: m.styles.subtitle}.MaxWidth(maxWidth).Render(sanitize.TerminalText(m.trackPath)))
 	}
 	lines = append(lines, "")
 	return lines
@@ -290,9 +290,9 @@ func (m *Model) rightLines(maxWidth int, fields []field) string {
 	}
 	switch {
 	case m.loading:
-		return m.styles.Subtitle.Render("Loading...")
+		return m.styles.subtitle.Render("Loading...")
 	case m.err != "":
-		return m.styles.Error.Render(sanitize.TerminalText(m.err))
+		return m.styles.error.Render(sanitize.TerminalText(m.err))
 	default:
 		return m.metadataFieldLines(fields)
 	}
@@ -351,7 +351,7 @@ func (m *Model) metadataFieldLines(fields []field) string {
 	for _, f := range fields {
 		labelPadding := strings.Repeat(" ", max(maxKW-len(f.label), 0))
 		label := fmt.Sprintf("%s:%s", f.label, labelPadding)
-		label = m.styles.MetadataKey.Render(label)
+		label = m.styles.metadataKey.Render(label)
 		value := normalizeMetadataValue(f.value)
 		line := fmt.Sprintf("%s %s", label, value)
 		lines = append(lines, line)

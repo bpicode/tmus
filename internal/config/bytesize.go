@@ -36,8 +36,8 @@ var byteSizeFormatUnits = []struct {
 	{"KB", byteSizeUnits["KB"]},
 }
 
-func (b ByteSize) String() string {
-	value := int64(b)
+func (b *ByteSize) format() string {
+	value := int64(*b)
 	prefix := ""
 	abs := uint64(value)
 	if value < 0 {
@@ -54,8 +54,8 @@ func (b ByteSize) String() string {
 }
 
 // MarshalText serializes a byte size as an explicit unit-bearing string.
-func (b ByteSize) MarshalText() ([]byte, error) {
-	return []byte(b.String()), nil
+func (b *ByteSize) MarshalText() ([]byte, error) {
+	return []byte(b.format()), nil
 }
 
 // UnmarshalText parses a byte size string with an explicit supported unit.

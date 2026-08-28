@@ -68,7 +68,7 @@ func TestArtworkRendererValidation(t *testing.T) {
 
 func TestLibraryMaxArchiveMemberSizeValidation(t *testing.T) {
 	for _, value := range []ByteSize{1, 512 * 1000 * 1000, 512 * 1024 * 1024} {
-		t.Run(value.String(), func(t *testing.T) {
+		t.Run(value.format(), func(t *testing.T) {
 			cfg := Default()
 			cfg.Library.MaxArchiveMemberSize = value
 			assert.NoError(t, cfg.Validate())
@@ -76,7 +76,7 @@ func TestLibraryMaxArchiveMemberSizeValidation(t *testing.T) {
 	}
 
 	for _, value := range []ByteSize{0, -1} {
-		t.Run(value.String(), func(t *testing.T) {
+		t.Run(value.format(), func(t *testing.T) {
 			cfg := Default()
 			cfg.Library.MaxArchiveMemberSize = value
 			assert.ErrorContains(t, cfg.Validate(), "library.max_archive_member_size")

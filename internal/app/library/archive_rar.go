@@ -52,10 +52,10 @@ func (h *rarHandler) list(value string, showHidden bool) ([]Entry, error) {
 		if inner != "" {
 			entryPath = path.Join(inner, name)
 		}
-		path := buildArchivePath(h.scheme(), archivePath, entryPath)
+		archivePath := buildArchivePath(h.scheme(), archivePath, entryPath)
 		items = append(items, archiveEntry{
 			name:  name,
-			path:  path,
+			path:  archivePath,
 			isDir: entry.IsDir(),
 		})
 	}

@@ -65,17 +65,17 @@ func (h *zipHandler) list(value string, showHidden bool) ([]Entry, error) {
 		}
 		entryPath := path.Join(inner, child)
 		if hasMore || strings.HasSuffix(f.Name, "/") {
-			path := buildArchivePath(h.scheme(), archivePath, strings.TrimSuffix(entryPath, "/"))
+			archivePath := buildArchivePath(h.scheme(), archivePath, strings.TrimSuffix(entryPath, "/"))
 			children[child] = archiveEntry{
 				name:  child,
-				path:  path,
+				path:  archivePath,
 				isDir: true,
 			}
 		} else {
-			path := buildArchivePath(h.scheme(), archivePath, entryPath)
+			archivePath := buildArchivePath(h.scheme(), archivePath, entryPath)
 			children[child] = archiveEntry{
 				name: child,
-				path: path,
+				path: archivePath,
 			}
 		}
 	}

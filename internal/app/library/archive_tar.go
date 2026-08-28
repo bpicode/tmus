@@ -97,17 +97,17 @@ func (h *tarHandler) list(value string, showHidden bool) ([]Entry, error) {
 		}
 		entryPath := path.Join(inner, child)
 		if hasMore || hdr.FileInfo().IsDir() {
-			path := buildArchivePath(h.schemeName, archivePath, strings.TrimSuffix(entryPath, "/"))
+			archivePath := buildArchivePath(h.schemeName, archivePath, strings.TrimSuffix(entryPath, "/"))
 			children[child] = archiveEntry{
 				name:  child,
-				path:  path,
+				path:  archivePath,
 				isDir: true,
 			}
 		} else {
-			path := buildArchivePath(h.schemeName, archivePath, entryPath)
+			archivePath := buildArchivePath(h.schemeName, archivePath, entryPath)
 			children[child] = archiveEntry{
 				name: child,
-				path: path,
+				path: archivePath,
 			}
 		}
 	}

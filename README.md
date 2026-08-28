@@ -22,7 +22,7 @@
 
 Pre-compiled binaries for various platforms are available on the [Releases](https://github.com/bpicode/tmus/releases) page.
 
-### Quick install from source (cross-platform)
+### Quick installation from source (cross-platform)
 
 Linux build/runtime note: you need `pkg-config` and ALSA development headers (`alsa.pc`, usually from `libasound2-dev`).
 
@@ -30,7 +30,7 @@ Linux build/runtime note: you need `pkg-config` and ALSA development headers (`a
 go install github.com/bpicode/tmus@latest
 ```
 
-### Full install from source (Linux)
+### Full installation from source (Linux)
 
 For Linux environments, a `Makefile` is provided. This installs the binary to `~/.local/bin` and adds a `.desktop` file and icons for launcher integration.
 

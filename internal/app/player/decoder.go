@@ -18,9 +18,9 @@ import (
 //
 // If AudioSource.Reader implements io.ReadSeekCloser (local files, buffered archive
 // entries) the reader is passed directly to the format decoder, enabling
-// seeking on the returned stream. Otherwise the reader is passed as-is without
+// seeking on the returned stream. Otherwise, the reader is passed as-is without
 // any buffering, and Seek on the returned stream will return an error - the
-// expected behaviour for non-seekable sources such as HTTP streams.
+// expected behavior for non-seekable sources such as HTTP streams.
 func decodeSource(s library.AudioSource) (beep.StreamSeekCloser, beep.Format, error) {
 	rc := s.Reader
 

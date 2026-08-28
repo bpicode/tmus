@@ -42,7 +42,7 @@ type helpSection struct {
 
 func (h *helpSection) render(keyPadLeft, keyFillMiddle int, styles styles) []string {
 	lines := []string{
-		styles.tubtitle.Render(h.subtitle),
+		styles.subtitle.Render(h.subtitle),
 	}
 	for _, k := range h.helpKeys {
 		lines = append(lines, k.render(keyPadLeft, keyFillMiddle, styles))

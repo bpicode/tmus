@@ -39,7 +39,7 @@ var builtInPresets = [...]preset{
 		},
 	},
 	{
-		name: "github-light", // Palette is adapted from Github Primer Primitives v11.10.0.
+		name: "github-light", // Palette is adapted from GitHub Primer Primitives v11.10.0.
 		palette: palette{
 			foreground: "#1f2328", background: "#ffffff",
 			primary: "#0969da", secondary: "#8250df", muted: "#59636e", highlight: "#bf3989",
@@ -47,7 +47,7 @@ var builtInPresets = [...]preset{
 		},
 	},
 	{
-		name: "github-dark", // Palette is adapted from Github Primer Primitives v11.10.0.
+		name: "github-dark", // Palette is adapted from GitHub Primer Primitives v11.10.0.
 		palette: palette{
 			foreground: "#f0f6fc", background: "#0d1117",
 			primary: "#4493f8", secondary: "#ab7df8", muted: "#9198a1", highlight: "#db61a2",

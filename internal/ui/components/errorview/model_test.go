@@ -17,18 +17,18 @@ func TestModel_NoError(t *testing.T) {
 
 func TestModel_Error(t *testing.T) {
 	m := New(Styles{})
-	m.SetErr(errors.New("Oops"))
+	m.SetErr(errors.New("oops"))
 
 	assert.True(t, m.HasErr())
-	assert.Contains(t, m.View(), "Oops")
+	assert.Contains(t, m.View(), "oops")
 }
 
 func TestModel_WrappedErrors(t *testing.T) {
-	err := errors.Join(errors.New("Err1"), errors.New("Err2"))
+	err := errors.Join(errors.New("err1"), errors.New("err2"))
 	m := New(Styles{})
 	m.SetErr(err)
 
 	assert.True(t, m.HasErr())
-	assert.Contains(t, m.View(), "Err1")
-	assert.Contains(t, m.View(), "Err2")
+	assert.Contains(t, m.View(), "err1")
+	assert.Contains(t, m.View(), "err2")
 }

@@ -52,7 +52,7 @@ func TestModelKittyRenderer(t *testing.T) {
 	assert.Contains(t, raw, "\x1b_G")
 
 	view := m.View()
-	assert.Contains(t, view, string(kittyPlaceholder(kittyImageID(data), 0, 0)))
+	assert.Contains(t, view, kittyPlaceholder(kittyImageID(data), 0, 0))
 	assert.NotContains(t, view, "My Fallback")
 
 	raw = m.Clear()

@@ -771,8 +771,8 @@ The Go standard library and runtime are linked into every `tmus` executable.
 They are not reported by `go-licenses`, so this reviewed entry is part of the
 template.
 
-- Version: Go 1.26 series
-- Source: https://go.googlesource.com/go/+/refs/heads/release-branch.go1.26
+- Version: Go 1 series
+- Source: https://go.googlesource.com/go/
 - License: BSD-3-Clause
 - Copyright: Copyright 2009 The Go Authors. All rights reserved.
 

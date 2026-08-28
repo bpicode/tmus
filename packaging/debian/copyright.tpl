@@ -103,8 +103,8 @@ Go standard library and runtime
 ===============================================================================
 
 Component: Go standard library and runtime
-Version: Go 1.26 series
-Source: https://go.googlesource.com/go/+/refs/heads/release-branch.go1.26
+Version: Go 1 series
+Source: https://go.googlesource.com/go/
 Copyright: Copyright 2009 The Go Authors. All rights reserved.
 License: BSD-3-Clause
 

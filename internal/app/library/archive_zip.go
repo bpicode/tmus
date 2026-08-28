@@ -92,6 +92,7 @@ func (h *zipHandler) open(value string) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("zip path missing entry")
 	}
 
+	//goland:noinspection GoResourceLeak
 	reader, err := zip.OpenReader(archivePath)
 	if err != nil {
 		return nil, fmt.Errorf("open zip: %w", err)

@@ -93,6 +93,7 @@ func (h *sevenZipHandler) open(value string) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("7z path missing entry")
 	}
 
+	//goland:noinspection GoResourceLeak
 	reader, err := sevenzip.OpenReader(archivePath)
 	if err != nil {
 		return nil, fmt.Errorf("open 7z: %w", err)

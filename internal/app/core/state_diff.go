@@ -26,6 +26,7 @@ func DiffState(prev, next State) StateChange {
 	if prev.Playback.NowPlaying != next.Playback.NowPlaying {
 		changes |= StateChangeMetadata
 	}
+	//goland:noinspection GoDirectComparisonOfErrors
 	if prev.PlaylistErr != next.PlaylistErr {
 		changes |= StateChangeError
 	}

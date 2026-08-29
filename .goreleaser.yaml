@@ -103,3 +103,5 @@ nfpms:
       - libasound2
 checksum:
   name_template: "checksums.txt"
+release:
+  name_template: "{{ .TagSubject }}"

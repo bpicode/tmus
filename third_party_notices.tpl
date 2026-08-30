@@ -808,19 +808,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## Linked Go components
 {{ range . }}
-{{ if eq .Name "github.com/llehouerou/go-m4a" -}}
-### {{ .Name }}
-
-- Component: {{ .Name }}
-- Version: {{ .Version }}
-- Source: https://github.com/llehouerou/go-m4a/tree/{{ .Version }}
-- License: UNKNOWN
-- Copyright: No copyright notice was found in the v0.1.0 source.
-
-> **Unresolved license:** The upstream v0.1.0 source contains no license
-> declaration. This entry is intentionally recorded as UNKNOWN; no license
-> terms are inferred.
-{{ else -}}
 ### {{ .Name }}
 
 - Component: {{ .Name }}
@@ -833,5 +820,4 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```text
 {{ .LicenseText }}
 ```
-{{ end -}}
 {{ end -}}

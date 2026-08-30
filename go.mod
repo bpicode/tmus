@@ -6,6 +6,7 @@ require (
 	charm.land/bubbles/v2 v2.2.1
 	charm.land/bubbletea/v2 v2.0.9
 	charm.land/lipgloss/v2 v2.0.6
+	github.com/abema/go-mp4 v1.7.1
 	github.com/bodgit/sevenzip v1.6.5
 	github.com/charmbracelet/colorprofile v0.4.3
 	github.com/charmbracelet/x/ansi v0.11.8
@@ -17,7 +18,6 @@ require (
 	github.com/jj11hh/opus v1.0.1
 	github.com/llehouerou/alac v0.1.0
 	github.com/llehouerou/go-faad2 v0.3.0
-	github.com/llehouerou/go-m4a v0.1.0
 	github.com/mholt/archives v0.1.5
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/spf13/cobra v1.10.2
@@ -29,7 +29,6 @@ require (
 
 require (
 	github.com/STARRY-S/zip v0.2.3 // indirect
-	github.com/abema/go-mp4 v1.5.0 // indirect
 	github.com/andybalholm/brotli v1.2.2 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-udiff v0.4.1 // indirect

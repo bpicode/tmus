@@ -17,7 +17,7 @@ ICON_SOURCE ?= packaging/icons/source/tmus.png
 # conservative union for all release targets.
 NOTICE_PACKAGES := . github.com/ebitengine/purego github.com/inconshreveable/mousetrap
 NOTICE_REPORT := go tool go-licenses report $(NOTICE_PACKAGES) --ignore github.com/bpicode/tmus
-NOTICE_CHECK := go tool go-licenses check $(NOTICE_PACKAGES) --ignore github.com/bpicode/tmus --ignore github.com/llehouerou/go-m4a
+NOTICE_CHECK := go tool go-licenses check $(NOTICE_PACKAGES) --ignore github.com/bpicode/tmus
 
 .PHONY: build lint test notices notices-check completions manpages install install-desktop install-icons icons uninstall demotape
 

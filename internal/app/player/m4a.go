@@ -12,11 +12,10 @@ import (
 	"github.com/gopxl/beep/v2"
 	"github.com/llehouerou/alac"
 	"github.com/llehouerou/go-faad2"
-	"github.com/llehouerou/go-m4a"
 )
 
 func decodeM4a(rsc io.ReadSeekCloser) (beep.StreamSeekCloser, beep.Format, error) {
-	r, err := m4a.Open(rsc)
+	r, err := openM4A(rsc)
 	if err != nil {
 		return nil, beep.Format{}, err
 	}
@@ -25,7 +24,7 @@ func decodeM4a(rsc io.ReadSeekCloser) (beep.StreamSeekCloser, beep.Format, error
 	channels := r.Channels()
 	// Determine precision based on codec
 	precision := 2 // 16-bit default
-	if codecType == m4a.CodecALAC && r.SampleSize() == 24 {
+	if codecType == m4aCodecALAC && r.SampleSize() == 24 {
 		precision = 3 // 24-bit for ALAC
 	}
 
@@ -49,7 +48,7 @@ func decodeM4a(rsc io.ReadSeekCloser) (beep.StreamSeekCloser, beep.Format, error
 
 	// Initialize the appropriate decoder
 	switch codecType {
-	case m4a.CodecAAC:
+	case m4aCodecAAC:
 		decoder, err := faad2.NewDecoder(context.Background())
 		if err != nil {
 			return nil, beep.Format{}, err
@@ -60,7 +59,7 @@ func decodeM4a(rsc io.ReadSeekCloser) (beep.StreamSeekCloser, beep.Format, error
 		}
 		d.aacDecoder = decoder
 
-	case m4a.CodecALAC:
+	case m4aCodecALAC:
 		cfg := alac.Config{
 			SampleRate:  int(sampleRate),
 			SampleSize:  int(r.SampleSize()),
@@ -73,19 +72,19 @@ func decodeM4a(rsc io.ReadSeekCloser) (beep.StreamSeekCloser, beep.Format, error
 		}
 		d.alacDecoder = decoder
 
-	case m4a.CodecUnknown:
+	case m4aCodecUnknown:
 		return nil, beep.Format{}, errors.New("unsupported codec in M4A container")
 	}
 
 	return d, format, nil
 }
 
-// m4aDecoder wraps go-m4a container reader with AAC or ALAC decoder.
+// m4aDecoder wraps M4A container reader with AAC or ALAC decoder.
 type m4aDecoder struct {
-	container  *m4a.Reader
+	container  *m4aReader
 	closer     io.Closer
 	format     beep.Format
-	codecType  m4a.CodecType
+	codecType  m4aCodecType
 	err        error
 	currentIdx int
 	totalLen   int
@@ -138,7 +137,7 @@ func (d *m4aDecoder) Stream(samples [][2]float64) (n int, ok bool) {
 
 		// Decode the sample and convert to float64 stereo frames
 		switch d.codecType {
-		case m4a.CodecAAC:
+		case m4aCodecAAC:
 			pcm, err := d.aacDecoder.Decode(context.Background(), sampleData)
 			if err != nil {
 				d.err = err
@@ -146,11 +145,11 @@ func (d *m4aDecoder) Stream(samples [][2]float64) (n int, ok bool) {
 			}
 			d.pcmBuffer = d.int16ToFloat64Stereo(pcm)
 
-		case m4a.CodecALAC:
+		case m4aCodecALAC:
 			rawPCM := d.alacDecoder.Decode(sampleData)
 			d.pcmBuffer = d.alacBytesToFloat64Stereo(rawPCM)
 
-		case m4a.CodecUnknown:
+		case m4aCodecUnknown:
 			d.err = errors.New("unsupported codec")
 			return n, n > 0
 		}

@@ -61,6 +61,16 @@ Print effective config:
 tmus config show
 ```
 
+Any configuration value can be overridden with an environment variable. Prefix the full TOML key path with `TMUS_`, replace dots with underscores, and uppercase the result. Values do not need TOML quoting.
+
+```bash
+TMUS_TUI_THEME_PRESET=catppuccin-latte tmus
+TMUS_AUDIO_SAMPLE_RATE=48000 tmus
+TMUS_LIBRARY_MAX_ARCHIVE_MEMBER_SIZE=1GiB tmus
+```
+
+Configuration precedence is: built-in defaults, `config.toml`, then environment variables. `tmus config show` prints the resulting effective configuration.
+
 ## Limitations
 
 - No library indexing. This is an intentional non-goal at this point, `tmus` stays lightweight and file-based.

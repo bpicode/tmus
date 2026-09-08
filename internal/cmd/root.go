@@ -18,7 +18,7 @@ var rootCmd = &cobra.Command{
 	Args:  cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		startDir, _ := cmd.Flags().GetString("dir")
-		cfg, err := loadConfigFromFlags(cmd)
+		cfg, err := loadConfig(cmd)
 		if err != nil {
 			return err
 		}

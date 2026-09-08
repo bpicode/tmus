@@ -194,20 +194,25 @@ func DefaultPath() (string, error) {
 	return filepath.Join(dir, "tmus", "config.toml"), nil
 }
 
-// Load reads a TOML config from path. Missing files return defaults.
+// Load reads a TOML config from path and applies TMUS_ environment overrides.
+// Missing files return defaults with any environment overrides applied.
 func Load(path string) (Config, error) {
+	return load(path, os.LookupEnv)
+}
+
+func load(path string, lookup envLookup) (Config, error) {
 	cfg := Default()
 	data, err := os.ReadFile(path)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return cfg, nil
+		if !errors.Is(err, os.ErrNotExist) {
+			return cfg, err
 		}
-		return cfg, err
+	} else if len(data) > 0 {
+		if err := toml.Unmarshal(data, &cfg); err != nil {
+			return cfg, err
+		}
 	}
-	if len(data) == 0 {
-		return cfg, nil
-	}
-	if err := toml.Unmarshal(data, &cfg); err != nil {
+	if err := applyEnv(&cfg, lookup); err != nil {
 		return cfg, err
 	}
 	return cfg, nil

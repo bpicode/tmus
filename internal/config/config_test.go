@@ -29,9 +29,73 @@ func TestLoadAllowsDisablingIPC(t *testing.T) {
 	err := os.WriteFile(path, []byte("[ipc]\nsingle_instance = 'off'\n"), 0o600)
 	require.NoError(t, err)
 
-	cfg, err := Load(path)
+	cfg, err := load(path, lookupEnv(nil))
 	require.NoError(t, err)
 	assert.Equal(t, SingleInstanceOff, cfg.IPC.SingleInstance)
+}
+
+func TestLoadAppliesEnvironmentOverridesAfterTOML(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	err := os.WriteFile(path, []byte(`
+[audio]
+sample_rate = 44100
+
+[mpris]
+enabled = true
+
+[ipc]
+single_instance = "auto"
+
+[tui]
+artwork_aspect = 2.0
+
+[tui.theme]
+preset = "default"
+
+[library]
+max_archive_member_size = "512MiB"
+`), 0o600)
+	require.NoError(t, err)
+
+	cfg, err := load(path, lookupEnv(map[string]string{
+		"TMUS_AUDIO_SAMPLE_RATE":               "48000",
+		"TMUS_MPRIS_ENABLED":                   "false",
+		"TMUS_IPC_SINGLE_INSTANCE":             "off",
+		"TMUS_TUI_ARTWORK_ASPECT":              "1.5",
+		"TMUS_TUI_THEME_PRESET":                "catppuccin-latte",
+		"TMUS_LIBRARY_MAX_ARCHIVE_MEMBER_SIZE": "1GiB",
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, 48000, cfg.Audio.SampleRate)
+	assert.False(t, cfg.MPRIS.Enabled)
+	assert.Equal(t, SingleInstanceOff, cfg.IPC.SingleInstance)
+	assert.Equal(t, 1.5, cfg.TUI.ArtworkAspect)
+	assert.Equal(t, "catppuccin-latte", cfg.TUI.Theme.Preset)
+	assert.Equal(t, ByteSize(1024*1024*1024), cfg.Library.MaxArchiveMemberSize)
+}
+
+func TestLoadAppliesEnvironmentOverridesWithoutConfigFile(t *testing.T) {
+	cfg, err := load(filepath.Join(t.TempDir(), "missing.toml"), lookupEnv(map[string]string{
+		"TMUS_TUI_THEME_PRESET": "catppuccin-latte",
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, "catppuccin-latte", cfg.TUI.Theme.Preset)
+}
+
+func TestLoadRejectsInvalidEnvironmentOverride(t *testing.T) {
+	_, err := load(filepath.Join(t.TempDir(), "missing.toml"), lookupEnv(map[string]string{
+		"TMUS_AUDIO_SAMPLE_RATE": "fast",
+	}))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "TMUS_AUDIO_SAMPLE_RATE")
+}
+
+func TestEnvironmentOverridesUseTMUSPrefix(t *testing.T) {
+	cfg, err := load(filepath.Join(t.TempDir(), "missing.toml"), lookupEnv(map[string]string{
+		"TUI_THEME_PRESET": "catppuccin-latte",
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, "default", cfg.TUI.Theme.Preset)
 }
 
 func TestSingleInstanceModeValidation(t *testing.T) {
@@ -91,7 +155,7 @@ func TestWriteAndRead(t *testing.T) {
 	err := WriteDefault(tmpFilePath, false)
 	require.NoError(t, err)
 
-	loaded, err := Load(tmpFilePath)
+	loaded, err := load(tmpFilePath, lookupEnv(nil))
 	require.NoError(t, err)
 	assert.Equal(t, Default(), loaded)
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 const (
 	maxUnixSocketClaimAttempts = 3
 	unixSocketRequestTimeout   = 5 * time.Second
+	maxUnixSocketMessageBytes  = 2 * 1024 * 1024
 )
 
 type unixSocketSession struct {
@@ -145,7 +147,7 @@ func sendUnixSocket(socketPath string, paths []string) error {
 	}
 
 	enc := json.NewEncoder(conn)
-	dec := json.NewDecoder(conn)
+	dec := json.NewDecoder(io.LimitReader(conn, maxUnixSocketMessageBytes))
 	if err := enc.Encode(newRequest(paths)); err != nil {
 		return err
 	}
@@ -261,7 +263,7 @@ func handleConn(conn net.Conn, handle requestHandler) {
 	if err := conn.SetDeadline(time.Now().Add(unixSocketRequestTimeout)); err != nil {
 		return
 	}
-	dec := json.NewDecoder(conn)
+	dec := json.NewDecoder(io.LimitReader(conn, maxUnixSocketMessageBytes))
 	enc := json.NewEncoder(conn)
 	var req request
 	if err := dec.Decode(&req); err != nil {

@@ -12,7 +12,7 @@
 - Keyboard-driven playback controls (play/pause/next/prev/stop)
 - Multiple queue modes (Linear, Repeat All, Repeat One, Shuffle, Stop After Current)
 - Lyrics overlay (supports embedded metadata, sidecar `.lrc`/`.txt`, and online fetching via LRCLIB)
-- Single-instance handoff on Unix: opening files in a new `tmus` process forwards them to the running instance
+- Single-instance handoff: opening files in a new `tmus` process forwards them to the running instance
 - MPRIS integration on Linux for external media controls
 - Configurable color palette with built-in theme presets
 

@@ -1,5 +1,3 @@
-//go:build !windows
-
 package ipc
 
 import (
@@ -11,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -42,6 +39,10 @@ func openUnixSocket(paths []string) (sessionBackend, bool, error) {
 		return nil, false, err
 	}
 
+	if err := prepareRuntimeDir(filepath.Dir(socketPath)); err != nil {
+		return nil, false, err
+	}
+
 	handled, err := tryUnixSocketHandoff(socketPath, paths)
 	if err != nil {
 		return nil, false, fmt.Errorf("handoff to %s: %w", socketPath, err)
@@ -50,9 +51,6 @@ func openUnixSocket(paths []string) (sessionBackend, bool, error) {
 		return nil, true, nil
 	}
 
-	if err := prepareRuntimeDir(filepath.Dir(socketPath)); err != nil {
-		return nil, false, err
-	}
 	return claimUnixSocket(socketPath, paths)
 }
 
@@ -81,7 +79,7 @@ func claimUnixSocket(socketPath string, paths []string) (sessionBackend, bool, e
 			return newUnixSocketSession(ln), false, nil
 		}
 		lastErr = err
-		if !errors.Is(err, syscall.EADDRINUSE) {
+		if !isUnixSocketAddrInUse(err) {
 			return nil, false, fmt.Errorf("listen on %s: %w", socketPath, err)
 		}
 
@@ -136,6 +134,9 @@ func removeStaleUnixSocket(socketPath string, observed os.FileInfo) error {
 func sendUnixSocket(socketPath string, paths []string) error {
 	conn, err := net.DialTimeout("unix", socketPath, unixSocketRequestTimeout)
 	if err != nil {
+		if isUnixSocketUnsupported(err) {
+			return errors.Join(errNotSupported, err)
+		}
 		if isNoServer(err) {
 			return errNoServer
 		}
@@ -168,10 +169,13 @@ func listenUnixSocket(socketPath string) (*net.UnixListener, error) {
 	addr := &net.UnixAddr{Name: socketPath, Net: "unix"}
 	ln, err := net.ListenUnix("unix", addr)
 	if err != nil {
+		if isUnixSocketUnsupported(err) {
+			return nil, errors.Join(errNotSupported, err)
+		}
 		return nil, err
 	}
 	ln.SetUnlinkOnClose(true)
-	if err := os.Chmod(socketPath, 0o600); err != nil {
+	if err := secureUnixSocket(socketPath); err != nil {
 		return nil, errors.Join(err, ln.Close())
 	}
 	return ln, nil
@@ -282,77 +286,9 @@ func socketPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(runtimeDir, "tmus.sock"), nil
-}
-
-func ipcRuntimeDir() (string, error) {
-	if base := os.Getenv("XDG_RUNTIME_DIR"); filepath.IsAbs(base) {
-		if err := validatePrivateRuntimeDir(base); err != nil {
-			return "", fmt.Errorf("validate XDG_RUNTIME_DIR: %w", err)
-		}
-		return filepath.Join(base, "tmus"), nil
+	path := filepath.Join(runtimeDir, "tmus.sock")
+	if err := validateSocketPath(path); err != nil {
+		return "", err
 	}
-
-	base := os.TempDir()
-	if !filepath.IsAbs(base) {
-		return "", fmt.Errorf("temporary directory is not absolute: %s", base)
-	}
-	return filepath.Join(base, fmt.Sprintf("tmus-%d", os.Getuid())), nil
-}
-
-// prepareRuntimeDir creates and validates the directory that contains tmus IPC
-// resources. Refusing symlinks, foreign ownership, and group or other access
-// keeps the socket private from the moment it is created.
-func prepareRuntimeDir(dir string) error {
-	created := false
-	if err := os.Mkdir(dir, 0o700); err != nil {
-		if !errors.Is(err, os.ErrExist) {
-			return fmt.Errorf("create IPC directory: %w", err)
-		}
-	} else {
-		created = true
-	}
-	if created {
-		if err := os.Chmod(dir, 0o700); err != nil {
-			return fmt.Errorf("secure IPC directory: %w", err)
-		}
-	}
-	if err := validatePrivateRuntimeDir(dir); err != nil {
-		return fmt.Errorf("validate IPC directory: %w", err)
-	}
-	return nil
-}
-
-func validatePrivateRuntimeDir(dir string) error {
-	info, err := os.Lstat(dir)
-	if err != nil {
-		return fmt.Errorf("inspect runtime directory: %w", err)
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("runtime directory must not be a symbolic link: %s", dir)
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("runtime path is not a directory: %s", dir)
-	}
-	stat, ok := info.Sys().(*syscall.Stat_t)
-	if !ok {
-		return fmt.Errorf("inspect runtime directory ownership: %s", dir)
-	}
-	if int(stat.Uid) != os.Getuid() {
-		return fmt.Errorf("runtime directory is not owned by the current user: %s", dir)
-	}
-	if perm := info.Mode().Perm(); perm != 0o700 {
-		return fmt.Errorf("runtime directory must have mode 0700, got %04o: %s", perm, dir)
-	}
-	return nil
-}
-
-func isNoServer(err error) bool {
-	if err == nil {
-		return false
-	}
-	if errors.Is(err, os.ErrNotExist) {
-		return true
-	}
-	return errors.Is(err, syscall.ECONNREFUSED)
+	return path, nil
 }

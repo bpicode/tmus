@@ -3,139 +3,30 @@
 package ipc
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
-	"time"
 
-	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-type stubListener struct {
-	accept func() (net.Conn, error)
-	close  func() error
+func setupSocketTest(t *testing.T) string {
+	t.Helper()
+	base := privateTempDir(t)
+	t.Setenv("XDG_RUNTIME_DIR", base)
+	return filepath.Join(base, "tmus")
 }
 
-func (l stubListener) Accept() (net.Conn, error) {
-	return l.accept()
-}
-
-func (l stubListener) Close() error {
-	return l.close()
-}
-
-func (stubListener) Addr() net.Addr {
-	return &net.UnixAddr{Name: "test", Net: "unix"}
-}
-
-func TestUnixSocketEncodesHandlerError(t *testing.T) {
-	server, client := net.Pipe()
-	t.Cleanup(func() { _ = server.Close() })
-	t.Cleanup(func() { _ = client.Close() })
-	handlerErr := errors.New("handler failed")
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		handleConn(server, func(request) error { return handlerErr })
-	}()
-
-	require.NoError(t, json.NewEncoder(client).Encode(request{}))
-	var resp unixSocketResponse
-	require.NoError(t, json.NewDecoder(client).Decode(&resp))
-	<-done
-
-	assert.False(t, resp.OK)
-	assert.Equal(t, handlerErr.Error(), resp.Error)
-}
-
-func TestUnixSocketSessionCloseWaitsForActiveHandler(t *testing.T) {
-	server, client := net.Pipe()
-	t.Cleanup(func() { _ = client.Close() })
-
-	listenerClosed := make(chan struct{})
-	var closeListener sync.Once
-	accepted := false
-	ln := stubListener{
-		accept: func() (net.Conn, error) {
-			if !accepted {
-				accepted = true
-				return server, nil
-			}
-			<-listenerClosed
-			return nil, net.ErrClosed
-		},
-		close: func() error {
-			closeListener.Do(func() { close(listenerClosed) })
-			return nil
-		},
-	}
-
-	handling := make(chan struct{})
-	release := make(chan struct{})
-	released := false
-	t.Cleanup(func() {
-		if !released {
-			close(release)
-		}
-	})
-	session := newUnixSocketSession(ln)
-	require.NoError(t, session.Serve(func(request) error {
-		close(handling)
-		<-release
-		return nil
-	}))
-
-	require.NoError(t, json.NewEncoder(client).Encode(request{}))
-	<-handling
-	closed := make(chan error, 1)
-	go func() { closed <- session.Close() }()
-
-	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
-	var resp unixSocketResponse
-	assert.Error(t, json.NewDecoder(client).Decode(&resp))
-	select {
-	case err := <-closed:
-		t.Fatalf("Close returned while the handler was active: %v", err)
-	default:
-	}
-
-	close(release)
-	released = true
-	assert.NoError(t, <-closed)
-}
-
-func TestUnixSocketSessionCloseReportsAcceptError(t *testing.T) {
-	acceptErr := errors.New("accept failed")
-	session := newUnixSocketSession(stubListener{
-		accept: func() (net.Conn, error) { return nil, acceptErr },
-		close:  func() error { return nil },
-	})
-	require.NoError(t, session.Serve(func(request) error { return nil }))
-
-	err := session.Close()
-	assert.ErrorIs(t, err, acceptErr)
-	assert.ErrorContains(t, err, "accept IPC connection")
-}
-
-func TestUnixSocketSessionHandsOffToPrimaryInstance(t *testing.T) {
-	runtimeDir := privateTempDir(t)
-	t.Setenv("XDG_RUNTIME_DIR", runtimeDir)
-	ipcCfg := config.IPCConfig{SingleInstance: config.SingleInstanceUnixSocket}
-
-	primary, err := Open(ipcCfg, nil)
+func TestUnixSocketPermissions(t *testing.T) {
+	ipcDir := setupSocketTest(t)
+	session, err := Open(config.IPCConfig{SingleInstance: config.SingleInstanceUnixSocket}, nil)
 	require.NoError(t, err)
-	require.False(t, primary.Handled())
-	t.Cleanup(func() { assert.NoError(t, primary.Close()) })
+	t.Cleanup(func() { assert.NoError(t, session.Close()) })
 
-	ipcDir := filepath.Join(runtimeDir, "tmus")
 	dirInfo, err := os.Stat(ipcDir)
 	require.NoError(t, err)
 	assert.Equal(t, os.FileMode(0o700), dirInfo.Mode().Perm())
@@ -143,41 +34,6 @@ func TestUnixSocketSessionHandsOffToPrimaryInstance(t *testing.T) {
 	info, err := os.Stat(filepath.Join(ipcDir, "tmus.sock"))
 	require.NoError(t, err)
 	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
-
-	appCfg := config.Default()
-	appCfg.Cache.Dir = t.TempDir()
-	appCfg.Lyrics.LrcLib.Enabled = false
-	appRef := core.New(appCfg)
-	t.Cleanup(appRef.ShutdownAndWait)
-	require.NoError(t, primary.Serve(appRef))
-
-	audioPath := filepath.Join(t.TempDir(), "song.mp3")
-	require.NoError(t, os.WriteFile(audioPath, nil, 0o600))
-	secondary, err := Open(ipcCfg, []string{audioPath})
-	require.NoError(t, err)
-	require.True(t, secondary.Handled())
-	require.NoError(t, secondary.Close())
-
-	assert.Eventually(t, func() bool {
-		playlist := appRef.State().Playlist
-		return len(playlist) == 1 && playlist[0].Path == audioPath
-	}, time.Second, 10*time.Millisecond)
-}
-
-func TestAutoClaimsUnixSocketWhenSupported(t *testing.T) {
-	runtimeDir := privateTempDir(t)
-	t.Setenv("XDG_RUNTIME_DIR", runtimeDir)
-
-	session, err := Open(
-		config.IPCConfig{SingleInstance: config.SingleInstanceAuto},
-		nil,
-	)
-	require.NoError(t, err)
-	require.False(t, session.Handled())
-	t.Cleanup(func() { assert.NoError(t, session.Close()) })
-
-	_, err = os.Stat(filepath.Join(runtimeDir, "tmus", "tmus.sock"))
-	assert.NoError(t, err)
 }
 
 func TestUnixSocketSessionUsesPrivateTemporaryDirectoryWithoutXDG(t *testing.T) {
@@ -218,6 +74,48 @@ func TestUnixSocketSessionReclaimsStaleEndpoint(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, session.Handled())
 	assert.NoError(t, session.Close())
+}
+
+func TestOpenValidatesDirectoryBeforeHandoff(t *testing.T) {
+	for _, mode := range []config.SingleInstanceMode{config.SingleInstanceAuto, config.SingleInstanceUnixSocket} {
+		for _, redirected := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/redirected=%t", mode, redirected), func(t *testing.T) {
+				base := privateTempDir(t)
+				t.Setenv("XDG_RUNTIME_DIR", base)
+				dir := filepath.Join(base, "tmus")
+				actual := dir
+				want := "mode 0700"
+				if redirected {
+					actual = privateTempDir(t)
+					require.NoError(t, os.Symlink(actual, dir))
+					want = "symbolic link"
+				} else {
+					require.NoError(t, os.Mkdir(dir, 0o700))
+					require.NoError(t, os.Chmod(dir, 0o755))
+				}
+				ln, err := net.Listen("unix", filepath.Join(actual, "tmus.sock"))
+				require.NoError(t, err)
+				server := newUnixSocketSession(ln)
+				t.Cleanup(func() { assert.NoError(t, server.Close()) })
+				requests := make(chan request, 1)
+				require.NoError(t, server.Serve(func(req request) error {
+					requests <- req
+					return nil
+				}))
+				session, err := Open(config.IPCConfig{SingleInstance: mode}, []string{"private.mp3"})
+				if session != nil {
+					defer session.Close()
+				}
+				assert.ErrorContains(t, err, want)
+				assert.Nil(t, session)
+				select {
+				case <-requests:
+					t.Fatal("request sent before validating the directory")
+				default:
+				}
+			})
+		}
+	}
 }
 
 func TestIPCRuntimeDir(t *testing.T) {

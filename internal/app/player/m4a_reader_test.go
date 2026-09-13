@@ -219,6 +219,24 @@ func TestDecodeM4AFixtures(t *testing.T) {
 	}
 }
 
+func TestDecodeM4AALACPropagatesDecodeError(t *testing.T) {
+	config := testALACConfig(16, 2, 44100)
+	data := testM4AContainer(m4aCodecALAC, config, 4096, []byte{0})
+	src := &testM4AReadSeekCloser{Reader: bytes.NewReader(data)}
+
+	decoder, _, err := decodeM4a(src)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, decoder.Close())
+	})
+
+	frames := make([][2]float64, 1)
+	n, ok := decoder.Stream(frames)
+	assert.Zero(t, n)
+	assert.False(t, ok)
+	assert.Error(t, decoder.Err())
+}
+
 func TestOpenM4ASkipsNonAudioSampleTables(t *testing.T) {
 	first := []byte{1, 2, 3}
 	second := []byte{4, 5, 6, 7}
@@ -319,7 +337,7 @@ func testM4AContainer(codec m4aCodecType, config []byte, delta uint32, samples .
 	var codecBox []byte
 	if codec == m4aCodecALAC {
 		entryType = "alac"
-		codecBox = testM4ABox("alac", config)
+		codecBox = testM4AFullBox("alac", config)
 	} else {
 		esdsPayload := append([]byte{0, 0, 0, 0, mp4.DecSpecificInfoTag, byte(len(config))}, config...)
 		codecBox = testM4ABox("esds", esdsPayload)
@@ -374,11 +392,11 @@ func testM4APrependVideoTrack(data []byte, mediaSize int) []byte {
 }
 
 func testALACConfig(sampleSize, channels uint8, sampleRate uint32) []byte {
-	config := make([]byte, 28)
-	binary.BigEndian.PutUint32(config[4:8], 4096)
-	config[9] = sampleSize
-	config[13] = channels
-	binary.BigEndian.PutUint32(config[24:28], sampleRate)
+	config := make([]byte, alacConfigSize)
+	binary.BigEndian.PutUint32(config[0:4], 4096)
+	config[alacBitDepthOffset] = sampleSize
+	config[alacChannelOffset] = channels
+	binary.BigEndian.PutUint32(config[alacSampleRateOffset:alacConfigSize], sampleRate)
 	return config
 }
 

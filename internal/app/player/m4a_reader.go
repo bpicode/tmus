@@ -27,13 +27,14 @@ const (
 	maxM4ASampleSize = 4 << 20
 
 	m4aAudioSampleEntrySize = 28
+	m4aFullBoxHeaderSize    = 4
 	m4aVersion1ExtraSize    = 16
 	m4aVersion2ExtraSize    = 36
 
-	alacConfigSize       = 28
-	alacBitDepthOffset   = 9
-	alacChannelOffset    = 13
-	alacSampleRateOffset = 24
+	alacConfigSize       = 24
+	alacBitDepthOffset   = 5
+	alacChannelOffset    = 9
+	alacSampleRateOffset = 20
 )
 
 type m4aCodecType int
@@ -536,17 +537,18 @@ func readM4AALACConfig(r io.ReadSeeker, start, end uint64) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("find ALAC configuration box: %w", err)
 	}
-	if box == nil || box.Size-box.HeaderSize < alacConfigSize {
+	if box == nil || box.Size-box.HeaderSize < m4aFullBoxHeaderSize+alacConfigSize {
 		return nil, errors.New("ALAC sample entry has no valid configuration box")
 	}
 	if _, err := box.SeekToPayload(r); err != nil {
 		return nil, fmt.Errorf("seek to ALAC configuration: %w", err)
 	}
-	config := make([]byte, alacConfigSize)
-	if _, err := io.ReadFull(r, config); err != nil {
+	payload := make([]byte, m4aFullBoxHeaderSize+alacConfigSize)
+	if _, err := io.ReadFull(r, payload); err != nil {
 		return nil, fmt.Errorf("read ALAC configuration: %w", err)
 	}
-	// ALACSpecificConfig places bit depth at byte 9, channels at byte 13,
+	config := payload[m4aFullBoxHeaderSize:]
+	// ALACSpecificConfig places bit depth at byte 5, channels at byte 9,
 	// and the big-endian sample rate in the final four bytes.
 	if config[alacBitDepthOffset] == 0 || config[alacChannelOffset] == 0 || binary.BigEndian.Uint32(config[alacSampleRateOffset:alacConfigSize]) == 0 {
 		return nil, errors.New("ALAC configuration contains an invalid audio format")

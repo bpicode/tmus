@@ -81,4 +81,4 @@ uninstall:
 	rm -rf $(CONFIG_DIR)
 
 demotape:
-	podman run --rm --device /dev/snd --entrypoint /bin/bash -v $(PWD):/vhs ghcr.io/charmbracelet/vhs -c "cd /vhs && apt update && apt install libasound2-dev && vhs demo.tape"
+	podman run --rm --device /dev/snd --entrypoint /bin/bash -v $(PWD):/vhs ghcr.io/charmbracelet/vhs -c "cd /vhs && apt update && apt install -y libasound2-dev && vhs demo.tape"

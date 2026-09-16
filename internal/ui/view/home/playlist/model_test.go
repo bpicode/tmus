@@ -1,8 +1,10 @@
 package playlist
 
 import (
+	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/player"
 	"github.com/bpicode/tmus/internal/config"
@@ -29,6 +31,7 @@ func TestSpectrumRowCount(t *testing.T) {
 func TestSpectrumLayout(t *testing.T) {
 	tests := []struct {
 		name       string
+		width      int
 		height     int
 		header     int
 		status     string
@@ -36,15 +39,16 @@ func TestSpectrumLayout(t *testing.T) {
 		wantRows   int
 		wantFooter int
 	}{
-		{name: "two rows", height: 10, header: 3, status: "status", volume: "volume", wantRows: 2, wantFooter: 5},
-		{name: "one row", height: 8, header: 3, status: "status", volume: "volume", wantRows: 1, wantFooter: 4},
-		{name: "hidden", height: 7, header: 3, status: "status", volume: "volume", wantRows: 0, wantFooter: 3},
-		{name: "spectrum-only footer", height: 7, header: 3, wantRows: 2, wantFooter: 3},
+		{name: "two rows", width: 80, height: 10, header: 3, status: "status", volume: "volume", wantRows: 2, wantFooter: 5},
+		{name: "one row", width: 80, height: 8, header: 3, status: "status", volume: "volume", wantRows: 1, wantFooter: 4},
+		{name: "hidden by height", width: 80, height: 7, header: 3, status: "status", volume: "volume", wantRows: 0, wantFooter: 3},
+		{name: "hidden by width", width: footerLabelWidth, height: 10, header: 3, status: "status", volume: "volume", wantRows: 0, wantFooter: 3},
+		{name: "spectrum-only footer", width: 80, height: 7, header: 3, wantRows: 2, wantFooter: 3},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rows, footer := spectrumLayout(tt.height, tt.header, tt.status, tt.volume)
+			rows, footer := spectrumLayout(tt.width, tt.height, tt.header, tt.status, tt.volume)
 			assert.Equal(t, tt.wantRows, rows)
 			assert.Equal(t, tt.wantFooter, footer)
 			assert.GreaterOrEqual(t, tt.height-tt.header-footer, 1)
@@ -52,8 +56,35 @@ func TestSpectrumLayout(t *testing.T) {
 	}
 }
 
-func TestUpdateCollectsVisualizerCommand(t *testing.T) {
-	m, _ := newVisualizerCommandTestModel(t)
+func TestFormatFooterLabel(t *testing.T) {
+	assert.Equal(t, "Spectrum: ", formatFooterLabel(spectrumLabel))
+	assert.Equal(t, "Playing:  ", formatFooterLabel(playingLabel))
+	assert.Equal(t, "Volume:   ", formatFooterLabel(volumeLabel))
+}
+
+func TestSpectrumViewAlignsLabelWithBottomRow(t *testing.T) {
+	m, _ := newSpectrumCommandTestModel(t)
+
+	lines := m.spectrumView(20, 2)
+
+	require.Len(t, lines, 2)
+	assert.Equal(t, strings.Repeat(" ", 20), lines[0])
+	assert.Equal(t, "Spectrum: "+strings.Repeat(" ", 10), lines[1])
+	assert.Equal(t, 20, lipgloss.Width(lines[0]))
+	assert.Equal(t, 20, lipgloss.Width(lines[1]))
+}
+
+func TestSpectrumViewLabelsSingleRow(t *testing.T) {
+	m, _ := newSpectrumCommandTestModel(t)
+
+	lines := m.spectrumView(20, 1)
+
+	require.Len(t, lines, 1)
+	assert.Equal(t, "Spectrum: "+strings.Repeat(" ", 10), lines[0])
+}
+
+func TestUpdateCollectsSpectrumCommand(t *testing.T) {
+	m, _ := newSpectrumCommandTestModel(t)
 
 	_, cmd, stop := m.Update(core.StateEvent{Changes: core.StateChangePlaying})
 
@@ -61,8 +92,8 @@ func TestUpdateCollectsVisualizerCommand(t *testing.T) {
 	assert.NotNil(t, cmd)
 }
 
-func TestInitCollectsVisualizerCommandDuringPlayback(t *testing.T) {
-	m, app := newVisualizerCommandTestModel(t)
+func TestInitCollectsSpectrumCommandDuringPlayback(t *testing.T) {
+	m, app := newSpectrumCommandTestModel(t)
 	app.HandlePlayerEvent(player.Event{Type: player.EventTrackStarted, PlaybackID: 1})
 
 	cmd := m.Init()
@@ -70,7 +101,7 @@ func TestInitCollectsVisualizerCommandDuringPlayback(t *testing.T) {
 	assert.NotNil(t, cmd)
 }
 
-func newVisualizerCommandTestModel(t *testing.T) (*Model, *core.App) {
+func newSpectrumCommandTestModel(t *testing.T) (*Model, *core.App) {
 	t.Helper()
 	cfg := config.Default()
 	cfg.Cache.Dir = t.TempDir()

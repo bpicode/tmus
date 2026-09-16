@@ -22,9 +22,11 @@ import (
 	"github.com/bpicode/tmus/internal/ui/view/home/playlist/volume"
 )
 
-var (
-	volumeLabel  = "Volume:  "
-	playingLabel = "Playing: "
+const (
+	footerLabelWidth = 10
+	spectrumLabel    = "Spectrum:"
+	volumeLabel      = "Volume:"
+	playingLabel     = "Playing:"
 )
 
 type Model struct {
@@ -55,8 +57,8 @@ func NewModel(cfg Config) *Model {
 	styles := newStyles(cfg.Theme)
 	m := &Model{
 		app:      cfg.App,
-		volume:   volume.NewModel(volumeLabel, cfg.App, cfg.Theme),
-		status:   status.NewModel(playingLabel, cfg.App, cfg.Theme),
+		volume:   volume.NewModel(formatFooterLabel(volumeLabel), cfg.App, cfg.Theme),
+		status:   status.NewModel(formatFooterLabel(playingLabel), cfg.App, cfg.Theme),
 		spectrum: spectrum.NewModel(cfg.App, cfg.FPS, cfg.Theme),
 		styles:   styles,
 	}
@@ -233,7 +235,7 @@ func (m *Model) View() string {
 	}
 
 	hasFooterDetails := statusView != "" || volumeView != ""
-	spectrumRows, footerLines := spectrumLayout(innerHeight, len(lines), statusView, volumeView)
+	spectrumRows, footerLines := spectrumLayout(innerWidth, innerHeight, len(lines), statusView, volumeView)
 	availableLines := max(0, innerHeight-len(lines)-footerLines)
 
 	m.list.SetSize(innerWidth, availableLines)
@@ -266,7 +268,7 @@ func (m *Model) View() string {
 	if hasFooterDetails || spectrumRows > 0 {
 		lines = append(lines, m.styles.separator.Render(strings.Repeat("─", innerWidth)))
 		if spectrumRows > 0 {
-			lines = append(lines, strings.Split(m.spectrum.View(innerWidth, spectrumRows), "\n")...)
+			lines = append(lines, m.spectrumView(innerWidth, spectrumRows)...)
 		}
 		if statusView != "" {
 			lines = append(lines, statusView)
@@ -279,7 +281,24 @@ func (m *Model) View() string {
 	return panelStyle.Render(strings.Join(lines, "\n"))
 }
 
-func spectrumLayout(innerHeight, headerLines int, status, volume string) (spectrumRows, footerLines int) {
+func formatFooterLabel(label string) string {
+	return fmt.Sprintf("%-*s", footerLabelWidth, label)
+}
+
+func (m *Model) spectrumView(width, rows int) []string {
+	contentWidth := max(0, width-footerLabelWidth)
+	lines := strings.Split(m.spectrum.View(contentWidth, rows), "\n")
+	for row := range lines {
+		label := strings.Repeat(" ", footerLabelWidth)
+		if row == len(lines)-1 {
+			label = formatFooterLabel(spectrumLabel)
+		}
+		lines[row] = label + lines[row]
+	}
+	return lines
+}
+
+func spectrumLayout(innerWidth, innerHeight, headerLines int, status, volume string) (spectrumRows, footerLines int) {
 	hasFooterDetails := status != "" || volume != ""
 	if hasFooterDetails {
 		footerLines = 1 // Separator.
@@ -295,7 +314,9 @@ func spectrumLayout(innerHeight, headerLines int, status, volume string) (spectr
 	if !hasFooterDetails && contentCapacity > 0 {
 		contentCapacity-- // Reserve a separator if the spectrum fits.
 	}
-	spectrumRows = spectrumRowCount(contentCapacity)
+	if innerWidth > footerLabelWidth {
+		spectrumRows = spectrumRowCount(contentCapacity)
+	}
 	if hasFooterDetails {
 		footerLines += spectrumRows
 	} else if spectrumRows > 0 {

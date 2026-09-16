@@ -38,7 +38,9 @@ func TestSpectrumWorker(t *testing.T) {
 				return
 			}
 
-			wantBand := frequencyBand(worker.edges, tt.frequency)
+			binWidth := float64(tt.sampleRate) / spectrumWindowSize
+			resolvedFrequency := math.Round(tt.frequency/binWidth) * binWidth
+			wantBand := frequencyBand(worker.edges, resolvedFrequency)
 			gotBand := strongestBand(bands)
 			require.Equalf(t, wantBand, gotBand, "unexpected strongest band for %.0f Hz; bands=%v", tt.frequency, bands)
 			assert.GreaterOrEqual(t, bands[gotBand], 0.85)

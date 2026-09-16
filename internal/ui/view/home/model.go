@@ -24,12 +24,13 @@ type Config struct {
 	Theme   theme.Theme
 	App     *core.App
 	Library *library.Library
+	FPS     int
 }
 
 func NewModel(cfg Config) *Model {
 	return &Model{
 		browser:  browser.NewModel(browser.Config{Cwd: cfg.Cwd, HomeDir: cfg.HomeDir, Theme: cfg.Theme, App: cfg.App, Library: cfg.Library}),
-		playlist: playlist.NewModel(playlist.Config{Theme: cfg.Theme, App: cfg.App}),
+		playlist: playlist.NewModel(playlist.Config{Theme: cfg.Theme, App: cfg.App, FPS: cfg.FPS}),
 	}
 }
 

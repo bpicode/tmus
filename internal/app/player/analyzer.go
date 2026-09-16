@@ -13,7 +13,7 @@ import (
 
 const (
 	// SpectrumBandCount is the number of frequency bands exposed to consumers.
-	SpectrumBandCount = 16
+	SpectrumBandCount = 32
 
 	spectrumWindowSize   = 2048
 	spectrumHopSize      = spectrumWindowSize / 2

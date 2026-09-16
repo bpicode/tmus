@@ -70,7 +70,7 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 	m := &Model{
 		app:       appRef,
 		lib:       lib,
-		home:      home.NewModel(home.Config{Cwd: cwd, HomeDir: cfg.BrowserHome, Theme: th, App: appRef, Library: lib}),
+		home:      home.NewModel(home.Config{Cwd: cwd, HomeDir: cfg.BrowserHome, Theme: th, App: appRef, Library: lib, FPS: cfg.FPS}),
 		help:      help.NewModel(th),
 		trackInfo: track_info.NewModel(track_info.Config{Theme: th, ArtworkAspect: cfg.ArtworkAspect, ArtworkRenderer: cfg.ArtworkRenderer, App: appRef}),
 		lyrics:    lyrics.NewModel(lyrics.Config{Theme: th, App: appRef, FollowLine: st.Lyrics.FollowLine}),

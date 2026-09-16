@@ -26,6 +26,7 @@ require (
 	golang.org/x/image v0.46.0
 	golang.org/x/sys v0.48.0
 	golang.org/x/text v0.42.0
+	gonum.org/v1/gonum v0.17.0
 )
 
 require (

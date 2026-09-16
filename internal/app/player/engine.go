@@ -81,6 +81,7 @@ type Engine struct {
 	sourceRate  beep.SampleRate
 	trackDur    time.Duration
 	lib         *library.Library
+	analyzer    *spectrumAnalyzer
 
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -103,12 +104,18 @@ func NewEngine(opts Options) *Engine {
 		ctx:        ctx,
 		cancel:     cancel,
 	}
+	e.analyzer = newSpectrumAnalyzer(e.targetRate)
 	go e.loop()
 	return e
 }
 
 func (e *Engine) Events() <-chan Event {
 	return e.eventCh
+}
+
+// Spectrum returns the most recently completed spectrum analysis.
+func (e *Engine) Spectrum() SpectrumSnapshot {
+	return e.analyzer.latestSnapshot()
 }
 
 func (e *Engine) Play(path string) {
@@ -182,6 +189,7 @@ func (e *Engine) loop() {
 		case cmdQuit:
 			e.invalidatePlayback()
 			e.stopCurrent()
+			e.analyzer.close()
 			close(e.eventCh)
 			return
 		}
@@ -240,6 +248,10 @@ func (e *Engine) playPath(uri string) {
 	if format.SampleRate != e.sampleRate {
 		playStreamer = beep.Resample(e.resampleQ, format.SampleRate, e.sampleRate, streamer)
 	}
+	// Analyze the output-rate source signal before volume and pause controls.
+	// Muting therefore does not change the spectrum, while pausing stops capture.
+	e.analyzer.startPlayback(playID)
+	playStreamer = e.analyzer.wrapStreamer(playStreamer)
 	e.sourceRate = format.SampleRate
 	e.trackDur = trackDur
 	vol := &effects.Volume{Streamer: playStreamer}
@@ -321,6 +333,7 @@ func (e *Engine) stopCurrent() {
 	e.mu.Unlock()
 
 	speaker.Clear()
+	e.analyzer.invalidatePlayback()
 	if streamer != nil {
 		_ = streamer.Close()
 	}
@@ -386,6 +399,9 @@ func (e *Engine) seekTo(pos time.Duration) SeekResult {
 
 	speaker.Lock()
 	err := streamer.Seek(frames)
+	if err == nil {
+		e.analyzer.resetGeneration(e.playID.Load())
+	}
 	speaker.Unlock()
 	if err != nil {
 		return SeekResult{Ok: false}

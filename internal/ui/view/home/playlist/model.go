@@ -18,6 +18,7 @@ import (
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/bpicode/tmus/internal/ui/view/home/playlist/visualizer"
+	"github.com/bpicode/tmus/internal/ui/view/home/playlist/volume"
 )
 
 var (
@@ -32,7 +33,7 @@ type Model struct {
 	focus    bool
 	app      *core.App
 	list     list.Model
-	volume   *volumeModel
+	volume   *volume.Model
 	status   *statusModel
 	spectrum *visualizer.Model
 
@@ -53,7 +54,7 @@ func NewModel(cfg Config) *Model {
 	styles := newStyles(cfg.Theme)
 	m := &Model{
 		app:      cfg.App,
-		volume:   newVolumeModel(volumeLabel, cfg.App, styles),
+		volume:   volume.NewModel(volumeLabel, cfg.App, cfg.Theme),
 		status:   newStatusModel(playingLabel, cfg.App, styles),
 		spectrum: visualizer.New(visualizer.Config{Theme: cfg.Theme, App: cfg.App, FPS: cfg.FPS}),
 		styles:   styles,

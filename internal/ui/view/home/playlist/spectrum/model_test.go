@@ -76,10 +76,11 @@ func TestViewUsesStackedEighthBlocks(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := NewModel(nil, 0, theme.Theme{})
+			m.UpdateSize(1)
 			for i := range m.displayed {
 				m.displayed[i] = tt.value
 			}
-			assert.Equal(t, tt.want, m.View(1, 2))
+			assert.Equal(t, tt.want, m.View(2))
 		})
 	}
 }
@@ -94,7 +95,8 @@ func TestViewWidthAndNarrowBandCombination(t *testing.T) {
 	assert.InDelta(t, wantCombined, combined[0], 1e-12)
 
 	for _, width := range []int{1, 8, len(m.displayed), len(m.displayed) + 15, 100} {
-		view := m.View(width, 2)
+		m.UpdateSize(width)
+		view := m.View(2)
 		for row, line := range strings.Split(view, "\n") {
 			assert.Equalf(t, width, lipgloss.Width(line), "row %d", row)
 		}
@@ -116,7 +118,9 @@ func TestBarLayoutKeepsWideViewsCompact(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewModel(nil, 0, theme.Theme{}).barLayout(tt.width)
+			m := NewModel(nil, 0, theme.Theme{})
+			m.UpdateSize(tt.width)
+			got := m.barLayout()
 			assert.Len(t, got.levels, tt.bands)
 			assert.Equal(t, tt.barWidth, got.barWidth)
 			assert.Equal(t, tt.rightPadding, got.rightPadding)
@@ -131,8 +135,18 @@ func TestViewPlacesFrequencyBandsTogetherAtLeft(t *testing.T) {
 	}
 
 	width := len(m.displayed) + 15
+	m.UpdateSize(width)
 	want := strings.Repeat("█", len(m.displayed)) + strings.Repeat(" ", 15)
-	assert.Equal(t, want, m.View(width, 1))
+	assert.Equal(t, want, m.View(1))
+}
+
+func TestUpdateSizeClampsNegativeWidth(t *testing.T) {
+	m := NewModel(nil, 0, theme.Theme{})
+
+	m.UpdateSize(-1)
+
+	assert.Zero(t, m.width)
+	assert.Empty(t, m.View(2))
 }
 
 func TestEnergyStylesBlendThemeAccents(t *testing.T) {

@@ -64,8 +64,9 @@ func TestFormatFooterLabel(t *testing.T) {
 
 func TestSpectrumViewAlignsLabelWithBottomRow(t *testing.T) {
 	m, _ := newSpectrumCommandTestModel(t)
+	m.spectrum.UpdateSize(10)
 
-	lines := m.spectrumView(20, 2)
+	lines := m.spectrumView(2)
 
 	require.Len(t, lines, 2)
 	assert.Equal(t, strings.Repeat(" ", 20), lines[0])
@@ -76,8 +77,9 @@ func TestSpectrumViewAlignsLabelWithBottomRow(t *testing.T) {
 
 func TestSpectrumViewLabelsSingleRow(t *testing.T) {
 	m, _ := newSpectrumCommandTestModel(t)
+	m.spectrum.UpdateSize(10)
 
-	lines := m.spectrumView(20, 1)
+	lines := m.spectrumView(1)
 
 	require.Len(t, lines, 1)
 	assert.Equal(t, "Spectrum: "+strings.Repeat(" ", 10), lines[0])

@@ -25,8 +25,9 @@ var barLevels = [...]rune{' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', 
 // It also tracks snapshot identity so seeks, track changes, and pause/resume
 // transitions cannot reuse stale measurements.
 type Model struct {
-	app *core.App
-	fps int
+	app   *core.App
+	fps   int
+	width int
 
 	displayed [core.SpectrumBandCount]float64
 	targets   [core.SpectrumBandCount]float64
@@ -70,6 +71,11 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+// UpdateSize sets the number of terminal cells available for spectrum bars.
+func (m *Model) UpdateSize(width int) {
+	m.width = max(0, width)
 }
 
 type tickMsg struct {
@@ -173,12 +179,12 @@ func (m *Model) settling() bool {
 
 // View renders one or two left-aligned rows of bars. Wide views keep the analyzer
 // compact instead of stretching the fixed number of frequency bands.
-func (m *Model) View(width, rows int) string {
-	if width <= 0 || rows <= 0 {
+func (m *Model) View(rows int) string {
+	if m.width <= 0 || rows <= 0 {
 		return ""
 	}
 	rows = min(rows, 2)
-	layout := m.barLayout(width)
+	layout := m.barLayout()
 	rendered := make([]string, rows)
 	for row := range rows {
 		var line strings.Builder
@@ -210,10 +216,10 @@ type layout struct {
 	rightPadding int
 }
 
-func (m *Model) barLayout(width int) layout {
-	if width < len(m.displayed) {
+func (m *Model) barLayout() layout {
+	if m.width < len(m.displayed) {
 		return layout{
-			levels:   m.combinedLevels(width),
+			levels:   m.combinedLevels(m.width),
 			barWidth: 1,
 		}
 	}
@@ -221,7 +227,7 @@ func (m *Model) barLayout(width int) layout {
 	return layout{
 		levels:       m.displayed[:],
 		barWidth:     1,
-		rightPadding: width - len(m.displayed),
+		rightPadding: m.width - len(m.displayed),
 	}
 }
 

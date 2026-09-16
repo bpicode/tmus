@@ -122,8 +122,10 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 	m.width = msg.Width
 	m.height = msg.Height
-	m.volume.UpdateSize(m.width - m.styles.panelUnfocused.GetHorizontalFrameSize())
-	m.status.UpdateSize(m.width - m.styles.panelUnfocused.GetHorizontalFrameSize())
+	innerWidth := max(0, m.width-m.styles.panelUnfocused.GetHorizontalFrameSize())
+	m.volume.UpdateSize(innerWidth)
+	m.status.UpdateSize(innerWidth)
+	m.spectrum.UpdateSize(max(0, innerWidth-footerLabelWidth))
 	return m, nil, false
 }
 
@@ -268,7 +270,7 @@ func (m *Model) View() string {
 	if hasFooterDetails || spectrumRows > 0 {
 		lines = append(lines, m.styles.separator.Render(strings.Repeat("─", innerWidth)))
 		if spectrumRows > 0 {
-			lines = append(lines, m.spectrumView(innerWidth, spectrumRows)...)
+			lines = append(lines, m.spectrumView(spectrumRows)...)
 		}
 		if statusView != "" {
 			lines = append(lines, statusView)
@@ -285,9 +287,8 @@ func formatFooterLabel(label string) string {
 	return fmt.Sprintf("%-*s", footerLabelWidth, label)
 }
 
-func (m *Model) spectrumView(width, rows int) []string {
-	contentWidth := max(0, width-footerLabelWidth)
-	lines := strings.Split(m.spectrum.View(contentWidth, rows), "\n")
+func (m *Model) spectrumView(rows int) []string {
+	lines := strings.Split(m.spectrum.View(rows), "\n")
 	for row := range lines {
 		label := strings.Repeat(" ", footerLabelWidth)
 		if row == len(lines)-1 {

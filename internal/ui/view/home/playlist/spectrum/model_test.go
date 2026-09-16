@@ -17,7 +17,7 @@ import (
 )
 
 func TestUpdateAttackReleaseAndReset(t *testing.T) {
-	m := NewModel(nil, 0, theme.Theme{})
+	m := NewModel("", nil, 0, theme.Theme{})
 	now := time.Unix(100, 0)
 	snapshot := core.Spectrum{PlaybackID: 1, Generation: 1, Sequence: 1}
 	snapshot.Bands[0] = 1
@@ -37,7 +37,7 @@ func TestUpdateAttackReleaseAndReset(t *testing.T) {
 }
 
 func TestPausedSnapshotRequiresFreshSequence(t *testing.T) {
-	m := NewModel(nil, 0, theme.Theme{})
+	m := NewModel("", nil, 0, theme.Theme{})
 	now := time.Unix(100, 0)
 	snapshot := core.Spectrum{PlaybackID: 1, Generation: 1, Sequence: 8}
 	snapshot.Bands[0] = 1
@@ -75,7 +75,7 @@ func TestViewUsesStackedEighthBlocks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewModel(nil, 0, theme.Theme{})
+			m := NewModel("", nil, 0, theme.Theme{})
 			m.UpdateSize(1)
 			for i := range m.displayed {
 				m.displayed[i] = tt.value
@@ -86,7 +86,7 @@ func TestViewUsesStackedEighthBlocks(t *testing.T) {
 }
 
 func TestViewWidthAndNarrowBandCombination(t *testing.T) {
-	m := NewModel(nil, 0, theme.Theme{})
+	m := NewModel("", nil, 0, theme.Theme{})
 	m.displayed[0] = 1
 
 	combined := m.combinedLevels(1)
@@ -97,51 +97,80 @@ func TestViewWidthAndNarrowBandCombination(t *testing.T) {
 	for _, width := range []int{1, 8, len(m.displayed), len(m.displayed) + 15, 100} {
 		m.UpdateSize(width)
 		view := m.View(2)
+		wantWidth := min(width, len(m.displayed))
 		for row, line := range strings.Split(view, "\n") {
-			assert.Equalf(t, width, lipgloss.Width(line), "row %d", row)
+			assert.Equalf(t, wantWidth, lipgloss.Width(line), "row %d", row)
 		}
 	}
 }
 
-func TestBarLayoutKeepsWideViewsCompact(t *testing.T) {
+func TestDisplayLevelsKeepsWideViewsCompact(t *testing.T) {
 	bandCount := core.SpectrumBandCount
 	tests := []struct {
-		name            string
-		width           int
-		bands, barWidth int
-		rightPadding    int
+		name  string
+		width int
+		bands int
 	}{
-		{name: "combine narrow bands", width: bandCount - 1, bands: bandCount - 1, barWidth: 1},
-		{name: "adjacent bars", width: bandCount, bands: bandCount, barWidth: 1},
-		{name: "cap full-width view", width: 100, bands: bandCount, barWidth: 1, rightPadding: 100 - bandCount},
+		{name: "combine narrow bands", width: bandCount - 1, bands: bandCount - 1},
+		{name: "adjacent bars", width: bandCount, bands: bandCount},
+		{name: "cap full-width view", width: 100, bands: bandCount},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewModel(nil, 0, theme.Theme{})
-			m.UpdateSize(tt.width)
-			got := m.barLayout()
-			assert.Len(t, got.levels, tt.bands)
-			assert.Equal(t, tt.barWidth, got.barWidth)
-			assert.Equal(t, tt.rightPadding, got.rightPadding)
+			m := NewModel("", nil, 0, theme.Theme{})
+			got := m.displayLevels(tt.width)
+			assert.Len(t, got, tt.bands)
 		})
 	}
 }
 
-func TestViewPlacesFrequencyBandsTogetherAtLeft(t *testing.T) {
-	m := NewModel(nil, 0, theme.Theme{})
+func TestViewDoesNotPadWideViews(t *testing.T) {
+	m := NewModel("", nil, 0, theme.Theme{})
 	for i := range m.displayed {
 		m.displayed[i] = 1
 	}
 
 	width := len(m.displayed) + 15
 	m.UpdateSize(width)
-	want := strings.Repeat("█", len(m.displayed)) + strings.Repeat(" ", 15)
+	want := strings.Repeat("█", len(m.displayed))
 	assert.Equal(t, want, m.View(1))
 }
 
+func TestViewDoesNotPadWideLabeledViews(t *testing.T) {
+	const label = "Spectrum: "
+	m := NewModel(label, nil, 0, theme.Theme{})
+	for i := range m.displayed {
+		m.displayed[i] = 1
+	}
+	m.UpdateSize(100)
+
+	want := label + strings.Repeat("█", len(m.displayed))
+	assert.Equal(t, want, m.View(1))
+}
+
+func TestViewAlignsLabelWithBottomRow(t *testing.T) {
+	m := NewModel("Spectrum: ", nil, 0, theme.Theme{})
+	m.UpdateSize(20)
+
+	lines := strings.Split(m.View(2), "\n")
+
+	require.Len(t, lines, 2)
+	assert.Equal(t, strings.Repeat(" ", 20), lines[0])
+	assert.Equal(t, "Spectrum: "+strings.Repeat(" ", 10), lines[1])
+	assert.Equal(t, 20, lipgloss.Width(lines[0]))
+	assert.Equal(t, 20, lipgloss.Width(lines[1]))
+}
+
+func TestViewLabelsSingleRow(t *testing.T) {
+	m := NewModel("Spectrum: ", nil, 0, theme.Theme{})
+	m.UpdateSize(20)
+
+	assert.Equal(t, "Spectrum: "+strings.Repeat(" ", 10), m.View(1))
+}
+
 func TestUpdateSizeClampsNegativeWidth(t *testing.T) {
-	m := NewModel(nil, 0, theme.Theme{})
+	m := NewModel("", nil, 0, theme.Theme{})
 
 	m.UpdateSize(-1)
 
@@ -152,7 +181,7 @@ func TestUpdateSizeClampsNegativeWidth(t *testing.T) {
 func TestEnergyStylesBlendThemeAccents(t *testing.T) {
 	primary := lipgloss.Color("#204060")
 	secondary := lipgloss.Color("#80a0c0")
-	m := NewModel(nil, 0, theme.Theme{Primary: primary, Secondary: secondary})
+	m := NewModel("", nil, 0, theme.Theme{Primary: primary, Secondary: secondary})
 
 	low := color.RGBAModel.Convert(m.styleForEnergy(0).GetForeground())
 	middle := color.RGBAModel.Convert(m.styleForEnergy(0.5).GetForeground())
@@ -167,14 +196,14 @@ func TestEnergyStylesBlendThemeAccents(t *testing.T) {
 }
 
 func TestSettlingThreshold(t *testing.T) {
-	m := NewModel(nil, 0, theme.Theme{})
+	m := NewModel("", nil, 0, theme.Theme{})
 	assert.False(t, m.settling())
 	m.displayed[0] = settledLevel
 	assert.True(t, m.settling())
 }
 
 func TestAdvanceClampsSnapshotLevels(t *testing.T) {
-	m := NewModel(nil, 0, theme.Theme{})
+	m := NewModel("", nil, 0, theme.Theme{})
 	snapshot := core.Spectrum{PlaybackID: 1, Generation: 1, Sequence: 1}
 	snapshot.Bands[0] = -1
 	snapshot.Bands[1] = 2
@@ -198,14 +227,14 @@ func TestTickInterval(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewModel(nil, tt.fps, theme.Theme{})
+			m := NewModel("", nil, tt.fps, theme.Theme{})
 			assert.Equal(t, tt.want, m.tickInterval())
 		})
 	}
 }
 
 func TestScheduleTickInvalidatesEarlierTick(t *testing.T) {
-	m := NewModel(nil, 0, theme.Theme{})
+	m := NewModel("", nil, 0, theme.Theme{})
 	firstMsg := m.scheduleTick(0)()
 	secondMsg := m.scheduleTick(0)()
 	require.IsType(t, tickMsg{}, firstMsg)
@@ -218,7 +247,7 @@ func TestScheduleTickInvalidatesEarlierTick(t *testing.T) {
 }
 
 func TestUpdateIgnoresStaleTick(t *testing.T) {
-	m := NewModel(nil, 0, theme.Theme{})
+	m := NewModel("", nil, 0, theme.Theme{})
 	m.tickGeneration = 2
 
 	_, cmd := m.Update(tickMsg{at: time.Now(), generation: 1})
@@ -264,7 +293,7 @@ func TestTickContinuesWhileSettling(t *testing.T) {
 }
 
 func TestPlaybackEventRestartsTick(t *testing.T) {
-	m := NewModel(nil, 0, theme.Theme{})
+	m := NewModel("", nil, 0, theme.Theme{})
 
 	_, cmd := m.Update(core.StateEvent{Changes: core.StateChangePlaying})
 
@@ -279,5 +308,5 @@ func newTickTestModel(t *testing.T, fps int) (*Model, *core.App) {
 	cfg.Lyrics.LrcLib.Enabled = false
 	app := core.New(cfg)
 	t.Cleanup(app.ShutdownAndWait)
-	return NewModel(app, fps, theme.Theme{}), app
+	return NewModel("", app, fps, theme.Theme{}), app
 }

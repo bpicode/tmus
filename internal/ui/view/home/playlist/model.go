@@ -59,7 +59,7 @@ func NewModel(cfg Config) *Model {
 		app:      cfg.App,
 		volume:   volume.NewModel(formatFooterLabel(volumeLabel), cfg.App, cfg.Theme),
 		status:   status.NewModel(formatFooterLabel(playingLabel), cfg.App, cfg.Theme),
-		spectrum: spectrum.NewModel(cfg.App, cfg.FPS, cfg.Theme),
+		spectrum: spectrum.NewModel(formatFooterLabel(spectrumLabel), cfg.App, cfg.FPS, cfg.Theme),
 		styles:   styles,
 	}
 	delegate := newPlaylistDelegate(m)
@@ -125,7 +125,7 @@ func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 	innerWidth := max(0, m.width-m.styles.panelUnfocused.GetHorizontalFrameSize())
 	m.volume.UpdateSize(innerWidth)
 	m.status.UpdateSize(innerWidth)
-	m.spectrum.UpdateSize(max(0, innerWidth-footerLabelWidth))
+	m.spectrum.UpdateSize(innerWidth)
 	return m, nil, false
 }
 
@@ -270,7 +270,7 @@ func (m *Model) View() string {
 	if hasFooterDetails || spectrumRows > 0 {
 		lines = append(lines, m.styles.separator.Render(strings.Repeat("─", innerWidth)))
 		if spectrumRows > 0 {
-			lines = append(lines, m.spectrumView(spectrumRows)...)
+			lines = append(lines, strings.Split(m.spectrum.View(spectrumRows), "\n")...)
 		}
 		if statusView != "" {
 			lines = append(lines, statusView)
@@ -285,18 +285,6 @@ func (m *Model) View() string {
 
 func formatFooterLabel(label string) string {
 	return fmt.Sprintf("%-*s", footerLabelWidth, label)
-}
-
-func (m *Model) spectrumView(rows int) []string {
-	lines := strings.Split(m.spectrum.View(rows), "\n")
-	for row := range lines {
-		label := strings.Repeat(" ", footerLabelWidth)
-		if row == len(lines)-1 {
-			label = formatFooterLabel(spectrumLabel)
-		}
-		lines[row] = label + lines[row]
-	}
-	return lines
 }
 
 func spectrumLayout(innerWidth, innerHeight, headerLines int, status, volume string) (spectrumRows, footerLines int) {

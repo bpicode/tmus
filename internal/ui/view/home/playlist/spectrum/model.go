@@ -28,6 +28,7 @@ type Model struct {
 	app   *core.App
 	fps   int
 	width int
+	label string
 
 	displayed [core.SpectrumBandCount]float64
 	targets   [core.SpectrumBandCount]float64
@@ -44,8 +45,8 @@ type Model struct {
 
 // NewModel creates a spectrum visualizer whose bar colors blend from the theme's
 // primary accent at low energy to its secondary accent at high energy.
-func NewModel(app *core.App, fps int, th theme.Theme) *Model {
-	m := &Model{app: app, fps: fps}
+func NewModel(label string, app *core.App, fps int, th theme.Theme) *Model {
+	m := &Model{app: app, fps: fps, label: label}
 	for i, color := range lipgloss.Blend1D(energyColorSteps, th.Primary, th.Secondary) {
 		m.energyStyles[i] = lipgloss.NewStyle().Foreground(color)
 	}
@@ -73,7 +74,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	return m, nil
 }
 
-// UpdateSize sets the number of terminal cells available for spectrum bars.
+// UpdateSize sets the number of terminal cells available for the label and bars.
 func (m *Model) UpdateSize(width int) {
 	m.width = max(0, width)
 }
@@ -180,25 +181,31 @@ func (m *Model) settling() bool {
 // View renders one or two left-aligned rows of bars. Wide views keep the analyzer
 // compact instead of stretching the fixed number of frequency bands.
 func (m *Model) View(rows int) string {
-	if m.width <= 0 || rows <= 0 {
+	labelWidth := lipgloss.Width(m.label)
+	contentWidth := max(0, m.width-labelWidth)
+	if contentWidth <= 0 || rows <= 0 {
 		return ""
 	}
 	rows = min(rows, 2)
-	layout := m.barLayout()
+	levels := m.displayLevels(contentWidth)
 	rendered := make([]string, rows)
 	for row := range rows {
 		var line strings.Builder
-		for _, value := range layout.levels {
+		if row == rows-1 {
+			line.WriteString(m.label)
+		} else {
+			line.WriteString(strings.Repeat(" ", labelWidth))
+		}
+		for _, value := range levels {
 			units := int(math.Round(value * float64(rows*(len(barLevels)-1))))
 			units -= (rows - row - 1) * (len(barLevels) - 1)
 			units = min(max(units, 0), len(barLevels)-1)
-			bar := strings.Repeat(string(barLevels[units]), layout.barWidth)
+			bar := string(barLevels[units])
 			if units > 0 {
 				bar = m.styleForEnergy(value).Render(bar)
 			}
 			line.WriteString(bar)
 		}
-		line.WriteString(strings.Repeat(" ", layout.rightPadding))
 		rendered[row] = line.String()
 	}
 	return strings.Join(rendered, "\n")
@@ -210,25 +217,12 @@ func (m *Model) styleForEnergy(value float64) lipgloss.Style {
 	return m.energyStyles[index]
 }
 
-type layout struct {
-	levels       []float64
-	barWidth     int
-	rightPadding int
-}
-
-func (m *Model) barLayout() layout {
-	if m.width < len(m.displayed) {
-		return layout{
-			levels:   m.combinedLevels(m.width),
-			barWidth: 1,
-		}
+func (m *Model) displayLevels(width int) []float64 {
+	if width < len(m.displayed) {
+		return m.combinedLevels(width)
 	}
 
-	return layout{
-		levels:       m.displayed[:],
-		barWidth:     1,
-		rightPadding: m.width - len(m.displayed),
-	}
+	return m.displayed[:]
 }
 
 // combinedLevels reduces the analysis bands by average power, rather than

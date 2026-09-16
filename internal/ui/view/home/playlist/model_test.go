@@ -1,10 +1,8 @@
 package playlist
 
 import (
-	"strings"
 	"testing"
 
-	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/player"
 	"github.com/bpicode/tmus/internal/config"
@@ -60,29 +58,6 @@ func TestFormatFooterLabel(t *testing.T) {
 	assert.Equal(t, "Spectrum: ", formatFooterLabel(spectrumLabel))
 	assert.Equal(t, "Playing:  ", formatFooterLabel(playingLabel))
 	assert.Equal(t, "Volume:   ", formatFooterLabel(volumeLabel))
-}
-
-func TestSpectrumViewAlignsLabelWithBottomRow(t *testing.T) {
-	m, _ := newSpectrumCommandTestModel(t)
-	m.spectrum.UpdateSize(10)
-
-	lines := m.spectrumView(2)
-
-	require.Len(t, lines, 2)
-	assert.Equal(t, strings.Repeat(" ", 20), lines[0])
-	assert.Equal(t, "Spectrum: "+strings.Repeat(" ", 10), lines[1])
-	assert.Equal(t, 20, lipgloss.Width(lines[0]))
-	assert.Equal(t, 20, lipgloss.Width(lines[1]))
-}
-
-func TestSpectrumViewLabelsSingleRow(t *testing.T) {
-	m, _ := newSpectrumCommandTestModel(t)
-	m.spectrum.UpdateSize(10)
-
-	lines := m.spectrumView(1)
-
-	require.Len(t, lines, 1)
-	assert.Equal(t, "Spectrum: "+strings.Repeat(" ", 10), lines[0])
 }
 
 func TestUpdateCollectsSpectrumCommand(t *testing.T) {

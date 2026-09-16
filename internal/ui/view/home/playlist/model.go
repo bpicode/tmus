@@ -17,6 +17,7 @@ import (
 	"github.com/bpicode/tmus/internal/ui/components/sanitize"
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 	"github.com/bpicode/tmus/internal/ui/theme"
+	"github.com/bpicode/tmus/internal/ui/view/home/playlist/status"
 	"github.com/bpicode/tmus/internal/ui/view/home/playlist/visualizer"
 	"github.com/bpicode/tmus/internal/ui/view/home/playlist/volume"
 )
@@ -34,7 +35,7 @@ type Model struct {
 	app      *core.App
 	list     list.Model
 	volume   *volume.Model
-	status   *statusModel
+	status   *status.Model
 	spectrum *visualizer.Model
 
 	playing   int
@@ -55,7 +56,7 @@ func NewModel(cfg Config) *Model {
 	m := &Model{
 		app:      cfg.App,
 		volume:   volume.NewModel(volumeLabel, cfg.App, cfg.Theme),
-		status:   newStatusModel(playingLabel, cfg.App, styles),
+		status:   status.NewModel(playingLabel, cfg.App, cfg.Theme),
 		spectrum: visualizer.New(visualizer.Config{Theme: cfg.Theme, App: cfg.App, FPS: cfg.FPS}),
 		styles:   styles,
 	}
@@ -206,8 +207,8 @@ func (m *Model) handleRemaining(msg tea.Msg) (*Model, tea.Cmd, bool) {
 
 func (m *Model) View() string {
 	state := m.app.State()
-	status := m.status.View()
-	volume := m.volume.View()
+	statusView := m.status.View()
+	volumeView := m.volume.View()
 
 	title := m.styles.titleUnfocused
 	panelStyle := m.styles.panelUnfocused
@@ -219,7 +220,7 @@ func (m *Model) View() string {
 	innerWidth := max(0, m.width-panelStyle.GetHorizontalFrameSize())
 	innerHeight := max(0, m.height-panelStyle.GetVerticalFrameSize())
 
-	titleLine := fmt.Sprintf("%s (%s, %s)", title.Render("🎵 Playlist"), playStateStyle(state, m.styles).Render(playStateLabel(state)), m.styles.statusQueueMode.Render(queueModeLabel(state.QueueMode)))
+	titleLine := fmt.Sprintf("%s (%s, %s)", title.Render("🎵 Playlist"), m.styles.playStateStyle(state).Render(playStateLabel(state)), m.styles.statusQueueMode.Render(queueModeLabel(state.QueueMode)))
 	titleLine = truncate.Right{}.MaxWidth(innerWidth).Render(titleLine)
 
 	lines := []string{
@@ -231,8 +232,8 @@ func (m *Model) View() string {
 		lines = append(lines, m.styles.err.Render(sanitize.TerminalText(state.PlaylistErr.Error())))
 	}
 
-	hasFooterDetails := status != "" || volume != ""
-	spectrumRows, footerLines := spectrumLayout(innerHeight, len(lines), status, volume)
+	hasFooterDetails := statusView != "" || volumeView != ""
+	spectrumRows, footerLines := spectrumLayout(innerHeight, len(lines), statusView, volumeView)
 	availableLines := max(0, innerHeight-len(lines)-footerLines)
 
 	m.list.SetSize(innerWidth, availableLines)
@@ -267,11 +268,11 @@ func (m *Model) View() string {
 		if spectrumRows > 0 {
 			lines = append(lines, strings.Split(m.spectrum.View(innerWidth, spectrumRows), "\n")...)
 		}
-		if status != "" {
-			lines = append(lines, status)
+		if statusView != "" {
+			lines = append(lines, statusView)
 		}
-		if volume != "" {
-			lines = append(lines, volume)
+		if volumeView != "" {
+			lines = append(lines, volumeView)
 		}
 	}
 

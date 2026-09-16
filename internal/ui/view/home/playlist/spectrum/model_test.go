@@ -1,4 +1,4 @@
-package visualizer
+package spectrum
 
 import (
 	"image/color"
@@ -17,7 +17,7 @@ import (
 )
 
 func TestUpdateAttackReleaseAndReset(t *testing.T) {
-	m := New(Config{})
+	m := NewModel(nil, 0, theme.Theme{})
 	now := time.Unix(100, 0)
 	snapshot := core.Spectrum{PlaybackID: 1, Generation: 1, Sequence: 1}
 	snapshot.Bands[0] = 1
@@ -37,7 +37,7 @@ func TestUpdateAttackReleaseAndReset(t *testing.T) {
 }
 
 func TestPausedSnapshotRequiresFreshSequence(t *testing.T) {
-	m := New(Config{})
+	m := NewModel(nil, 0, theme.Theme{})
 	now := time.Unix(100, 0)
 	snapshot := core.Spectrum{PlaybackID: 1, Generation: 1, Sequence: 8}
 	snapshot.Bands[0] = 1
@@ -75,7 +75,7 @@ func TestViewUsesStackedEighthBlocks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := New(Config{})
+			m := NewModel(nil, 0, theme.Theme{})
 			for i := range m.displayed {
 				m.displayed[i] = tt.value
 			}
@@ -85,7 +85,7 @@ func TestViewUsesStackedEighthBlocks(t *testing.T) {
 }
 
 func TestViewWidthAndNarrowBandCombination(t *testing.T) {
-	m := New(Config{})
+	m := NewModel(nil, 0, theme.Theme{})
 	m.displayed[0] = 1
 
 	combined := m.combinedLevels(1)
@@ -116,7 +116,7 @@ func TestBarLayoutKeepsWideViewsCompact(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := New(Config{}).barLayout(tt.width)
+			got := NewModel(nil, 0, theme.Theme{}).barLayout(tt.width)
 			assert.Len(t, got.levels, tt.bands)
 			assert.Equal(t, tt.barWidth, got.barWidth)
 			assert.Equal(t, tt.rightPadding, got.rightPadding)
@@ -125,7 +125,7 @@ func TestBarLayoutKeepsWideViewsCompact(t *testing.T) {
 }
 
 func TestViewPlacesFrequencyBandsTogetherAtLeft(t *testing.T) {
-	m := New(Config{})
+	m := NewModel(nil, 0, theme.Theme{})
 	for i := range m.displayed {
 		m.displayed[i] = 1
 	}
@@ -138,7 +138,7 @@ func TestViewPlacesFrequencyBandsTogetherAtLeft(t *testing.T) {
 func TestEnergyStylesBlendThemeAccents(t *testing.T) {
 	primary := lipgloss.Color("#204060")
 	secondary := lipgloss.Color("#80a0c0")
-	m := New(Config{Theme: theme.Theme{Primary: primary, Secondary: secondary}})
+	m := NewModel(nil, 0, theme.Theme{Primary: primary, Secondary: secondary})
 
 	low := color.RGBAModel.Convert(m.styleForEnergy(0).GetForeground())
 	middle := color.RGBAModel.Convert(m.styleForEnergy(0.5).GetForeground())
@@ -153,14 +153,14 @@ func TestEnergyStylesBlendThemeAccents(t *testing.T) {
 }
 
 func TestSettlingThreshold(t *testing.T) {
-	m := New(Config{})
+	m := NewModel(nil, 0, theme.Theme{})
 	assert.False(t, m.settling())
 	m.displayed[0] = settledLevel
 	assert.True(t, m.settling())
 }
 
 func TestAdvanceClampsSnapshotLevels(t *testing.T) {
-	m := New(Config{})
+	m := NewModel(nil, 0, theme.Theme{})
 	snapshot := core.Spectrum{PlaybackID: 1, Generation: 1, Sequence: 1}
 	snapshot.Bands[0] = -1
 	snapshot.Bands[1] = 2
@@ -184,14 +184,14 @@ func TestTickInterval(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := New(Config{FPS: tt.fps})
+			m := NewModel(nil, tt.fps, theme.Theme{})
 			assert.Equal(t, tt.want, m.tickInterval())
 		})
 	}
 }
 
 func TestScheduleTickInvalidatesEarlierTick(t *testing.T) {
-	m := New(Config{})
+	m := NewModel(nil, 0, theme.Theme{})
 	firstMsg := m.scheduleTick(0)()
 	secondMsg := m.scheduleTick(0)()
 	require.IsType(t, tickMsg{}, firstMsg)
@@ -204,7 +204,7 @@ func TestScheduleTickInvalidatesEarlierTick(t *testing.T) {
 }
 
 func TestUpdateIgnoresStaleTick(t *testing.T) {
-	m := New(Config{})
+	m := NewModel(nil, 0, theme.Theme{})
 	m.tickGeneration = 2
 
 	_, cmd := m.Update(tickMsg{at: time.Now(), generation: 1})
@@ -250,7 +250,7 @@ func TestTickContinuesWhileSettling(t *testing.T) {
 }
 
 func TestPlaybackEventRestartsTick(t *testing.T) {
-	m := New(Config{})
+	m := NewModel(nil, 0, theme.Theme{})
 
 	_, cmd := m.Update(core.StateEvent{Changes: core.StateChangePlaying})
 
@@ -265,5 +265,5 @@ func newTickTestModel(t *testing.T, fps int) (*Model, *core.App) {
 	cfg.Lyrics.LrcLib.Enabled = false
 	app := core.New(cfg)
 	t.Cleanup(app.ShutdownAndWait)
-	return New(Config{App: app, FPS: fps}), app
+	return NewModel(app, fps, theme.Theme{}), app
 }

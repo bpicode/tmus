@@ -1,4 +1,4 @@
-package visualizer
+package spectrum
 
 import (
 	"math"
@@ -41,18 +41,11 @@ type Model struct {
 	tickGeneration uint64
 }
 
-// Config contains the visualizer's runtime dependencies and appearance.
-type Config struct {
-	Theme theme.Theme
-	App   *core.App
-	FPS   int
-}
-
-// New creates a spectrum visualizer whose bar colors blend from the theme's
+// NewModel creates a spectrum visualizer whose bar colors blend from the theme's
 // primary accent at low energy to its secondary accent at high energy.
-func New(cfg Config) *Model {
-	m := &Model{app: cfg.App, fps: cfg.FPS}
-	for i, color := range lipgloss.Blend1D(energyColorSteps, cfg.Theme.Primary, cfg.Theme.Secondary) {
+func NewModel(app *core.App, fps int, th theme.Theme) *Model {
+	m := &Model{app: app, fps: fps}
+	for i, color := range lipgloss.Blend1D(energyColorSteps, th.Primary, th.Secondary) {
 		m.energyStyles[i] = lipgloss.NewStyle().Foreground(color)
 	}
 	return m

@@ -17,8 +17,8 @@ import (
 	"github.com/bpicode/tmus/internal/ui/components/sanitize"
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 	"github.com/bpicode/tmus/internal/ui/theme"
+	"github.com/bpicode/tmus/internal/ui/view/home/playlist/spectrum"
 	"github.com/bpicode/tmus/internal/ui/view/home/playlist/status"
-	"github.com/bpicode/tmus/internal/ui/view/home/playlist/visualizer"
 	"github.com/bpicode/tmus/internal/ui/view/home/playlist/volume"
 )
 
@@ -36,7 +36,7 @@ type Model struct {
 	list     list.Model
 	volume   *volume.Model
 	status   *status.Model
-	spectrum *visualizer.Model
+	spectrum *spectrum.Model
 
 	playing   int
 	playState core.PlaybackState
@@ -57,7 +57,7 @@ func NewModel(cfg Config) *Model {
 		app:      cfg.App,
 		volume:   volume.NewModel(volumeLabel, cfg.App, cfg.Theme),
 		status:   status.NewModel(playingLabel, cfg.App, cfg.Theme),
-		spectrum: visualizer.New(visualizer.Config{Theme: cfg.Theme, App: cfg.App, FPS: cfg.FPS}),
+		spectrum: spectrum.NewModel(cfg.App, cfg.FPS, cfg.Theme),
 		styles:   styles,
 	}
 	delegate := newPlaylistDelegate(m)

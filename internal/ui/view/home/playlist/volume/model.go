@@ -7,22 +7,26 @@ import (
 	"github.com/bpicode/tmus/internal/ui/theme"
 )
 
-type Model struct {
-	bar   progress.Model
-	width int
-	label string
-	app   *core.App
+type stateReader interface {
+	State() core.State
 }
 
-func NewModel(label string, appRef *core.App, th theme.Theme) *Model {
+type Model struct {
+	bar         progress.Model
+	width       int
+	label       string
+	stateReader stateReader
+}
+
+func NewModel(label string, stateReader stateReader, th theme.Theme) *Model {
 	styles := newStyles(th)
 	pr := progress.New(
 		progress.WithColors(styles.volumeBarLow, styles.volumeBarHigh),
 	)
 	return &Model{
-		bar:   pr,
-		label: label,
-		app:   appRef,
+		bar:         pr,
+		label:       label,
+		stateReader: stateReader,
 	}
 }
 
@@ -32,7 +36,7 @@ func (m *Model) UpdateSize(width int) {
 }
 
 func (m *Model) View() string {
-	vol := m.app.State().Volume
+	vol := m.stateReader.State().Volume
 	volPct := float64(vol) / float64(core.VolumeMax-core.VolumeMin)
 	return m.fmtLabel() + m.bar.ViewAs(volPct)
 }

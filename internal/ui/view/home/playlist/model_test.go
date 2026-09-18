@@ -1,6 +1,7 @@
 package playlist
 
 import (
+	"errors"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -38,8 +39,9 @@ func TestWindowSizeUpdatesChildLayout(t *testing.T) {
 	_, _, _ = m.Update(tea.WindowSizeMsg{Width: width, Height: height})
 
 	innerHeight := height - m.styles.panelUnfocused.GetVerticalFrameSize()
+	headerHeight := len(m.headerLines(m.app.State(), m.layout.innerWidth))
 	assert.Equal(t, width-m.styles.panelUnfocused.GetHorizontalFrameSize(), m.layout.innerWidth)
-	assert.Equal(t, innerHeight, 3+m.layout.bodyHeight+m.layout.footerHeight)
+	assert.Equal(t, innerHeight, headerHeight+m.layout.bodyHeight+m.layout.footerHeight)
 	assert.Equal(t, m.layout.innerWidth, m.list.Width())
 	assert.Equal(t, m.layout.bodyHeight, m.list.Height())
 	assert.Equal(t, m.footer.Height()+1, m.layout.footerHeight)
@@ -57,6 +59,23 @@ func TestViewDoesNotResizeChildren(t *testing.T) {
 	assert.Equal(t, wantListWidth, m.list.Width())
 	assert.Equal(t, wantListHeight, m.list.Height())
 	assert.Equal(t, wantFooterHeight, m.footer.Height())
+}
+
+func TestHeaderLinesIncludePlaylistError(t *testing.T) {
+	m, _ := newSpectrumCommandTestModel(t)
+
+	assert.Len(t, m.headerLines(core.State{}, 80), 3)
+	assert.Len(t, m.headerLines(core.State{PlaylistErr: errors.New("test")}, 80), 4)
+}
+
+func TestBodyLinesFillEmptyBody(t *testing.T) {
+	m, _ := newSpectrumCommandTestModel(t)
+	m.layout.bodyHeight = 3
+
+	lines := m.bodyLines()
+
+	assert.Len(t, lines, 3)
+	assert.Contains(t, lines[0], "(empty)")
 }
 
 func newSpectrumCommandTestModel(t *testing.T) (*Model, *core.App) {

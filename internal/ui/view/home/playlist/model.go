@@ -124,17 +124,11 @@ func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 }
 
 func (m *Model) updateLayout() {
-	panelStyle := m.styles.panelUnfocused
-	if m.focus {
-		panelStyle = m.styles.panelFocused
-	}
+	panelStyle := m.panelStyle()
 	innerWidth := max(0, m.width-panelStyle.GetHorizontalFrameSize())
 	innerHeight := max(0, m.height-panelStyle.GetVerticalFrameSize())
 
-	headerHeight := 3
-	if m.app.State().PlaylistErr != nil {
-		headerHeight++
-	}
+	headerHeight := len(m.headerLines(m.app.State(), innerWidth))
 	remainingHeight := max(0, innerHeight-headerHeight)
 
 	// Reserve the parent-owned separator before sizing the footer. If the footer
@@ -236,59 +230,65 @@ func (m *Model) handleRemaining(msg tea.Msg) (*Model, tea.Cmd, bool) {
 
 func (m *Model) View() string {
 	state := m.app.State()
-
-	title := m.styles.titleUnfocused
-	panelStyle := m.styles.panelUnfocused
-	if m.focus {
-		title = m.styles.titleFocused
-		panelStyle = m.styles.panelFocused
-	}
-	panelStyle = panelStyle.Width(m.width).Height(m.height)
-
-	titleLine := fmt.Sprintf("%s (%s, %s)", title.Render("🎵 Playlist"), m.styles.playStateStyle(state).Render(playStateLabel(state)), m.styles.statusQueueMode.Render(queueModeLabel(state.QueueMode)))
-	titleLine = truncate.Right{}.MaxWidth(m.layout.innerWidth).Render(titleLine)
-
-	lines := []string{
-		titleLine,
-		m.searchView(),
-		m.styles.separator.Render(strings.Repeat("─", m.layout.innerWidth)),
-	}
-	if state.PlaylistErr != nil {
-		lines = append(lines, m.styles.err.Render(sanitize.TerminalText(state.PlaylistErr.Error())))
-	}
-
-	itemCount := len(m.list.Items())
-	visibleCount := len(m.list.VisibleItems())
-	contentLines := 0
-
-	switch {
-	case itemCount == 0 && m.layout.bodyHeight > 0:
-		lines = append(lines, m.styles.empty.Render("(empty)"))
-		contentLines = 1
-	case m.layout.bodyHeight > 0:
-		if visibleCount == 0 && m.filterActive() {
-			lines = append(lines, m.styles.empty.Render("(no matches)"))
-			contentLines = 1
-		} else if visibleCount == 0 {
-			lines = append(lines, m.styles.empty.Render("(empty)"))
-			contentLines = 1
-		} else {
-			lines = append(lines, m.list.View())
-			// list.View() is sized to bodyHeight and already provides
-			// the full content area height when rows are present.
-			contentLines = m.layout.bodyHeight
-		}
-	}
-	for range m.layout.bodyHeight - contentLines {
-		lines = append(lines, "")
-	}
+	lines := m.headerLines(state, m.layout.innerWidth)
+	lines = append(lines, m.bodyLines()...)
 
 	if m.layout.footerHeight > 0 {
 		lines = append(lines, m.styles.separator.Render(strings.Repeat("─", m.layout.innerWidth)))
 		lines = append(lines, strings.Split(m.footer.View(), "\n")...)
 	}
 
-	return panelStyle.Render(strings.Join(lines, "\n"))
+	return m.panelStyle().Width(m.width).Height(m.height).Render(strings.Join(lines, "\n"))
+}
+
+func (m *Model) panelStyle() lipgloss.Style {
+	if m.focus {
+		return m.styles.panelFocused
+	}
+	return m.styles.panelUnfocused
+}
+
+func (m *Model) headerLines(state core.State, width int) []string {
+	title := m.styles.titleUnfocused
+	if m.focus {
+		title = m.styles.titleFocused
+	}
+	titleLine := fmt.Sprintf("%s (%s, %s)", title.Render("🎵 Playlist"), m.styles.playStateStyle(state).Render(playStateLabel(state)), m.styles.statusQueueMode.Render(queueModeLabel(state.QueueMode)))
+	titleLine = truncate.Right{}.MaxWidth(width).Render(titleLine)
+
+	lines := []string{
+		titleLine,
+		m.searchView(),
+		m.styles.separator.Render(strings.Repeat("─", width)),
+	}
+	if state.PlaylistErr != nil {
+		lines = append(lines, m.styles.err.Render(sanitize.TerminalText(state.PlaylistErr.Error())))
+	}
+	return lines
+}
+
+func (m *Model) bodyLines() []string {
+	if m.layout.bodyHeight == 0 {
+		return nil
+	}
+
+	itemCount := len(m.list.Items())
+	visibleCount := len(m.list.VisibleItems())
+	if itemCount > 0 && visibleCount > 0 {
+		// list.View() is sized to bodyHeight and already provides the full
+		// content area height when rows are present.
+		return []string{m.list.View()}
+	}
+
+	emptyText := "(empty)"
+	if itemCount > 0 && m.filterActive() {
+		emptyText = "(no matches)"
+	}
+	lines := []string{m.styles.empty.Render(emptyText)}
+	for range m.layout.bodyHeight - 1 {
+		lines = append(lines, "")
+	}
+	return lines
 }
 
 func (m *Model) ToggleFocus() {

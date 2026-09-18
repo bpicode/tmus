@@ -16,6 +16,8 @@ import (
 	"github.com/bpicode/tmus/internal/ui/theme"
 )
 
+const headerHeight = 4
+
 type Model struct {
 	Cwd        string
 	homeDir    string
@@ -30,6 +32,12 @@ type Model struct {
 	list       list.Model
 	errorView  *errorview.Model
 	styles     styles
+	layout     layout
+}
+
+type layout struct {
+	innerWidth int
+	bodyHeight int
 }
 
 type Config struct {
@@ -152,41 +160,51 @@ func (m *Model) Init() tea.Cmd {
 func (m *Model) View() string {
 	var sb strings.Builder
 	title := m.styles.titleUnfocused
-	panelStyle := m.styles.panelUnfocused.Width(m.width).Height(m.height)
 	if m.focus {
 		title = m.styles.titleFocused
-		panelStyle = m.styles.panelFocused.Width(m.width).Height(m.height)
 	}
 	sb.WriteString(title.Render("📂 Files"))
 	sb.WriteString("\n")
-	pathWidth := max(0, m.width-panelStyle.GetHorizontalFrameSize())
-	sb.WriteString(m.styles.cwd.MaxWidth(pathWidth).Render(sanitize.TerminalText(m.Cwd)))
+	sb.WriteString(m.styles.cwd.MaxWidth(m.layout.innerWidth).Render(sanitize.TerminalText(m.Cwd)))
 	sb.WriteString("\n")
 	sb.WriteString(m.searchView())
 	sb.WriteString("\n")
-	sb.WriteString(m.styles.separator.Render(strings.Repeat("─", max(0, m.width-panelStyle.GetHorizontalFrameSize()))))
+	sb.WriteString(m.styles.separator.Render(strings.Repeat("─", m.layout.innerWidth)))
 	sb.WriteString("\n")
 
 	if m.errorView.HasErr() {
 		sb.WriteString(m.errorView.View())
-		return panelStyle.Render(sb.String())
+		return m.renderPanel(sb.String())
 	}
 
 	if len(m.entries) == 0 {
 		sb.WriteString(m.styles.empty.Render("(empty)"))
-		return panelStyle.Render(sb.String())
+		return m.renderPanel(sb.String())
 	}
 
-	headerLines := 6
-	availableLines := max(0, m.height-headerLines)
-	if availableLines == 0 {
-		return panelStyle.Render(sb.String())
+	if m.layout.bodyHeight == 0 {
+		return m.renderPanel(sb.String())
 	}
 
-	m.list.SetSize(max(0, m.width-panelStyle.GetHorizontalFrameSize()), availableLines)
-	sb.WriteString(m.list.View())
+	// Bubble List can exceed very small requested heights because its content
+	// and paginator have a minimum footprint. Keep the child inside the body
+	// allocated by updateLayout so it cannot push the panel border off-screen.
+	bodyLines := strings.Split(m.list.View(), "\n")
+	bodyLines = bodyLines[:min(len(bodyLines), m.layout.bodyHeight)]
+	sb.WriteString(strings.Join(bodyLines, "\n"))
 
-	return panelStyle.Render(sb.String())
+	return m.renderPanel(sb.String())
+}
+
+func (m *Model) renderPanel(content string) string {
+	return m.panelStyle().Width(m.width).Height(m.height).Render(content)
+}
+
+func (m *Model) panelStyle() lipgloss.Style {
+	if m.focus {
+		return m.styles.panelFocused
+	}
+	return m.styles.panelUnfocused
 }
 
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
@@ -197,6 +215,10 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 		return m.handleKeyPressMsg(msg)
 	case loadDirMsg:
 		return m.handleLoadDirMsg(msg)
+	case list.FilterMatchesMsg:
+		m, cmd, stop := m.handleRemaining(msg)
+		m.updateLayout()
+		return m, cmd, stop
 	default:
 		return m.handleRemaining(msg)
 	}
@@ -211,8 +233,25 @@ func (m *Model) handleRemaining(msg tea.Msg) (*Model, tea.Cmd, bool) {
 func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 	m.height = msg.Height
 	m.width = msg.Width
-	m.list.SetSize(max(0, m.width-m.styles.panelFocused.GetHorizontalFrameSize()), max(0, m.height-6))
+	m.updateLayout()
 	return m, nil, false
+}
+
+func (m *Model) updateLayout() {
+	panelStyle := m.panelStyle()
+	innerWidth := max(0, m.width-panelStyle.GetHorizontalFrameSize())
+	innerHeight := max(0, m.height-panelStyle.GetVerticalFrameSize())
+	bodyHeight := max(0, innerHeight-headerHeight)
+
+	// Pagination visibility consumes height and depends on the page count that
+	// SetSize computes. A second pass settles both values when crossing between
+	// one and multiple pages.
+	m.list.SetSize(innerWidth, bodyHeight)
+	m.list.SetSize(innerWidth, bodyHeight)
+	m.layout = layout{
+		innerWidth: innerWidth,
+		bodyHeight: bodyHeight,
+	}
 }
 
 func (m *Model) handleKeyPressMsg(msg tea.KeyMsg) (*Model, tea.Cmd, bool) {
@@ -258,9 +297,11 @@ func (m *Model) updateListItems(preferredIndex int) {
 	}
 	if len(items) == 0 {
 		m.list.Select(0)
+		m.updateLayout()
 		return
 	}
 	m.list.Select(clamp(preferredIndex, 0, len(items)-1))
+	m.updateLayout()
 }
 
 func (m *Model) updateSearch(msg tea.KeyMsg) (bool, tea.Cmd) {
@@ -272,11 +313,13 @@ func (m *Model) updateSearch(msg tea.KeyMsg) (bool, tea.Cmd) {
 	}
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
+	m.updateLayout()
 	return true, cmd
 }
 
 func (m *Model) clearSearch() {
 	m.list.ResetFilter()
+	m.updateLayout()
 }
 
 func (m *Model) searchView() string {
@@ -312,6 +355,7 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 		m.errorView.SetErr(nil)
 		var cmd tea.Cmd
 		m.list, cmd = m.list.Update(msg)
+		m.updateLayout()
 		return cmd, true
 	case "enter":
 		if selected, ok := m.selected(); ok && !selected.IsDir() && selected.IsAudio() {
@@ -371,6 +415,7 @@ func (m *Model) Show(show bool) {
 	m.show = show
 	if !m.show {
 		m.focus = false
+		m.updateLayout()
 	}
 }
 
@@ -378,6 +423,7 @@ func (m *Model) Toggle() {
 	m.show = !m.show
 	if !m.show {
 		m.focus = false
+		m.updateLayout()
 	}
 }
 
@@ -387,10 +433,12 @@ func (m *Model) Searching() bool {
 
 func (m *Model) ToggleFocus() {
 	m.focus = !m.focus
+	m.updateLayout()
 }
 
 func (m *Model) Focus(focus bool) {
 	m.focus = focus
+	m.updateLayout()
 }
 
 type browserListItem struct {

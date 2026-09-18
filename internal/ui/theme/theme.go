@@ -2,8 +2,10 @@ package theme
 
 import (
 	"image/color"
+	"math/rand/v2"
 
 	"charm.land/lipgloss/v2"
+	"github.com/bpicode/tmus/internal/config"
 )
 
 // Theme holds the pre-parsed lipgloss colors for the UI.
@@ -20,18 +22,20 @@ type Theme struct {
 	Working    color.Color
 }
 
-func newTheme(p palette) Theme {
+// Resolve selects a preset, applies color overrides, and constructs a Theme.
+func Resolve(cfg config.ThemeConfig) Theme {
+	colors := resolveColors(cfg, rand.IntN)
 	return Theme{
-		Foreground: toColor(p.foreground),
-		Background: toColor(p.background),
-		Primary:    toColor(p.primary),
-		Secondary:  toColor(p.secondary),
-		Muted:      toColor(p.muted),
-		Highlight:  toColor(p.highlight),
-		Info:       toColor(p.info),
-		Danger:     toColor(p.danger),
-		Warning:    toColor(p.warning),
-		Working:    toColor(p.working),
+		Foreground: toColor(colors.foreground),
+		Background: toColor(colors.background),
+		Primary:    toColor(colors.primary),
+		Secondary:  toColor(colors.secondary),
+		Muted:      toColor(colors.muted),
+		Highlight:  toColor(colors.highlight),
+		Info:       toColor(colors.info),
+		Danger:     toColor(colors.danger),
+		Warning:    toColor(colors.warning),
+		Working:    toColor(colors.working),
 	}
 }
 

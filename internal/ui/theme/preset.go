@@ -1,8 +1,6 @@
 package theme
 
 import (
-	"math/rand/v2"
-
 	"github.com/bpicode/tmus/internal/config"
 )
 
@@ -94,11 +92,6 @@ var builtInPresets = [...]preset{
 			info: "#82d967", danger: "#23755a", warning: "#ffd700", working: "#4f7e7e",
 		},
 	},
-}
-
-// Resolve selects a preset, applies color overrides, and constructs a Theme.
-func Resolve(cfg config.ThemeConfig) Theme {
-	return newTheme(resolveColors(cfg, rand.IntN))
 }
 
 func resolveColors(cfg config.ThemeConfig, randomIndex func(int) int) palette {

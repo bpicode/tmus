@@ -30,6 +30,14 @@ func (m *Model) UpdateSize(width int) {
 	m.width = width
 }
 
+// Height returns the number of rows occupied by the status.
+func (m *Model) Height() int {
+	if m.width < 1 {
+		return 0
+	}
+	return 1
+}
+
 func (m *Model) View() string {
 	appState := m.app.State()
 	playState := appState.Playback.State

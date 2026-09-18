@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/bpicode/tmus/internal/ui/view/home/playlist/spectrum"
@@ -22,11 +21,18 @@ const (
 
 // Model composes the playback details shown below the playlist.
 type Model struct {
-	width     int
-	separator lipgloss.Style
-	spectrum  *spectrum.Model
-	status    *status.Model
-	volume    *volume.Model
+	width    int
+	layout   footerLayout
+	spectrum *spectrum.Model
+	status   *status.Model
+	volume   *volume.Model
+}
+
+type footerLayout struct {
+	height       int
+	spectrumRows int
+	showStatus   bool
+	showVolume   bool
 }
 
 // Config contains the dependencies of a footer Model.
@@ -39,10 +45,9 @@ type Config struct {
 // NewModel creates a playlist footer and its nested models.
 func NewModel(cfg Config) *Model {
 	return &Model{
-		separator: lipgloss.NewStyle().Foreground(cfg.Theme.Muted),
-		spectrum:  spectrum.NewModel(formatLabel(spectrumLabel), cfg.App, cfg.FPS, cfg.Theme),
-		status:    status.NewModel(formatLabel(playingLabel), cfg.App, cfg.Theme),
-		volume:    volume.NewModel(formatLabel(volumeLabel), cfg.App, cfg.Theme),
+		spectrum: spectrum.NewModel(formatLabel(spectrumLabel), cfg.App, cfg.FPS, cfg.Theme),
+		status:   status.NewModel(formatLabel(playingLabel), cfg.App, cfg.Theme),
+		volume:   volume.NewModel(formatLabel(volumeLabel), cfg.App, cfg.Theme),
 	}
 }
 
@@ -58,61 +63,59 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	return m, cmd
 }
 
-// UpdateSize sets the number of terminal cells available to the footer.
-func (m *Model) UpdateSize(width int) {
+// SetSize sets the width and maximum height available to the footer content.
+func (m *Model) SetSize(width, height int) {
 	m.width = max(0, width)
 	m.spectrum.UpdateSize(m.width)
 	m.status.UpdateSize(m.width)
 	m.volume.UpdateSize(m.width)
+
+	m.layout = m.calculateLayout(max(0, height), m.status.Height(), m.volume.Height())
 }
 
-// View renders the footer within the height left below the playlist header.
-func (m *Model) View(availableHeight int) string {
-	statusView := m.status.View()
-	volumeView := m.volume.View()
-	spectrumRows, footerLines := m.layout(availableHeight, statusView, volumeView)
-	if footerLines == 0 {
+// Height returns the number of rows occupied by the footer content.
+func (m *Model) Height() int {
+	return m.layout.height
+}
+
+// View renders the footer content.
+func (m *Model) View() string {
+	if m.layout.height == 0 {
 		return ""
 	}
 
-	lines := []string{m.separator.Render(strings.Repeat("─", m.width))}
-	if spectrumRows > 0 {
-		lines = append(lines, strings.Split(m.spectrum.View(spectrumRows), "\n")...)
+	lines := make([]string, 0, m.layout.height)
+	if m.layout.spectrumRows > 0 {
+		lines = append(lines, strings.Split(m.spectrum.View(m.layout.spectrumRows), "\n")...)
 	}
-	if statusView != "" {
-		lines = append(lines, statusView)
+	if m.layout.showStatus {
+		lines = append(lines, m.status.View())
 	}
-	if volumeView != "" {
-		lines = append(lines, volumeView)
+	if m.layout.showVolume {
+		lines = append(lines, m.volume.View())
 	}
 	return strings.Join(lines, "\n")
 }
 
-func (m *Model) layout(availableHeight int, statusView, volumeView string) (spectrumRows, footerLines int) {
-	hasDetails := statusView != "" || volumeView != ""
-	if hasDetails {
-		footerLines = 1 // Separator.
-		if statusView != "" {
-			footerLines++
-		}
-		if volumeView != "" {
-			footerLines++
-		}
+func (m *Model) calculateLayout(availableHeight, statusHeight, volumeHeight int) footerLayout {
+	var layout footerLayout
+	remainingHeight := availableHeight
+	if statusHeight > 0 && statusHeight <= remainingHeight {
+		layout.showStatus = true
+		layout.height += statusHeight
+		remainingHeight -= statusHeight
+	}
+	if volumeHeight > 0 && volumeHeight <= remainingHeight {
+		layout.showVolume = true
+		layout.height += volumeHeight
+		remainingHeight -= volumeHeight
 	}
 
-	contentCapacity := max(0, availableHeight-footerLines)
-	if !hasDetails && contentCapacity > 0 {
-		contentCapacity-- // Reserve a separator if the spectrum fits.
-	}
 	if m.width > labelWidth {
-		spectrumRows = spectrumRowCount(contentCapacity)
+		layout.spectrumRows = spectrumRowCount(remainingHeight)
 	}
-	if hasDetails {
-		footerLines += spectrumRows
-	} else if spectrumRows > 0 {
-		footerLines = spectrumRows + 1
-	}
-	return spectrumRows, footerLines
+	layout.height += layout.spectrumRows
+	return layout
 }
 
 func spectrumRowCount(contentCapacity int) int {

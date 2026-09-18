@@ -35,6 +35,11 @@ func (m *Model) UpdateSize(width int) {
 	m.bar.SetWidth(m.width - lipgloss.Width(m.label))
 }
 
+// Height returns the number of rows occupied by the volume display.
+func (m *Model) Height() int {
+	return 1
+}
+
 func (m *Model) View() string {
 	vol := m.stateReader.State().Volume
 	volPct := float64(vol) / float64(core.VolumeMax-core.VolumeMin)

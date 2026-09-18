@@ -34,6 +34,13 @@ type Model struct {
 	rows      []playlistRow
 	posWidth  int
 	styles    styles
+	layout    layout
+}
+
+type layout struct {
+	innerWidth   int
+	bodyHeight   int
+	footerHeight int // Includes the separator owned by the playlist.
 }
 
 type Config struct {
@@ -80,6 +87,7 @@ func NewModel(cfg Config) *Model {
 
 func (m *Model) Init() tea.Cmd {
 	_, cmd, _ := m.syncState()
+	m.updateLayout()
 	return tea.Batch(cmd, m.footer.Init())
 }
 
@@ -97,8 +105,10 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 		m, cmd, stop = m.handleKeyPressMsg(msg)
 	case core.StateEvent:
 		m, cmd, stop = m.syncState()
+		m.updateLayout()
 	case core.MetadataEvent:
 		m, cmd, stop = m.syncState()
+		m.updateLayout()
 	default:
 		m, cmd, stop = m.handleRemaining(msg)
 	}
@@ -109,9 +119,39 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 	m.width = msg.Width
 	m.height = msg.Height
-	innerWidth := max(0, m.width-m.styles.panelUnfocused.GetHorizontalFrameSize())
-	m.footer.UpdateSize(innerWidth)
+	m.updateLayout()
 	return m, nil, false
+}
+
+func (m *Model) updateLayout() {
+	panelStyle := m.styles.panelUnfocused
+	if m.focus {
+		panelStyle = m.styles.panelFocused
+	}
+	innerWidth := max(0, m.width-panelStyle.GetHorizontalFrameSize())
+	innerHeight := max(0, m.height-panelStyle.GetVerticalFrameSize())
+
+	headerHeight := 3
+	if m.app.State().PlaylistErr != nil {
+		headerHeight++
+	}
+	remainingHeight := max(0, innerHeight-headerHeight)
+
+	// Reserve the parent-owned separator before sizing the footer. If the footer
+	// selects no content, the unused row flows back into the body below.
+	m.footer.SetSize(innerWidth, max(0, remainingHeight-1))
+	footerHeight := m.footer.Height()
+	if footerHeight > 0 {
+		footerHeight++
+	}
+	bodyHeight := max(0, remainingHeight-footerHeight)
+	m.list.SetSize(innerWidth, bodyHeight)
+
+	m.layout = layout{
+		innerWidth:   innerWidth,
+		bodyHeight:   bodyHeight,
+		footerHeight: footerHeight,
+	}
 }
 
 func (m *Model) handleKeyPressMsg(msg tea.KeyMsg) (*Model, tea.Cmd, bool) {
@@ -204,38 +244,28 @@ func (m *Model) View() string {
 		panelStyle = m.styles.panelFocused
 	}
 	panelStyle = panelStyle.Width(m.width).Height(m.height)
-	innerWidth := max(0, m.width-panelStyle.GetHorizontalFrameSize())
-	innerHeight := max(0, m.height-panelStyle.GetVerticalFrameSize())
 
 	titleLine := fmt.Sprintf("%s (%s, %s)", title.Render("🎵 Playlist"), m.styles.playStateStyle(state).Render(playStateLabel(state)), m.styles.statusQueueMode.Render(queueModeLabel(state.QueueMode)))
-	titleLine = truncate.Right{}.MaxWidth(innerWidth).Render(titleLine)
+	titleLine = truncate.Right{}.MaxWidth(m.layout.innerWidth).Render(titleLine)
 
 	lines := []string{
 		titleLine,
 		m.searchView(),
-		m.styles.separator.Render(strings.Repeat("─", innerWidth)),
+		m.styles.separator.Render(strings.Repeat("─", m.layout.innerWidth)),
 	}
 	if state.PlaylistErr != nil {
 		lines = append(lines, m.styles.err.Render(sanitize.TerminalText(state.PlaylistErr.Error())))
 	}
 
-	footerView := m.footer.View(max(0, innerHeight-len(lines)))
-	footerLines := 0
-	if footerView != "" {
-		footerLines = lipgloss.Height(footerView)
-	}
-	availableLines := max(0, innerHeight-len(lines)-footerLines)
-
-	m.list.SetSize(innerWidth, availableLines)
 	itemCount := len(m.list.Items())
 	visibleCount := len(m.list.VisibleItems())
 	contentLines := 0
 
 	switch {
-	case itemCount == 0 && availableLines > 0:
+	case itemCount == 0 && m.layout.bodyHeight > 0:
 		lines = append(lines, m.styles.empty.Render("(empty)"))
 		contentLines = 1
-	case availableLines > 0:
+	case m.layout.bodyHeight > 0:
 		if visibleCount == 0 && m.filterActive() {
 			lines = append(lines, m.styles.empty.Render("(no matches)"))
 			contentLines = 1
@@ -244,17 +274,18 @@ func (m *Model) View() string {
 			contentLines = 1
 		} else {
 			lines = append(lines, m.list.View())
-			// list.View() is sized to availableLines and already provides
+			// list.View() is sized to bodyHeight and already provides
 			// the full content area height when rows are present.
-			contentLines = availableLines
+			contentLines = m.layout.bodyHeight
 		}
 	}
-	for range availableLines - contentLines {
+	for range m.layout.bodyHeight - contentLines {
 		lines = append(lines, "")
 	}
 
-	if footerView != "" {
-		lines = append(lines, strings.Split(footerView, "\n")...)
+	if m.layout.footerHeight > 0 {
+		lines = append(lines, m.styles.separator.Render(strings.Repeat("─", m.layout.innerWidth)))
+		lines = append(lines, strings.Split(m.footer.View(), "\n")...)
 	}
 
 	return panelStyle.Render(strings.Join(lines, "\n"))
@@ -262,10 +293,12 @@ func (m *Model) View() string {
 
 func (m *Model) ToggleFocus() {
 	m.focus = !m.focus
+	m.updateLayout()
 }
 
 func (m *Model) Focus(focus bool) {
 	m.focus = focus
+	m.updateLayout()
 }
 
 func (m *Model) Focused() bool {
@@ -280,6 +313,7 @@ func (m *Model) Show(show bool) {
 	m.show = show
 	if !show {
 		m.focus = false
+		m.updateLayout()
 	}
 }
 

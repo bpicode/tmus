@@ -17,28 +17,17 @@ import (
 	"github.com/bpicode/tmus/internal/ui/components/sanitize"
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 	"github.com/bpicode/tmus/internal/ui/theme"
-	"github.com/bpicode/tmus/internal/ui/view/home/playlist/spectrum"
-	"github.com/bpicode/tmus/internal/ui/view/home/playlist/status"
-	"github.com/bpicode/tmus/internal/ui/view/home/playlist/volume"
-)
-
-const (
-	footerLabelWidth = 10
-	spectrumLabel    = "Spectrum:"
-	volumeLabel      = "Volume:"
-	playingLabel     = "Playing:"
+	"github.com/bpicode/tmus/internal/ui/view/home/playlist/footer"
 )
 
 type Model struct {
-	width    int
-	height   int
-	show     bool
-	focus    bool
-	app      *core.App
-	list     list.Model
-	volume   *volume.Model
-	status   *status.Model
-	spectrum *spectrum.Model
+	width  int
+	height int
+	show   bool
+	focus  bool
+	app    *core.App
+	list   list.Model
+	footer *footer.Model
 
 	playing   int
 	playState core.PlaybackState
@@ -56,11 +45,9 @@ type Config struct {
 func NewModel(cfg Config) *Model {
 	styles := newStyles(cfg.Theme)
 	m := &Model{
-		app:      cfg.App,
-		volume:   volume.NewModel(formatFooterLabel(volumeLabel), cfg.App, cfg.Theme),
-		status:   status.NewModel(formatFooterLabel(playingLabel), cfg.App, cfg.Theme),
-		spectrum: spectrum.NewModel(formatFooterLabel(spectrumLabel), cfg.App, cfg.FPS, cfg.Theme),
-		styles:   styles,
+		app:    cfg.App,
+		footer: footer.NewModel(footer.Config{Theme: cfg.Theme, App: cfg.App, FPS: cfg.FPS}),
+		styles: styles,
 	}
 	delegate := newPlaylistDelegate(m)
 	playlistList := list.New(nil, delegate, 0, 0)
@@ -93,13 +80,13 @@ func NewModel(cfg Config) *Model {
 
 func (m *Model) Init() tea.Cmd {
 	_, cmd, _ := m.syncState()
-	return tea.Batch(cmd, m.spectrum.Init())
+	return tea.Batch(cmd, m.footer.Init())
 }
 
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
-	m.spectrum, cmd = m.spectrum.Update(msg)
+	m.footer, cmd = m.footer.Update(msg)
 	cmds = append(cmds, cmd)
 
 	var stop bool
@@ -123,9 +110,7 @@ func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 	m.width = msg.Width
 	m.height = msg.Height
 	innerWidth := max(0, m.width-m.styles.panelUnfocused.GetHorizontalFrameSize())
-	m.volume.UpdateSize(innerWidth)
-	m.status.UpdateSize(innerWidth)
-	m.spectrum.UpdateSize(innerWidth)
+	m.footer.UpdateSize(innerWidth)
 	return m, nil, false
 }
 
@@ -211,8 +196,6 @@ func (m *Model) handleRemaining(msg tea.Msg) (*Model, tea.Cmd, bool) {
 
 func (m *Model) View() string {
 	state := m.app.State()
-	statusView := m.status.View()
-	volumeView := m.volume.View()
 
 	title := m.styles.titleUnfocused
 	panelStyle := m.styles.panelUnfocused
@@ -236,8 +219,11 @@ func (m *Model) View() string {
 		lines = append(lines, m.styles.err.Render(sanitize.TerminalText(state.PlaylistErr.Error())))
 	}
 
-	hasFooterDetails := statusView != "" || volumeView != ""
-	spectrumRows, footerLines := spectrumLayout(innerWidth, innerHeight, len(lines), statusView, volumeView)
+	footerView := m.footer.View(max(0, innerHeight-len(lines)))
+	footerLines := 0
+	if footerView != "" {
+		footerLines = lipgloss.Height(footerView)
+	}
 	availableLines := max(0, innerHeight-len(lines)-footerLines)
 
 	m.list.SetSize(innerWidth, availableLines)
@@ -267,62 +253,11 @@ func (m *Model) View() string {
 		lines = append(lines, "")
 	}
 
-	if hasFooterDetails || spectrumRows > 0 {
-		lines = append(lines, m.styles.separator.Render(strings.Repeat("─", innerWidth)))
-		if spectrumRows > 0 {
-			lines = append(lines, strings.Split(m.spectrum.View(spectrumRows), "\n")...)
-		}
-		if statusView != "" {
-			lines = append(lines, statusView)
-		}
-		if volumeView != "" {
-			lines = append(lines, volumeView)
-		}
+	if footerView != "" {
+		lines = append(lines, strings.Split(footerView, "\n")...)
 	}
 
 	return panelStyle.Render(strings.Join(lines, "\n"))
-}
-
-func formatFooterLabel(label string) string {
-	return fmt.Sprintf("%-*s", footerLabelWidth, label)
-}
-
-func spectrumLayout(innerWidth, innerHeight, headerLines int, status, volume string) (spectrumRows, footerLines int) {
-	hasFooterDetails := status != "" || volume != ""
-	if hasFooterDetails {
-		footerLines = 1 // Separator.
-		if status != "" {
-			footerLines++
-		}
-		if volume != "" {
-			footerLines++
-		}
-	}
-
-	contentCapacity := max(0, innerHeight-headerLines-footerLines)
-	if !hasFooterDetails && contentCapacity > 0 {
-		contentCapacity-- // Reserve a separator if the spectrum fits.
-	}
-	if innerWidth > footerLabelWidth {
-		spectrumRows = spectrumRowCount(contentCapacity)
-	}
-	if hasFooterDetails {
-		footerLines += spectrumRows
-	} else if spectrumRows > 0 {
-		footerLines = spectrumRows + 1
-	}
-	return spectrumRows, footerLines
-}
-
-func spectrumRowCount(contentCapacity int) int {
-	switch {
-	case contentCapacity >= 3:
-		return 2
-	case contentCapacity >= 2:
-		return 1
-	default:
-		return 0
-	}
 }
 
 func (m *Model) ToggleFocus() {

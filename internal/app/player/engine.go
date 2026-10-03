@@ -62,8 +62,10 @@ type Options struct {
 
 // Engine runs audio playback in a background goroutine.
 type Engine struct {
-	cmdCh   chan command
-	eventCh chan Event
+	cmdCh      chan command
+	eventCh    chan Event
+	loopWG     sync.WaitGroup
+	metadataWG sync.WaitGroup
 
 	mu          sync.Mutex
 	streamer    beep.StreamSeekCloser
@@ -105,7 +107,7 @@ func NewEngine(opts Options) *Engine {
 		cancel:     cancel,
 	}
 	e.analyzer = newSpectrumAnalyzer(e.targetRate)
-	go e.loop()
+	e.loopWG.Go(e.loop)
 	return e
 }
 
@@ -122,21 +124,21 @@ func (e *Engine) Play(path string) {
 	if e.closed.Load() {
 		return
 	}
-	e.cmdCh <- command{kind: cmdPlay, path: path}
+	e.sendCommand(command{kind: cmdPlay, path: path})
 }
 
 func (e *Engine) Stop() {
 	if e.closed.Load() {
 		return
 	}
-	e.cmdCh <- command{kind: cmdStop}
+	e.sendCommand(command{kind: cmdStop})
 }
 
 func (e *Engine) TogglePause() {
 	if e.closed.Load() {
 		return
 	}
-	e.cmdCh <- command{kind: cmdTogglePause}
+	e.sendCommand(command{kind: cmdTogglePause})
 }
 
 func (e *Engine) SeekTo(pos time.Duration) SeekResult {
@@ -144,16 +146,40 @@ func (e *Engine) SeekTo(pos time.Duration) SeekResult {
 		return SeekResult{}
 	}
 	resp := make(chan SeekResult, 1)
-	e.cmdCh <- command{kind: cmdSeek, pos: pos, resp: resp}
-	return <-resp
+	if !e.sendCommand(command{kind: cmdSeek, pos: pos, resp: resp}) {
+		return SeekResult{}
+	}
+	select {
+	case result := <-resp:
+		return result
+	case <-e.ctx.Done():
+		return SeekResult{}
+	}
 }
 
+func (e *Engine) sendCommand(cmd command) bool {
+	select {
+	case e.cmdCh <- cmd:
+		return true
+	case <-e.ctx.Done():
+		return false
+	}
+}
+
+// Close requests shutdown and cancels in-flight playback work.
 func (e *Engine) Close() {
 	if e.closed.Swap(true) {
 		return
 	}
 	e.cancel()
 	e.cmdCh <- command{kind: cmdQuit}
+}
+
+// CloseAndWait requests shutdown and waits for playback resources, analysis,
+// source metadata forwarding, and the engine loop to finish.
+func (e *Engine) CloseAndWait() {
+	e.Close()
+	e.loopWG.Wait()
 }
 
 // SetVolume sets the playback volume (0-100).
@@ -189,6 +215,7 @@ func (e *Engine) loop() {
 		case cmdQuit:
 			e.invalidatePlayback()
 			e.stopCurrent()
+			e.metadataWG.Wait()
 			e.analyzer.close()
 			close(e.eventCh)
 			return
@@ -264,7 +291,8 @@ func (e *Engine) playPath(uri string) {
 
 	e.sendEvent(Event{Type: EventTrackStarted, Path: uri, Dur: trackDur, PlaybackID: playID})
 	if audioSource.MetadataUpdates != nil {
-		go e.forwardSourceMetadata(playCtx, playID, uri, audioSource.MetadataUpdates)
+		updates := audioSource.MetadataUpdates
+		e.metadataWG.Go(func() { e.forwardSourceMetadata(playCtx, playID, uri, updates) })
 	}
 
 	speaker.Play(beep.Seq(e.ctrl, beep.Callback(func() {

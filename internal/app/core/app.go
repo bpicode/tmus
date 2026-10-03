@@ -137,6 +137,7 @@ type App struct {
 	ctx          context.Context
 	cancel       context.CancelFunc
 	shutdownWG   sync.WaitGroup
+	forwardWG    sync.WaitGroup
 	closed       atomic.Bool
 
 	metadataChan   chan MetadataEvent
@@ -219,9 +220,9 @@ func New(cfg config.Config) *App {
 		lyrics.NewLrcLibProvider(cfg.Lyrics.LrcLib, cfg.Cache.Dir),
 	)
 	app.commandWG.Go(app.commandLoop)
-	go app.forwardPlayerEvents()
-	go app.forwardMetadataEvents()
-	go app.forwardLyricsEvents()
+	app.forwardWG.Go(app.forwardPlayerEvents)
+	app.forwardWG.Go(app.forwardMetadataEvents)
+	app.forwardWG.Go(app.forwardLyricsEvents)
 	for range metadataWorkerCount {
 		app.metadataWG.Go(app.metadataWorker)
 	}
@@ -237,6 +238,8 @@ func New(cfg config.Config) *App {
 		app.lyricsWG.Wait()
 		close(app.metadataChan)
 		close(app.lyricsChan)
+		app.engine.CloseAndWait()
+		app.forwardWG.Wait()
 	})
 
 	return app
@@ -283,6 +286,9 @@ func (a *App) Library() *library.Library {
 
 // Dispatch queues a command for processing.
 func (a *App) Dispatch(cmd Command) error {
+	if a.closed.Load() {
+		return ErrAppClosed
+	}
 	select {
 	case <-a.ctx.Done():
 		return ErrAppClosed
@@ -509,7 +515,8 @@ func (a *App) Shutdown() {
 	a.engine.Close()
 }
 
-// ShutdownAndWait shuts down the player engine and waits for background workers to stop.
+// ShutdownAndWait shuts down the engine and waits for all application-owned
+// background work, including event forwarding, to finish.
 func (a *App) ShutdownAndWait() {
 	a.Shutdown()
 	a.shutdownWG.Wait()

@@ -194,3 +194,42 @@ func TestRenderingResize(t *testing.T) {
 	assert.Equal(t, "two", m.ActiveID())
 	assert.True(t, m.Focused())
 }
+
+func TestRenderingMinimumSize(t *testing.T) {
+	tests := []struct {
+		name          string
+		width, height int
+		contentWidth  int
+		contentHeight int
+		header        bool
+	}{
+		{name: "negative size", width: -1, height: -1},
+		{name: "too narrow", width: 2, height: 5},
+		{name: "too short for header", width: 8, height: 2},
+		{name: "header only", width: 8, height: 3, header: true},
+		{name: "no content row", width: 8, height: 4, header: true},
+		{name: "minimum frame", width: 5, height: 5, contentWidth: 3, contentHeight: 1, header: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m, err := tabs.New([]tabs.Tab{{ID: "one", Label: "A"}})
+			require.NoError(t, err)
+			m.SetSize(tt.width, tt.height)
+			width, height := m.ContentSize()
+			assert.Equal(t, tt.contentWidth, width)
+			assert.Equal(t, tt.contentHeight, height)
+			if tt.header {
+				assert.Equal(t, 3, lipgloss.Height(m.View()))
+			} else {
+				assert.Empty(t, m.View())
+			}
+			frame := m.Render("hi")
+			if tt.contentWidth == 0 {
+				assert.Empty(t, frame)
+			} else {
+				assert.Equal(t, tt.width, lipgloss.Width(frame))
+				assert.Equal(t, tt.height, lipgloss.Height(frame))
+			}
+		})
+	}
+}

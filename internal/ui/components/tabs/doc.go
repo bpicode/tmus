@@ -4,4 +4,9 @@
 // Parents set the component's size and use ContentSize to size content models.
 // Clients supply single-line labels and enough width to display all tabs.
 // New accepts WithKeyMap and WithStyles options to override its defaults.
+//
+// Models start unfocused. Call Focus to enable keyboard navigation, assign the
+// model returned by Update, and return its command to Bubble Tea. Selection is
+// updated synchronously; the command reports the transition through ChangeMsg.
+// Programmatic selection does not emit a command.
 package tabs

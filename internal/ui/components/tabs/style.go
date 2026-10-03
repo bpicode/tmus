@@ -2,14 +2,19 @@ package tabs
 
 import "charm.land/lipgloss/v2"
 
-// Styles defines tab text styles and the shared frame style. Clients supply
-// text appearance and border settings; the component supplies padding, sizing,
-// and visible border edges. Styles should not add conflicting layout rules.
+// Styles defines tab text styles and the shared frame style. Tab styles configure
+// text attributes such as color, bold, and italic. They must not set dimensions,
+// padding, margins, borders, or introduce line breaks. The component controls
+// layout and visible border edges.
+//
+// With Lip Gloss v2.0.6, underline and strikethrough can corrupt ANSI escape
+// sequences in precolored labels. Use other text attributes for those labels.
 type Styles struct {
 	ActiveTab   lipgloss.Style
 	InactiveTab lipgloss.Style
-	// Border configures the frame shape and native border colors. Its shape
-	// should provide single-cell edges, corners, and junctions.
+	// Border configures the frame shape and native border colors, without text
+	// or layout attributes. Its shape must provide single-cell edges, corners,
+	// and junctions.
 	Border lipgloss.Style
 }
 

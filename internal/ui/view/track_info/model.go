@@ -136,17 +136,20 @@ func (m *Model) Show(show bool) tea.Cmd {
 	if show {
 		state := m.app.State()
 		if len(state.Playlist) == 0 {
-			return nil
+			return m.Show(false)
 		}
 		cursor := state.Playing
 		if state.Cursor != -1 {
 			cursor = state.Cursor
 		}
 		if cursor < 0 || cursor >= len(state.Playlist) {
-			return nil
+			return m.Show(false)
 		}
 		track := state.Playlist[cursor]
 		if track.ID == 0 || track.Path == "" {
+			return m.Show(false)
+		}
+		if m.show && track.ID == m.trackID && track.Path == m.trackPath {
 			return nil
 		}
 

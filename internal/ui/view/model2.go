@@ -9,21 +9,23 @@ import (
 	"github.com/bpicode/tmus/internal/ui/components/tabs"
 	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/bpicode/tmus/internal/ui/view/home/playlist"
+	"github.com/bpicode/tmus/internal/ui/view/track_info"
 )
 
 // Model2 is the experimental tabbed UI, developed alongside Model.
 type Model2 struct {
-	app      *core.App
-	playlist *playlist.Model
-	tabs     tabs.Model
-	events   eventChannels
-	saved    State
-	width    int
-	styles   styles
+	app       *core.App
+	playlist  *playlist.Model
+	trackInfo *track_info.Model
+	tabs      tabs.Model
+	events    eventChannels
+	saved     State
+	width     int
+	styles    styles
 }
 
-// NewModel2 creates a tabbed player with a playlist and placeholder content for
-// the remaining tabs. It restores the queue and opens supplied audio files.
+// NewModel2 creates a tabbed player with playlist and track views, and placeholder
+// content for the remaining tabs. It restores the queue and opens supplied audio files.
 func NewModel2(appRef *core.App, openFiles []string, cfg config.TUIConfig, th theme.Theme) (*Model2, error) {
 	tabStyles := tabs.DefaultStyles()
 	tabStyles.ActiveTab = lipgloss.NewStyle().Bold(true).Foreground(th.Primary)
@@ -47,10 +49,14 @@ func NewModel2(appRef *core.App, openFiles []string, cfg config.TUIConfig, th th
 	m := &Model2{
 		app: appRef, tabs: tabModel, saved: saved, styles: newStyles(th),
 		playlist: playlist.NewModel(playlist.Config{Theme: th, App: appRef, FPS: cfg.FPS}),
+		trackInfo: track_info.NewModel(track_info.Config{
+			Theme: th, App: appRef, ArtworkAspect: cfg.ArtworkAspect, ArtworkRenderer: cfg.ArtworkRenderer,
+		}),
 	}
 	m.restorePlayer()
 	m.openFiles(openFiles)
-	m.updatePlaylistFocus()
+	m.playlist.Show(true)
+	m.playlist.Focus(true)
 	return m, nil
 }
 
@@ -58,12 +64,12 @@ func NewModel2(appRef *core.App, openFiles []string, cfg config.TUIConfig, th th
 func (m *Model2) Init() tea.Cmd {
 	m.events.state, m.events.unsubState = m.app.SubscribeStateEvents()
 	m.events.metadata, m.events.unsubMetadata = m.app.SubscribeMetadataEvents()
-	return tea.Batch(m.tabs.Init(), m.playlist.Init(),
+	return tea.Batch(m.tabs.Init(), m.playlist.Init(), m.trackInfo.Init(),
 		m.listenForStateEvent(), m.listenForMetadataEvent(), tickCmd())
 }
 
-// Update routes keyboard input to the active tab and keeps the playlist updated
-// with background messages regardless of the selected tab.
+// Update routes keyboard input to the active tab and background messages to
+// the content models.
 func (m *Model2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
@@ -71,18 +77,20 @@ func (m *Model2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.tabs.SetSize(msg.Width, msg.Height)
 		width, height := m.tabs.ContentSize()
+		size := tea.WindowSizeMsg{Width: width, Height: height}
 		var cmd tea.Cmd
-		m.playlist, cmd, _ = m.playlist.Update(tea.WindowSizeMsg{Width: width, Height: height})
-		return m, cmd
+		m.playlist, cmd, _ = m.playlist.Update(size)
+		cmds = append(cmds, cmd)
+		m.trackInfo, cmd, _ = m.trackInfo.Update(size)
+		return m, tea.Batch(append(cmds, cmd)...)
 	case tea.KeyPressMsg:
 		if msg.String() == "ctrl+c" {
-			return m, tea.Quit
+			return m, tea.Sequence(m.trackInfo.Show(false), tea.Quit)
 		}
 		if key.Matches(msg, m.tabs.KeyMap.Next, m.tabs.KeyMap.Previous) {
 			var cmd tea.Cmd
 			m.tabs, cmd = m.tabs.Update(msg)
-			m.updatePlaylistFocus()
-			return m, cmd
+			return m, tea.Batch(cmd, m.updateActiveTab())
 		}
 		if m.tabs.ActiveID() == "playlist" {
 			var cmd tea.Cmd
@@ -94,32 +102,47 @@ func (m *Model2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 		if msg.String() == "q" {
-			return m, tea.Quit
+			return m, tea.Sequence(m.trackInfo.Show(false), tea.Quit)
+		}
+		if m.tabs.ActiveID() == "track" {
+			if msg.String() == "esc" || msg.String() == "i" {
+				_ = m.tabs.Select("playlist")
+				return m, m.updateActiveTab()
+			}
+			var cmd tea.Cmd
+			m.trackInfo, cmd, _ = m.trackInfo.Update(msg)
+			cmds = append(cmds, cmd)
 		}
 		return m, tea.Batch(cmds...)
 	case core.StateEvent:
 		cmds = append(cmds, m.listenForStateEvent())
+		if m.tabs.ActiveID() == "track" {
+			cmds = append(cmds, m.trackInfo.Show(true))
+		}
 	case core.MetadataEvent:
 		cmds = append(cmds, m.listenForMetadataEvent())
 	case tickMsg:
 		cmds = append(cmds, tickCmd())
 	case playlist.ToggleTrackInfoMsg:
 		_ = m.tabs.Select("track")
-		m.updatePlaylistFocus()
+		cmds = append(cmds, m.updateActiveTab())
 	case playlist.ToggleLyricsMsg:
 		_ = m.tabs.Select("lyrics")
-		m.updatePlaylistFocus()
+		cmds = append(cmds, m.updateActiveTab())
 	}
 	var cmd tea.Cmd
 	m.playlist, cmd, _ = m.playlist.Update(msg)
 	cmds = append(cmds, cmd)
+	m.trackInfo, cmd, _ = m.trackInfo.Update(msg)
+	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
 
-func (m *Model2) updatePlaylistFocus() {
+func (m *Model2) updateActiveTab() tea.Cmd {
 	active := m.tabs.ActiveID() == "playlist"
 	m.playlist.Show(active)
 	m.playlist.Focus(active)
+	return m.trackInfo.Show(m.tabs.ActiveID() == "track")
 }
 
 // View renders the tab frame and the selected tab's content.
@@ -129,8 +152,14 @@ func (m *Model2) View() tea.View {
 		active, _ := m.tabs.Active()
 		content = active.Label + " content will be added next.\n\n" +
 			"Tab / Shift+Tab: switch tabs\nq / Ctrl+C: quit"
-		if active.ID == "playlist" {
+		switch active.ID {
+		case "playlist":
 			content = m.playlist.View()
+		case "track":
+			content = "No track selected."
+			if m.trackInfo.Visible() {
+				content = m.trackInfo.View()
+			}
 		}
 		content = m.tabs.Render(content)
 	}

@@ -22,6 +22,10 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		ui2, _ := cmd.Flags().GetBool("ui2")
+		if ui2 {
+			return ui.Run2(cfg.TUI)
+		}
 
 		ipcSession, err := ipc.Open(cfg.IPC, args)
 		if err != nil {
@@ -66,4 +70,5 @@ func Execute() {
 func init() {
 	addConfigFlags(rootCmd)
 	rootCmd.Flags().StringP("dir", "d", "", "starting directory for the file browser")
+	rootCmd.Flags().Bool("ui2", false, "preview the experimental tabbed UI")
 }

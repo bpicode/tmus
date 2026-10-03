@@ -12,7 +12,8 @@ import (
 type Tab struct {
 	// ID is a non-empty, unique identifier, independent of the display label.
 	ID string
-	// Label is the display text. Labels may be empty or shared by multiple tabs.
+	// Label is single-line display text, which may include emoji and ANSI colors.
+	// Labels may be empty or shared by multiple tabs.
 	Label string
 }
 
@@ -27,10 +28,14 @@ type ChangeMsg struct {
 type Model struct {
 	// KeyMap configures the navigation keys recognized by Update.
 	KeyMap KeyMap
+	// Styles configures the appearance of the tab bar and frame.
+	Styles Styles
 
 	tabs    []Tab
 	active  int
 	focused bool
+	width   int
+	height  int
 }
 
 // New creates a tab bar model with the first tab selected, or no selection if
@@ -47,7 +52,7 @@ func New(items []Tab) (Model, error) {
 		}
 		ids[tab.ID] = struct{}{}
 	}
-	return Model{tabs: slices.Clone(items), KeyMap: DefaultKeyMap()}, nil
+	return Model{tabs: slices.Clone(items), KeyMap: DefaultKeyMap(), Styles: DefaultStyles()}, nil
 }
 
 // Active returns the selected tab, or false if the model has no tabs.
@@ -133,9 +138,4 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 	change := ChangeMsg{Previous: previous, Current: m.ActiveID()}
 	return m, func() tea.Msg { return change }
-}
-
-// View renders the tab bar.
-func (m Model) View() string {
-	return ""
 }

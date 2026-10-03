@@ -40,8 +40,9 @@ type Model struct {
 
 // New creates a tab bar model with the first tab selected, or no selection if
 // items is empty. It copies items and rejects empty or duplicate IDs.
-// The model starts unfocused, with DefaultKeyMap bindings.
-func New(items []Tab) (Model, error) {
+// The model starts unfocused. Options are applied in order after DefaultKeyMap
+// and DefaultStyles are initialized.
+func New(items []Tab, opts ...Option) (Model, error) {
 	ids := make(map[string]struct{}, len(items))
 	for i, tab := range items {
 		if tab.ID == "" {
@@ -52,7 +53,11 @@ func New(items []Tab) (Model, error) {
 		}
 		ids[tab.ID] = struct{}{}
 	}
-	return Model{tabs: slices.Clone(items), KeyMap: DefaultKeyMap(), Styles: DefaultStyles()}, nil
+	m := Model{tabs: slices.Clone(items), KeyMap: DefaultKeyMap(), Styles: DefaultStyles()}
+	for _, opt := range opts {
+		opt(&m)
+	}
+	return m, nil
 }
 
 // Active returns the selected tab, or false if the model has no tabs.

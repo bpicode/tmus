@@ -24,7 +24,15 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "remaining width", items: []tabs.Tab{{ID: "one", Label: "One"}, {ID: "two", Label: "Two"}}, width: 15,
-			want: "┌─────┬───────┐\n│ One │ Two   │\n├─────┴───────┤",
+			want: "┌─────┬─────┬─┐\n│ One │ Two │ │\n├─────┴─────┴─┤",
+		},
+		{
+			name: "single tab with remaining width", items: []tabs.Tab{{ID: "one", Label: "One"}}, width: 12,
+			want: "┌─────┬────┐\n│ One │    │\n├─────┴────┤",
+		},
+		{
+			name: "one remaining column", items: []tabs.Tab{{ID: "one", Label: "One"}, {ID: "two", Label: "Two"}}, width: 14,
+			want: "┌─────┬─────┬┐\n│ One │ Two ││\n├─────┴─────┴┤",
 		},
 		{
 			name: "no tabs", width: 8,
@@ -92,7 +100,7 @@ func TestRenderUnicodeAndColors(t *testing.T) {
 	m.SetSize(6, 7)
 	color := lipgloss.NewStyle().Foreground(lipgloss.Red)
 	view := m.Render("音楽界\né👩‍💻xy\n" + color.Render("abcdef"))
-	assert.Equal(t, "┌────┐\n│ A  │\n├────┤\n│音楽│\n│é👩‍💻x│\n│abcd│\n└────┘", ansi.Strip(view))
+	assert.Equal(t, "┌───┬┐\n│ A ││\n├───┴┤\n│音楽│\n│é👩‍💻x│\n│abcd│\n└────┘", ansi.Strip(view))
 	assert.Contains(t, view, color.Render("abcd"))
 }
 

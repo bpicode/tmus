@@ -25,7 +25,8 @@ func (m Model) ContentSize() (width, height int) {
 
 // View renders the three-row tab bar, including the top border and the rule
 // below the tabs. Labels are rendered as supplied. The assigned width must fit
-// all tabs; extra space extends the last tab. There is no overflow handling.
+// all tabs; extra space follows the last tab's separator. There is no overflow
+// handling.
 // It returns an empty string below three columns or three rows.
 func (m Model) View() string {
 	if m.width < 3 || m.height < headerHeight {
@@ -34,7 +35,7 @@ func (m Model) View() string {
 	if len(m.tabs) == 0 {
 		return m.Styles.headerStyle(true, true).Width(m.width).Render("")
 	}
-	renderedTabs := make([]string, len(m.tabs))
+	renderedTabs := make([]string, 0, len(m.tabs)+1)
 	used := 0
 	for i, tab := range m.tabs {
 		style := m.Styles.InactiveTab
@@ -42,12 +43,17 @@ func (m Model) View() string {
 			style = m.Styles.ActiveTab
 		}
 		text := style.Render(tab.Label)
-		cell := m.Styles.headerStyle(i == 0, i == len(m.tabs)-1)
-		if i == len(m.tabs)-1 {
-			cell = cell.Width(m.width - used)
+		last := i == len(m.tabs)-1
+		rendered := m.Styles.headerStyle(i == 0, last).Render(text)
+		remaining := m.width - used - lipgloss.Width(rendered)
+		if last && remaining > 0 {
+			rendered = m.Styles.headerStyle(i == 0, false).Render(text)
+			renderedTabs = append(renderedTabs, rendered,
+				m.Styles.headerStyle(false, true).Padding(0).Width(remaining).Render(""))
+		} else {
+			renderedTabs = append(renderedTabs, rendered)
 		}
-		renderedTabs[i] = cell.Render(text)
-		used += lipgloss.Width(renderedTabs[i])
+		used += lipgloss.Width(rendered)
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
 }

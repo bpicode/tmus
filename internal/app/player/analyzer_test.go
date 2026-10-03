@@ -199,8 +199,8 @@ func BenchmarkSpectrumCapture(b *testing.B) {
 	samples := sineWindow(48000, 440, 1, 1)
 	chunk := samples[:256]
 	b.ReportAllocs()
-	b.ResetTimer()
-	for range b.N {
+
+	for b.Loop() {
 		analyzer.captureSamples(chunk)
 	}
 }
@@ -209,8 +209,8 @@ func BenchmarkSpectrumFFT(b *testing.B) {
 	worker := newSpectrumWorker(48000)
 	samples := sineWindow(48000, 1000, 1, 1)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for range b.N {
+
+	for b.Loop() {
 		worker.analyze(samples[:])
 	}
 }

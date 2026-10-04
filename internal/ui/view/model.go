@@ -41,7 +41,7 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 		{ID: "track", Label: "Track"},
 		{ID: "lyrics", Label: "Lyrics"},
 		{ID: "browser", Label: "Browser"},
-		{ID: "help", Label: "Help"},
+		{ID: "help", Label: "❓ Help"},
 	}, tabs.WithStyles(tabStyles))
 	if err != nil {
 		return nil, err

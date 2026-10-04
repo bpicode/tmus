@@ -31,7 +31,6 @@ func (h *content) render(styles styles) []string {
 		lines = append(lines, s.render(keyPadLeft, keyFillMiddle, styles)...)
 		lines = append(lines, "")
 	}
-	lines = append(lines, h.appendix)
 	return lines
 }
 
@@ -76,46 +75,56 @@ func (h *helpKey) width(styles styles) int {
 }
 
 var keybindings = content{
-	title: "📖 tmus keybindings",
+	title: "📖 Keybindings",
 	sections: []helpSection{
 		{
-			subtitle: "🧭 Navigation",
+			subtitle: "📑 Tabs",
 			helpKeys: []helpKey{
 				{
 					key1:     "tab",
-					helpText: "switch focus",
+					key2:     "shift+tab",
+					helpText: "next / previous tab",
 				},
+				{
+					key1:     "b",
+					helpText: "switch between Playlist and Browser",
+				},
+				{
+					key1:     "?",
+					helpText: "open Help / return to Playlist",
+				},
+				{
+					key1:     "esc",
+					helpText: "return to Playlist from Track, Lyrics or Help",
+				},
+			},
+		},
+		{
+			subtitle: "🧭 Navigation (active tab)",
+			helpKeys: []helpKey{
 				{
 					key1:     "↑/↓",
 					key2:     "k/j",
-					helpText: "move selection",
+					helpText: "move selection / scroll",
 				},
 				{
 					key1:     "pgup",
 					key2:     "pgdn",
-					helpText: "page selection",
+					helpText: "page selection / scroll",
 				},
 				{
 					key1:     "home",
 					key2:     "end",
 					helpText: "jump to top/bottom",
 				},
-				{
-					key1:     "enter",
-					helpText: "open dir / add item",
-				},
-				{
-					key1:     "/",
-					helpText: "search in browser",
-				},
 			},
 		},
 		{
-			subtitle: "🎵 Playback",
+			subtitle: "🎧 Playlist",
 			helpKeys: []helpKey{
 				{
 					key1:     "enter",
-					helpText: "play",
+					helpText: "play selected track",
 				},
 				{
 					key1:     "space",
@@ -153,26 +162,13 @@ var keybindings = content{
 					key2:     ">",
 					helpText: "seek -60s / +60s",
 				},
-			},
-		},
-		{
-			subtitle: "📋 Playlist",
-			helpKeys: []helpKey{
-				{
-					key1:     "a",
-					helpText: "add file",
-				},
-				{
-					key1:     "A",
-					helpText: "add all files",
-				},
 				{
 					key1:     "i",
-					helpText: "track info",
+					helpText: "show track information (opens 'Track' tab)",
 				},
 				{
-					key1:     "/",
-					helpText: "search playlist",
+					key1:     "L",
+					helpText: "show lyrics of selected track (opens 'Lyrics' tab)",
 				},
 				{
 					key1:     "x",
@@ -196,11 +192,22 @@ var keybindings = content{
 			},
 		},
 		{
+			subtitle: "🎵 Track",
+			helpKeys: []helpKey{
+				{
+					key1:     "i",
+					key2:     "esc",
+					helpText: "return to Playlist",
+				},
+			},
+		},
+		{
 			subtitle: "📜 Lyrics",
 			helpKeys: []helpKey{
 				{
 					key1:     "L",
-					helpText: "show/hide lyrics",
+					key2:     "esc",
+					helpText: "return to Playlist",
 				},
 				{
 					key1:     "f",
@@ -212,8 +219,20 @@ var keybindings = content{
 			subtitle: "📂 Browser",
 			helpKeys: []helpKey{
 				{
-					key1:     "b",
-					helpText: "toggle browser",
+					key1:     "enter",
+					helpText: "open directory / archive, or add audio file",
+				},
+				{
+					key1:     "backspace",
+					helpText: "go to parent directory",
+				},
+				{
+					key1:     "a",
+					helpText: "add selected audio file to playlist",
+				},
+				{
+					key1:     "A",
+					helpText: "add all visible audio files to playlist",
 				},
 				{
 					key1:     "ctrl+r",
@@ -230,12 +249,25 @@ var keybindings = content{
 			},
 		},
 		{
-			subtitle: "☕ Other",
+			subtitle: "🔎 Search (where applicable)",
 			helpKeys: []helpKey{
 				{
-					key1:     "?",
-					helpText: "toggle this help",
+					key1:     "/",
+					helpText: "start search",
 				},
+				{
+					key1:     "enter",
+					helpText: "apply search",
+				},
+				{
+					key1:     "esc",
+					helpText: "cancel / clear search",
+				},
+			},
+		},
+		{
+			subtitle: "🚪 Quit",
+			helpKeys: []helpKey{
 				{
 					key1:     "q",
 					key2:     "ctrl+c",

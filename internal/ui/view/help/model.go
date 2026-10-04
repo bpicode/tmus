@@ -1,6 +1,8 @@
 package help
 
 import (
+	"strings"
+
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -20,7 +22,7 @@ type Model struct {
 func NewModel(th theme.Theme) *Model {
 	styles := newStyles(th)
 	lines := keybindings.render(styles)
-	maxLineLength := 0
+	maxLineLength := lipgloss.Width(keybindings.appendix)
 	for _, line := range lines {
 		maxLineLength = max(maxLineLength, lipgloss.Width(line))
 	}
@@ -41,10 +43,19 @@ func (m *Model) Init() tea.Cmd {
 }
 
 func (m *Model) View() string {
-	if !m.show {
+	if !m.show || m.width <= m.styles.padding.GetHorizontalFrameSize() || m.height <= m.styles.padding.GetVerticalFrameSize() {
 		return ""
 	}
-	styled := m.styles.overlay.Render(m.viewport.View())
+	width := m.viewport.Width()
+	content := m.styles.footer.MaxWidth(width).Render(keybindings.appendix)
+	if m.height-m.styles.padding.GetVerticalFrameSize() >= 2 {
+		separator := m.styles.separator.Render(strings.Repeat("─", width))
+		content = separator + "\n" + content
+	}
+	if m.viewport.Height() > 0 {
+		content = m.viewport.View() + "\n" + content
+	}
+	styled := m.styles.padding.Render(content)
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, styled)
 }
 
@@ -62,8 +73,9 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 	m.width = msg.Width
 	m.height = msg.Height
-	m.viewport.SetWidth(max(min(m.maxLineLength, m.width-m.styles.overlay.GetHorizontalFrameSize()), 0))
-	m.viewport.SetHeight(max(m.height-m.styles.overlay.GetVerticalFrameSize(), 0))
+	m.viewport.SetWidth(max(min(m.maxLineLength, m.width-m.styles.padding.GetHorizontalFrameSize()), 0))
+	// Reserve one row for the separator and one for the scroll hint.
+	m.viewport.SetHeight(max(m.height-m.styles.padding.GetVerticalFrameSize()-2, 0))
 	return m, nil, false
 }
 

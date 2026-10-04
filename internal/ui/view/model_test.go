@@ -32,7 +32,7 @@ func TestModelNavigation(t *testing.T) {
 		text string
 	}{
 		{name: "next", key: tea.KeyPressMsg{Code: tea.KeyTab}, id: "track", text: "No track selected."},
-		{name: "previous wraps", key: tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}, id: "help", text: "tmus keybindings"},
+		{name: "previous wraps", key: tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}, id: "help", text: "Keybindings"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -60,7 +60,7 @@ func TestModelResizesFrame(t *testing.T) {
 		v := m.View()
 		assert.Equal(t, size.Width, lipgloss.Width(v.Content))
 		assert.Equal(t, size.Height, lipgloss.Height(v.Content))
-		assert.Contains(t, ansi.Strip(v.Content), "│ Playlist │ Track │ Lyrics │ Browser │ Help │")
+		assert.Contains(t, ansi.Strip(v.Content), "│ Playlist │ Track │ Lyrics │ Browser │ ❓ Help │")
 		assert.True(t, v.AltScreen)
 		assert.Equal(t, th.Foreground, v.ForegroundColor)
 		assert.Equal(t, th.Background, v.BackgroundColor)
@@ -83,25 +83,27 @@ func TestModelHelp(t *testing.T) {
 	m, _ := newModelTest(t)
 	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
 	_, _ = m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
-	assert.Contains(t, m.View().Content, "tmus keybindings")
+	assert.Contains(t, m.View().Content, "Keybindings")
+	assert.Contains(t, m.View().Content, "esc to close", "the hint is visible before scrolling")
 	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnd})
 	assert.Contains(t, m.View().Content, "esc to close")
-	assert.NotContains(t, m.View().Content, "tmus keybindings")
+	assert.NotContains(t, m.View().Content, "Keybindings")
 	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyHome})
-	assert.Contains(t, m.View().Content, "tmus keybindings")
+	assert.Contains(t, m.View().Content, "Keybindings")
+	assert.Contains(t, m.View().Content, "esc to close")
 	for _, size := range []tea.WindowSizeMsg{{Width: 70, Height: 18}, {Width: 90, Height: 30}} {
 		_, _ = m.Update(size)
 		content := m.View().Content
 		assert.Equal(t, size.Width, lipgloss.Width(content))
 		assert.Equal(t, size.Height, lipgloss.Height(content))
-		assert.Contains(t, content, "tmus keybindings")
+		assert.Contains(t, content, "Keybindings")
 	}
 	for _, close := range []tea.KeyPressMsg{{Code: tea.KeyEscape}, {Code: '?', Text: "?"}} {
 		_, _ = m.Update(close)
 		assert.Contains(t, m.View().Content, "Search: /")
-		assert.NotContains(t, m.View().Content, "tmus keybindings")
+		assert.NotContains(t, m.View().Content, "Keybindings")
 		_, _ = m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
-		assert.Contains(t, m.View().Content, "tmus keybindings")
+		assert.Contains(t, m.View().Content, "Keybindings")
 	}
 	_, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	require.NotNil(t, cmd)

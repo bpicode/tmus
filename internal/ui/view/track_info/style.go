@@ -6,8 +6,7 @@ import (
 )
 
 type styles struct {
-	overlay     lipgloss.Style
-	title       lipgloss.Style
+	panel       lipgloss.Style
 	subtitle    lipgloss.Style
 	error       lipgloss.Style
 	metadataKey lipgloss.Style
@@ -16,8 +15,7 @@ type styles struct {
 
 func newStyles(th theme.Theme) styles {
 	return styles{
-		overlay:     lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(th.Primary).Padding(0, 1),
-		title:       lipgloss.NewStyle().Bold(true).Foreground(th.Primary),
+		panel:       lipgloss.NewStyle().Padding(0, 1),
 		subtitle:    lipgloss.NewStyle().Foreground(th.Muted),
 		error:       lipgloss.NewStyle().Foreground(th.Danger),
 		metadataKey: lipgloss.NewStyle().Bold(true).Foreground(th.Secondary),

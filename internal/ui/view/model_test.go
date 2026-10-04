@@ -60,7 +60,7 @@ func TestModelResizesFrame(t *testing.T) {
 		v := m.View()
 		assert.Equal(t, size.Width, lipgloss.Width(v.Content))
 		assert.Equal(t, size.Height, lipgloss.Height(v.Content))
-		assert.Contains(t, ansi.Strip(v.Content), "│ Playlist │ Track │ 📜 Lyrics │ 📂 Browser │ ❓ Help │")
+		assert.Contains(t, ansi.Strip(v.Content), "│ Playlist │ 🎵 Track │ 📜 Lyrics │ 📂 Browser │ ❓ Help │")
 		assert.True(t, v.AltScreen)
 		assert.Equal(t, th.Foreground, v.ForegroundColor)
 		assert.Equal(t, th.Background, v.BackgroundColor)
@@ -139,7 +139,7 @@ func TestModelReceivesStateEvents(t *testing.T) {
 		Tracks: []core.Track{{Path: "/music/one.flac", Name: "First background track"}}}))
 	tui.waitForOutput("First background track")
 	tm.Send(tea.KeyPressMsg{Code: tea.KeyTab})
-	tui.waitForOutput("Track info")
+	tui.waitForOutput("/music/one.flac")
 	require.NoError(t, app.Dispatch(core.Command{Type: core.CmdAddAll,
 		Tracks: []core.Track{{Path: "/music/two.flac", Name: "Second background track"}}}))
 	tui.waitForState(func(state core.State) bool { return len(state.Playlist) == 2 })
@@ -180,7 +180,7 @@ func TestModelUpdatesPlaylistWhileHidden(t *testing.T) {
 	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	app.Restore([]core.Track{{Path: "/music/example.flac", Name: "Updated track"}}, 0, core.QueueModeLinear)
 	_, _ = m.Update(core.StateEvent{Changes: core.StateChangePlaylist})
-	assert.Contains(t, m.View().Content, "Track info")
+	assert.Contains(t, m.View().Content, "/music/example.flac")
 	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
 	assert.Contains(t, m.View().Content, "Updated track")
 }
@@ -267,7 +267,6 @@ func TestModelTrackFollowsSelection(t *testing.T) {
 	_, cmd := m.Update(tea.KeyPressMsg{Code: 'i', Text: "i"})
 	require.NotNil(t, cmd)
 	_, _ = m.Update(cmd())
-	assert.Contains(t, m.View().Content, "Track info")
 	assert.Contains(t, m.View().Content, "/music/one.flac")
 	assert.Contains(t, m.View().Content, "Loading...")
 	tracks := app.State().Playlist
@@ -323,7 +322,7 @@ func TestModelTrackKeys(t *testing.T) {
 				assert.IsType(t, tea.QuitMsg{}, cmd())
 			} else {
 				assert.Contains(t, m.View().Content, "Search: /")
-				assert.NotContains(t, m.View().Content, "Track info")
+				assert.NotContains(t, m.View().Content, "/music/one.flac")
 			}
 		})
 	}
@@ -332,7 +331,7 @@ func TestModelTrackKeys(t *testing.T) {
 func TestModelTrackScrolls(t *testing.T) {
 	m, app := newModelTest(t)
 	app.Restore([]core.Track{{Path: "/music/one.flac", Name: "One"}}, 0, core.QueueModeLinear)
-	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 14})
+	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 11})
 	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	track := app.State().Playlist[0]
 	_, _ = m.Update(core.MetadataEvent{

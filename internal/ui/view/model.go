@@ -38,7 +38,7 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 	tabStyles.Border = tabStyles.Border.BorderForeground(th.Primary)
 	tabModel, err := tabs.New([]tabs.Tab{
 		{ID: "playlist", Label: "Playlist"},
-		{ID: "track", Label: "Track"},
+		{ID: "track", Label: "🎵 Track"},
 		{ID: "lyrics", Label: "📜 Lyrics"},
 		{ID: "browser", Label: "📂 Browser"},
 		{ID: "help", Label: "❓ Help"},

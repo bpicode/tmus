@@ -188,7 +188,7 @@ func (m *Model) View() string {
 	}
 	contentWidth, contentHeight := m.innerSize()
 	if contentHeight < 1 || contentWidth < 1 {
-		return m.styles.overlay.Width(m.width).Height(m.height).Render("")
+		return m.styles.panel.Width(m.width).Height(m.height).Render("")
 	}
 
 	header := m.headerLines(contentWidth)
@@ -196,7 +196,7 @@ func (m *Model) View() string {
 	header = header[:headerHeight]
 	headerBlock := lipgloss.NewStyle().Width(contentWidth).Height(headerHeight).Render(strings.Join(header, "\n"))
 	if contentHeight <= headerHeight {
-		return m.styles.overlay.Width(m.width).Height(m.height).Render(headerBlock)
+		return m.styles.panel.Width(m.width).Height(m.height).Render(headerBlock)
 	}
 
 	areaHeight := contentHeight - headerHeight
@@ -233,12 +233,12 @@ func (m *Model) View() string {
 	}
 
 	inner := lipgloss.JoinVertical(lipgloss.Left, headerBlock, body)
-	return m.styles.overlay.Width(m.width).Height(m.height).Render(inner)
+	return m.styles.panel.Width(m.width).Height(m.height).Render(inner)
 }
 
 func (m *Model) innerSize() (int, int) {
-	contentWidth := max(m.width-m.styles.overlay.GetHorizontalFrameSize(), 0)
-	contentHeight := max(m.height-m.styles.overlay.GetVerticalFrameSize(), 0)
+	contentWidth := max(m.width-m.styles.panel.GetHorizontalFrameSize(), 0)
+	contentHeight := max(m.height-m.styles.panel.GetVerticalFrameSize(), 0)
 	return contentWidth, contentHeight
 }
 
@@ -278,8 +278,7 @@ func rawCmd(raw string) tea.Cmd {
 }
 
 func (m *Model) headerLines(maxWidth int) []string {
-	lines := make([]string, 0, 3)
-	lines = append(lines, truncate.Right{Style: m.styles.title}.MaxWidth(maxWidth).Render("🎵 Track info"))
+	lines := make([]string, 0, 2)
 	if m.trackPath != "" {
 		lines = append(lines, truncate.Right{Style: m.styles.subtitle}.MaxWidth(maxWidth).Render(sanitize.TerminalText(m.trackPath)))
 	}

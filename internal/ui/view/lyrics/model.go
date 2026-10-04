@@ -2,7 +2,6 @@ package lyrics
 
 import (
 	"path/filepath"
-	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/viewport"
@@ -65,15 +64,13 @@ func (m *Model) View() string {
 	innerWidth, innerHeight := m.innerSize()
 
 	availableWidth := innerWidth
-	viewportHeight := max(innerHeight-3, 0) // 3 -> 1 for title, 1 for track, 1 for empty line after track
+	viewportHeight := max(innerHeight-2, 0) // Track name and a blank line.
 	m.lyricsViewport.SetWidth(availableWidth)
 	m.lyricsViewport.SetHeight(viewportHeight)
 
-	title := truncate.Right{Style: m.styles.title}.MaxWidth(availableWidth).Render("📜 Lyrics")
 	trackName := sanitize.TerminalText(displayNameForTrack(state, m.trackID, m.trackPath))
 	track := truncate.Right{Style: m.styles.track}.MaxWidth(availableWidth).Render(trackName)
-	pad := ""
-	headers := strings.Join([]string{title, track, pad}, "\n")
+	headers := track + "\n"
 
 	lines, highlightIndex := m.bodyLines(availableWidth, state)
 	m.lyricsViewport.SetContentLines(lines)
@@ -84,7 +81,7 @@ func (m *Model) View() string {
 
 	content := lipgloss.JoinVertical(lipgloss.Left, headers, m.lyricsViewport.View())
 	inner := lipgloss.NewStyle().MaxWidth(availableWidth).MaxHeight(innerHeight).Render(content)
-	styled := m.styles.overlay.Render(inner)
+	styled := m.styles.panel.Render(inner)
 	return lipgloss.Place(m.width, m.height, lipgloss.Left, lipgloss.Top, styled)
 }
 
@@ -251,8 +248,8 @@ func (m *Model) Shutdown() {
 }
 
 func (m *Model) innerSize() (int, int) {
-	contentWidth := max(m.width-m.styles.overlay.GetHorizontalFrameSize(), 0)
-	contentHeight := max(m.height-m.styles.overlay.GetVerticalFrameSize(), 0)
+	contentWidth := max(m.width-m.styles.panel.GetHorizontalFrameSize(), 0)
+	contentHeight := max(m.height-m.styles.panel.GetVerticalFrameSize(), 0)
 	return contentWidth, contentHeight
 }
 

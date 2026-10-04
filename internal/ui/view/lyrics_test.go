@@ -85,7 +85,8 @@ func TestModelLyricsScrollAndFollowSetting(t *testing.T) {
 		TrackID: track.ID, Path: track.Path,
 		Lyrics: applyrics.Lyrics{Lines: []applyrics.Line{
 			{Text: "First lyric"}, {Text: "Second lyric"}, {Text: "Third lyric"},
-			{Text: "Fourth lyric"}, {Text: "Last lyric"},
+			{Text: "Fourth lyric"}, {Text: "Fifth lyric"}, {Text: "Sixth lyric"},
+			{Text: "Seventh lyric"}, {Text: "Eighth lyric"}, {Text: "Last lyric"},
 		}},
 	})
 	assert.Contains(t, m.View().Content, "First lyric")

@@ -6,8 +6,7 @@ import (
 )
 
 type styles struct {
-	overlay    lipgloss.Style
-	title      lipgloss.Style
+	panel      lipgloss.Style
 	track      lipgloss.Style
 	activeLine lipgloss.Style
 	empty      lipgloss.Style
@@ -16,8 +15,7 @@ type styles struct {
 
 func newStyles(th theme.Theme) styles {
 	return styles{
-		overlay:    lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(th.Primary).Padding(0, 1),
-		title:      lipgloss.NewStyle().Bold(true).Foreground(th.Secondary),
+		panel:      lipgloss.NewStyle().Padding(0, 1),
 		track:      lipgloss.NewStyle().Foreground(th.Muted),
 		activeLine: lipgloss.NewStyle().Bold(true).Foreground(th.Highlight),
 		empty:      lipgloss.NewStyle().Foreground(th.Muted),

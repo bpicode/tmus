@@ -39,7 +39,7 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 	tabModel, err := tabs.New([]tabs.Tab{
 		{ID: "playlist", Label: "Playlist"},
 		{ID: "track", Label: "Track"},
-		{ID: "lyrics", Label: "Lyrics"},
+		{ID: "lyrics", Label: "📜 Lyrics"},
 		{ID: "browser", Label: "📂 Browser"},
 		{ID: "help", Label: "❓ Help"},
 	}, tabs.WithStyles(tabStyles))

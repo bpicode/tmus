@@ -24,7 +24,7 @@ var rootCmd = &cobra.Command{
 		}
 		ui2, _ := cmd.Flags().GetBool("ui2")
 		if ui2 {
-			return ui.Run2(core.New(cfg), cfg.TUI, args)
+			return ui.Run2(core.New(cfg), startDir, cfg.TUI, args)
 		}
 
 		ipcSession, err := ipc.Open(cfg.IPC, args)

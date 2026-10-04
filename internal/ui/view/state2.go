@@ -1,6 +1,33 @@
 package view
 
-import "github.com/bpicode/tmus/internal/app/core"
+import (
+	"os"
+	"path/filepath"
+
+	"github.com/bpicode/tmus/internal/app/core"
+	"github.com/bpicode/tmus/internal/app/library"
+)
+
+func initialBrowserDir(lib *library.Library, startDir, savedDir string) string {
+	cwd := startDir
+	if cwd == "" {
+		cwd = savedDir
+	}
+	if cwd == "" {
+		cwd, _ = os.Getwd()
+	}
+	if entry, err := lib.EntryFromPath(cwd); err == nil {
+		if filesystemPath, ok := entry.FilesystemPath(); ok && filesystemPath == cwd {
+			if abs, err := filepath.Abs(cwd); err == nil {
+				cwd = abs
+			}
+			if resolved, err := filepath.EvalSymlinks(cwd); err == nil {
+				cwd = resolved
+			}
+		}
+	}
+	return cwd
+}
 
 func (m *Model2) restorePlayer() {
 	tracks := make([]core.Track, 0, len(m.saved.Player.Playlist))
@@ -51,8 +78,8 @@ func (m *Model2) openFiles(files []string) {
 	_ = m.app.Dispatch(core.Command{Type: core.CmdPlayFromCursor})
 }
 
-// SaveState persists player and lyrics state while retaining settings for views that
-// have not yet been migrated to Model2.
+// SaveState persists the player, lyrics follow setting, and browser directory.
+// It retains the original layout's focus and browser visibility settings.
 func (m *Model2) SaveState() error {
 	path, err := DefaultPath()
 	if err != nil {
@@ -72,5 +99,6 @@ func (m *Model2) SaveState() error {
 		Playlist: tracks, Playing: appState.Playing, Cursor: appState.Cursor,
 	}
 	saved.Lyrics.FollowLine = m.lyrics.FollowLine()
+	saved.Browser.Cwd = m.browser.Cwd
 	return Save(path, saved)
 }

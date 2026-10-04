@@ -8,6 +8,7 @@ import (
 	"github.com/bpicode/tmus/internal/config"
 	"github.com/bpicode/tmus/internal/ui/components/tabs"
 	"github.com/bpicode/tmus/internal/ui/theme"
+	"github.com/bpicode/tmus/internal/ui/view/home/browser"
 	"github.com/bpicode/tmus/internal/ui/view/home/playlist"
 	"github.com/bpicode/tmus/internal/ui/view/lyrics"
 	"github.com/bpicode/tmus/internal/ui/view/track_info"
@@ -19,6 +20,7 @@ type Model2 struct {
 	playlist  *playlist.Model
 	trackInfo *track_info.Model
 	lyrics    *lyrics.Model
+	browser   *browser.Model
 	tabs      tabs.Model
 	events    eventChannels
 	saved     State
@@ -26,9 +28,9 @@ type Model2 struct {
 	styles    styles
 }
 
-// NewModel2 creates a tabbed player with playlist, track, and lyrics views, and
-// placeholders for the remaining tabs. It restores the queue and opens supplied audio files.
-func NewModel2(appRef *core.App, openFiles []string, cfg config.TUIConfig, th theme.Theme) (*Model2, error) {
+// NewModel2 creates a tabbed player with a placeholder for Help. It restores
+// saved state, uses startDir when supplied, and opens supplied audio files.
+func NewModel2(appRef *core.App, startDir string, openFiles []string, cfg config.TUIConfig, th theme.Theme) (*Model2, error) {
 	tabStyles := tabs.DefaultStyles()
 	tabStyles.ActiveTab = lipgloss.NewStyle().Bold(true).Foreground(th.Primary)
 	tabStyles.InactiveTab = lipgloss.NewStyle().Foreground(th.Muted)
@@ -55,6 +57,10 @@ func NewModel2(appRef *core.App, openFiles []string, cfg config.TUIConfig, th th
 			Theme: th, App: appRef, ArtworkAspect: cfg.ArtworkAspect, ArtworkRenderer: cfg.ArtworkRenderer,
 		}),
 		lyrics: lyrics.NewModel(lyrics.Config{Theme: th, App: appRef, FollowLine: saved.Lyrics.FollowLine}),
+		browser: browser.NewModel(browser.Config{
+			Cwd:     initialBrowserDir(appRef.Library(), startDir, saved.Browser.Cwd),
+			HomeDir: cfg.BrowserHome, Theme: th, App: appRef, Library: appRef.Library(),
+		}),
 	}
 	m.restorePlayer()
 	m.openFiles(openFiles)
@@ -68,7 +74,8 @@ func (m *Model2) Init() tea.Cmd {
 	m.events.state, m.events.unsubState = m.app.SubscribeStateEvents()
 	m.events.metadata, m.events.unsubMetadata = m.app.SubscribeMetadataEvents()
 	m.events.lyrics, m.events.unsubLyrics = m.app.SubscribeLyricsEvents()
-	return tea.Batch(m.tabs.Init(), m.playlist.Init(), m.trackInfo.Init(), m.lyrics.Init(),
+	return tea.Batch(m.tabs.Init(), playlistCmd(m.playlist.Init()), m.trackInfo.Init(), m.lyrics.Init(),
+		browserCmd(m.browser.Init()),
 		m.listenForStateEvent(), m.listenForMetadataEvent(), m.listenForLyricsEvent(), tickCmd())
 }
 
@@ -77,6 +84,23 @@ func (m *Model2) Init() tea.Cmd {
 func (m *Model2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
+	case browserMsg:
+		if batch, ok := msg.msg.(tea.BatchMsg); ok {
+			return m, childBatch(batch, browserCmd)
+		}
+		var cmd tea.Cmd
+		m.browser, cmd, _ = m.browser.Update(msg.msg)
+		return m, browserCmd(cmd)
+	case playlistMsg:
+		switch reply := msg.msg.(type) {
+		case tea.BatchMsg:
+			return m, childBatch(reply, playlistCmd)
+		case playlist.ToggleTrackInfoMsg, playlist.ToggleLyricsMsg:
+			return m.Update(reply)
+		}
+		var cmd tea.Cmd
+		m.playlist, cmd, _ = m.playlist.Update(msg.msg)
+		return m, playlistCmd(cmd)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.tabs.SetSize(msg.Width, msg.Height)
@@ -84,11 +108,13 @@ func (m *Model2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		size := tea.WindowSizeMsg{Width: width, Height: height}
 		var cmd tea.Cmd
 		m.playlist, cmd, _ = m.playlist.Update(size)
-		cmds = append(cmds, cmd)
+		cmds = append(cmds, playlistCmd(cmd))
 		m.trackInfo, cmd, _ = m.trackInfo.Update(size)
 		cmds = append(cmds, cmd)
 		m.lyrics, cmd, _ = m.lyrics.Update(size)
-		return m, tea.Batch(append(cmds, cmd)...)
+		cmds = append(cmds, cmd)
+		m.browser, cmd, _ = m.browser.Update(size)
+		return m, tea.Batch(append(cmds, browserCmd(cmd))...)
 	case tea.KeyPressMsg:
 		if msg.String() == "ctrl+c" {
 			m.lyrics.Shutdown()
@@ -103,10 +129,31 @@ func (m *Model2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var cmd tea.Cmd
 			var stop bool
 			m.playlist, cmd, stop = m.playlist.Update(msg)
+			cmd = playlistCmd(cmd)
 			if stop {
 				return m, cmd
 			}
 			cmds = append(cmds, cmd)
+		}
+		if m.tabs.ActiveID() == "browser" {
+			var cmd tea.Cmd
+			var stop bool
+			m.browser, cmd, stop = m.browser.Update(msg)
+			cmd = browserCmd(cmd)
+			if stop {
+				return m, cmd
+			}
+			cmds = append(cmds, cmd)
+		}
+		if msg.String() == "b" {
+			switch m.tabs.ActiveID() {
+			case "playlist":
+				_ = m.tabs.Select("browser")
+				return m, m.updateActiveTab()
+			case "browser":
+				_ = m.tabs.Select("playlist")
+				return m, m.updateActiveTab()
+			}
 		}
 		if msg.String() == "q" {
 			m.lyrics.Shutdown()
@@ -157,11 +204,13 @@ func (m *Model2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	var cmd tea.Cmd
 	m.playlist, cmd, _ = m.playlist.Update(msg)
-	cmds = append(cmds, cmd)
+	cmds = append(cmds, playlistCmd(cmd))
 	m.trackInfo, cmd, _ = m.trackInfo.Update(msg)
 	cmds = append(cmds, cmd)
 	m.lyrics, cmd, _ = m.lyrics.Update(msg)
 	cmds = append(cmds, cmd)
+	m.browser, cmd, _ = m.browser.Update(msg)
+	cmds = append(cmds, browserCmd(cmd))
 	return m, tea.Batch(cmds...)
 }
 
@@ -169,6 +218,9 @@ func (m *Model2) updateActiveTab() tea.Cmd {
 	active := m.tabs.ActiveID() == "playlist"
 	m.playlist.Show(active)
 	m.playlist.Focus(active)
+	active = m.tabs.ActiveID() == "browser"
+	m.browser.Show(active)
+	m.browser.Focus(active)
 	m.lyrics.Show(m.tabs.ActiveID() == "lyrics")
 	return m.trackInfo.Show(m.tabs.ActiveID() == "track")
 }
@@ -193,6 +245,8 @@ func (m *Model2) View() tea.View {
 			if m.lyrics.Visible() {
 				content = m.lyrics.View()
 			}
+		case "browser":
+			content = m.browser.View()
 		}
 		content = m.tabs.Render(content)
 	}

@@ -86,7 +86,7 @@ func newModel2Test(t *testing.T, files ...string) (*view.Model2, *core.App) {
 	cfg.Lyrics.LrcLib.Enabled = false
 	app := core.New(cfg)
 	t.Cleanup(app.ShutdownAndWait)
-	m, err := view.NewModel2(app, files, cfg.TUI, theme.Resolve(cfg.TUI.Theme))
+	m, err := view.NewModel2(app, t.TempDir(), files, cfg.TUI, theme.Resolve(cfg.TUI.Theme))
 	require.NoError(t, err)
 	t.Cleanup(m.Shutdown)
 	return m, app
@@ -199,7 +199,7 @@ func TestModel2RestoresAndSavesPlayerState(t *testing.T) {
 	cfg.Lyrics.LrcLib.Enabled = false
 	app := core.New(cfg)
 	t.Cleanup(app.ShutdownAndWait)
-	m, err := view.NewModel2(app, nil, cfg.TUI, theme.Resolve(cfg.TUI.Theme))
+	m, err := view.NewModel2(app, "", nil, cfg.TUI, theme.Resolve(cfg.TUI.Theme))
 	require.NoError(t, err)
 	t.Cleanup(m.Shutdown)
 	assert.Equal(t, "Restored track", app.State().Playlist[0].Name)

@@ -11,8 +11,8 @@ import (
 )
 
 // Run2 starts the experimental tabbed player.
-func Run2(appRef *core.App, cfg config.TUIConfig, openFiles []string) error {
-	m, err := view.NewModel2(appRef, openFiles, cfg, theme.Resolve(cfg.Theme))
+func Run2(appRef *core.App, startDir string, cfg config.TUIConfig, openFiles []string) error {
+	m, err := view.NewModel2(appRef, startDir, openFiles, cfg, theme.Resolve(cfg.Theme))
 	if err != nil {
 		appRef.ShutdownAndWait()
 		return fmt.Errorf("create experimental view: %w", err)

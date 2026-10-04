@@ -9,6 +9,7 @@ import (
 	"github.com/bpicode/tmus/internal/ui/components/tabs"
 	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/bpicode/tmus/internal/ui/view/home/playlist"
+	"github.com/bpicode/tmus/internal/ui/view/lyrics"
 	"github.com/bpicode/tmus/internal/ui/view/track_info"
 )
 
@@ -17,6 +18,7 @@ type Model2 struct {
 	app       *core.App
 	playlist  *playlist.Model
 	trackInfo *track_info.Model
+	lyrics    *lyrics.Model
 	tabs      tabs.Model
 	events    eventChannels
 	saved     State
@@ -24,8 +26,8 @@ type Model2 struct {
 	styles    styles
 }
 
-// NewModel2 creates a tabbed player with playlist and track views, and placeholder
-// content for the remaining tabs. It restores the queue and opens supplied audio files.
+// NewModel2 creates a tabbed player with playlist, track, and lyrics views, and
+// placeholders for the remaining tabs. It restores the queue and opens supplied audio files.
 func NewModel2(appRef *core.App, openFiles []string, cfg config.TUIConfig, th theme.Theme) (*Model2, error) {
 	tabStyles := tabs.DefaultStyles()
 	tabStyles.ActiveTab = lipgloss.NewStyle().Bold(true).Foreground(th.Primary)
@@ -52,6 +54,7 @@ func NewModel2(appRef *core.App, openFiles []string, cfg config.TUIConfig, th th
 		trackInfo: track_info.NewModel(track_info.Config{
 			Theme: th, App: appRef, ArtworkAspect: cfg.ArtworkAspect, ArtworkRenderer: cfg.ArtworkRenderer,
 		}),
+		lyrics: lyrics.NewModel(lyrics.Config{Theme: th, App: appRef, FollowLine: saved.Lyrics.FollowLine}),
 	}
 	m.restorePlayer()
 	m.openFiles(openFiles)
@@ -64,8 +67,9 @@ func NewModel2(appRef *core.App, openFiles []string, cfg config.TUIConfig, th th
 func (m *Model2) Init() tea.Cmd {
 	m.events.state, m.events.unsubState = m.app.SubscribeStateEvents()
 	m.events.metadata, m.events.unsubMetadata = m.app.SubscribeMetadataEvents()
-	return tea.Batch(m.tabs.Init(), m.playlist.Init(), m.trackInfo.Init(),
-		m.listenForStateEvent(), m.listenForMetadataEvent(), tickCmd())
+	m.events.lyrics, m.events.unsubLyrics = m.app.SubscribeLyricsEvents()
+	return tea.Batch(m.tabs.Init(), m.playlist.Init(), m.trackInfo.Init(), m.lyrics.Init(),
+		m.listenForStateEvent(), m.listenForMetadataEvent(), m.listenForLyricsEvent(), tickCmd())
 }
 
 // Update routes keyboard input to the active tab and background messages to
@@ -82,9 +86,12 @@ func (m *Model2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.playlist, cmd, _ = m.playlist.Update(size)
 		cmds = append(cmds, cmd)
 		m.trackInfo, cmd, _ = m.trackInfo.Update(size)
+		cmds = append(cmds, cmd)
+		m.lyrics, cmd, _ = m.lyrics.Update(size)
 		return m, tea.Batch(append(cmds, cmd)...)
 	case tea.KeyPressMsg:
 		if msg.String() == "ctrl+c" {
+			m.lyrics.Shutdown()
 			return m, tea.Sequence(m.trackInfo.Show(false), tea.Quit)
 		}
 		if key.Matches(msg, m.tabs.KeyMap.Next, m.tabs.KeyMap.Previous) {
@@ -102,6 +109,7 @@ func (m *Model2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 		if msg.String() == "q" {
+			m.lyrics.Shutdown()
 			return m, tea.Sequence(m.trackInfo.Show(false), tea.Quit)
 		}
 		if m.tabs.ActiveID() == "track" {
@@ -113,14 +121,31 @@ func (m *Model2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.trackInfo, cmd, _ = m.trackInfo.Update(msg)
 			cmds = append(cmds, cmd)
 		}
+		if m.tabs.ActiveID() == "lyrics" {
+			if msg.String() == "esc" || msg.String() == "L" {
+				_ = m.tabs.Select("playlist")
+				return m, m.updateActiveTab()
+			}
+			var cmd tea.Cmd
+			m.lyrics, cmd, _ = m.lyrics.Update(msg)
+			cmds = append(cmds, cmd)
+		}
 		return m, tea.Batch(cmds...)
 	case core.StateEvent:
 		cmds = append(cmds, m.listenForStateEvent())
 		if m.tabs.ActiveID() == "track" {
 			cmds = append(cmds, m.trackInfo.Show(true))
 		}
+		if m.tabs.ActiveID() == "lyrics" {
+			hasTracks := len(m.app.State().Playlist) > 0
+			if !hasTracks || !m.lyrics.Visible() {
+				m.lyrics.Show(hasTracks)
+			}
+		}
 	case core.MetadataEvent:
 		cmds = append(cmds, m.listenForMetadataEvent())
+	case core.LyricsEvent:
+		cmds = append(cmds, m.listenForLyricsEvent())
 	case tickMsg:
 		cmds = append(cmds, tickCmd())
 	case playlist.ToggleTrackInfoMsg:
@@ -135,6 +160,8 @@ func (m *Model2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 	m.trackInfo, cmd, _ = m.trackInfo.Update(msg)
 	cmds = append(cmds, cmd)
+	m.lyrics, cmd, _ = m.lyrics.Update(msg)
+	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
 
@@ -142,6 +169,7 @@ func (m *Model2) updateActiveTab() tea.Cmd {
 	active := m.tabs.ActiveID() == "playlist"
 	m.playlist.Show(active)
 	m.playlist.Focus(active)
+	m.lyrics.Show(m.tabs.ActiveID() == "lyrics")
 	return m.trackInfo.Show(m.tabs.ActiveID() == "track")
 }
 
@@ -160,6 +188,11 @@ func (m *Model2) View() tea.View {
 			if m.trackInfo.Visible() {
 				content = m.trackInfo.View()
 			}
+		case "lyrics":
+			content = "No track selected."
+			if m.lyrics.Visible() {
+				content = m.lyrics.View()
+			}
 		}
 		content = m.tabs.Render(content)
 	}
@@ -173,6 +206,7 @@ func (m *Model2) View() tea.View {
 
 // Shutdown releases resources owned by the UI. The runner owns app shutdown.
 func (m *Model2) Shutdown() {
+	m.lyrics.Shutdown()
 	if m.events.unsubState != nil {
 		m.events.unsubState()
 		m.events.unsubState = nil
@@ -180,6 +214,10 @@ func (m *Model2) Shutdown() {
 	if m.events.unsubMetadata != nil {
 		m.events.unsubMetadata()
 		m.events.unsubMetadata = nil
+	}
+	if m.events.unsubLyrics != nil {
+		m.events.unsubLyrics()
+		m.events.unsubLyrics = nil
 	}
 }
 
@@ -198,6 +236,16 @@ func (m *Model2) listenForMetadataEvent() tea.Cmd {
 		event, ok := <-m.events.metadata
 		if !ok {
 			return metadataClosedMsg{}
+		}
+		return event
+	}
+}
+
+func (m *Model2) listenForLyricsEvent() tea.Cmd {
+	return func() tea.Msg {
+		event, ok := <-m.events.lyrics
+		if !ok {
+			return lyricsClosedMsg{}
 		}
 		return event
 	}

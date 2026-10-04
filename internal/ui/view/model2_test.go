@@ -337,5 +337,5 @@ func TestModel2ReleasesTrackArtworkOnTabChange(t *testing.T) {
 	cleanup, ok := batch[len(batch)-1]().(tea.RawMsg)
 	require.True(t, ok)
 	assert.Contains(t, cleanup.Msg, "a=d", "leaving Track deletes its terminal image")
-	assert.Contains(t, m.View().Content, "Lyrics content will be added next.")
+	assert.Contains(t, m.View().Content, "Loading...")
 }

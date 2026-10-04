@@ -51,7 +51,7 @@ func (m *Model2) openFiles(files []string) {
 	_ = m.app.Dispatch(core.Command{Type: core.CmdPlayFromCursor})
 }
 
-// SaveState persists the player state while retaining settings for views that
+// SaveState persists player and lyrics state while retaining settings for views that
 // have not yet been migrated to Model2.
 func (m *Model2) SaveState() error {
 	path, err := DefaultPath()
@@ -71,5 +71,6 @@ func (m *Model2) SaveState() error {
 		Volume: new(appState.Volume), QueueMode: QueueModeString(appState.QueueMode),
 		Playlist: tracks, Playing: appState.Playing, Cursor: appState.Cursor,
 	}
+	saved.Lyrics.FollowLine = m.lyrics.FollowLine()
 	return Save(path, saved)
 }

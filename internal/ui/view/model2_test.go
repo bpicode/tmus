@@ -31,7 +31,7 @@ func TestModel2Navigation(t *testing.T) {
 		text string
 	}{
 		{name: "next", key: tea.KeyPressMsg{Code: tea.KeyTab}, id: "track", text: "No track selected."},
-		{name: "previous wraps", key: tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}, id: "help", text: "Help content will be added next."},
+		{name: "previous wraps", key: tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}, id: "help", text: "tmus keybindings"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -76,6 +76,35 @@ func TestModel2Quits(t *testing.T) {
 			require.NoError(t, app.Dispatch(core.Command{Type: core.CmdSetVolume, Volume: 37}), "the runner owns app shutdown")
 		})
 	}
+}
+
+func TestModel2Help(t *testing.T) {
+	m, _ := newModel2Test(t)
+	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
+	_, _ = m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
+	assert.Contains(t, m.View().Content, "tmus keybindings")
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnd})
+	assert.Contains(t, m.View().Content, "esc to close")
+	assert.NotContains(t, m.View().Content, "tmus keybindings")
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyHome})
+	assert.Contains(t, m.View().Content, "tmus keybindings")
+	for _, size := range []tea.WindowSizeMsg{{Width: 70, Height: 18}, {Width: 90, Height: 30}} {
+		_, _ = m.Update(size)
+		content := m.View().Content
+		assert.Equal(t, size.Width, lipgloss.Width(content))
+		assert.Equal(t, size.Height, lipgloss.Height(content))
+		assert.Contains(t, content, "tmus keybindings")
+	}
+	for _, close := range []tea.KeyPressMsg{{Code: tea.KeyEscape}, {Code: '?', Text: "?"}} {
+		_, _ = m.Update(close)
+		assert.Contains(t, m.View().Content, "Search: /")
+		assert.NotContains(t, m.View().Content, "tmus keybindings")
+		_, _ = m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
+		assert.Contains(t, m.View().Content, "tmus keybindings")
+	}
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
+	require.NotNil(t, cmd)
+	assert.IsType(t, tea.QuitMsg{}, cmd())
 }
 
 func newModel2Test(t *testing.T, files ...string) (*view.Model2, *core.App) {

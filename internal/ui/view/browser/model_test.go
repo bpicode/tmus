@@ -19,8 +19,8 @@ func TestWindowSizeUpdatesListLayout(t *testing.T) {
 	const height = 10
 	_, _, _ = m.Update(tea.WindowSizeMsg{Width: width, Height: height})
 
-	innerWidth := width - m.styles.panelUnfocused.GetHorizontalFrameSize()
-	innerHeight := height - m.styles.panelUnfocused.GetVerticalFrameSize()
+	innerWidth := width - m.styles.panel.GetHorizontalFrameSize()
+	innerHeight := height - m.styles.panel.GetVerticalFrameSize()
 	assert.Equal(t, innerWidth, m.layout.innerWidth)
 	assert.Equal(t, innerHeight-headerHeight, m.layout.bodyHeight)
 	assert.Equal(t, m.layout.innerWidth, m.list.Width())
@@ -68,7 +68,7 @@ func TestLoadingEntriesSettlesPagination(t *testing.T) {
 	m := NewModel(Config{Cwd: dir})
 	_, _, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 
-	for i := range 19 {
+	for i := range 30 {
 		path := filepath.Join(dir, fmt.Sprintf("track-%02d.mp3", i))
 		require.NoError(t, os.WriteFile(path, nil, 0o600))
 		entry, err := m.lib.EntryFromPath(path)

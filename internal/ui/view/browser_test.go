@@ -48,7 +48,7 @@ func startBrowserModelTest(t *testing.T, m tea.Model, app *core.App, entries ...
 	tui := &tuiTest{t: t, appRef: app, tm: tm}
 	tui.waitForOutput("Search: /")
 	tm.Type("b")
-	tui.waitForOutput(append([]string{"Files"}, entries...)...)
+	tui.waitForOutput(append([]string{"Search: /"}, entries...)...)
 	return tui
 }
 
@@ -80,7 +80,7 @@ func TestModelBrowserStartingDirectory(t *testing.T) {
 			for _, size := range []tea.WindowSizeMsg{{Width: 80, Height: 24}, {Width: 60, Height: 12}} {
 				_, _ = m.Update(size)
 				content := m.View().Content
-				assert.Contains(t, content, "Files")
+				assert.Contains(t, content, "Search: /")
 				assert.Equal(t, size.Width, lipgloss.Width(content))
 				assert.Equal(t, size.Height, lipgloss.Height(content))
 			}
@@ -163,6 +163,48 @@ func TestModelBrowserNavigatesAndSavesDirectory(t *testing.T) {
 	assert.Equal(t, album, saved.Browser.Cwd)
 }
 
+func TestModelBrowserEscape(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		search bool
+		apply  bool
+	}{
+		{name: "without search"},
+		{name: "editing search", search: true},
+		{name: "applied search", search: true, apply: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			for _, name := range []string{"quiet.mp3", "other.mp3"} {
+				require.NoError(t, os.WriteFile(filepath.Join(dir, name), nil, 0o600))
+			}
+			m, app := newBrowserModelTest(t, dir, view.State{})
+			observed := &observedModel{Model: m}
+			tui := startBrowserModelTest(t, observed, app, "quiet.mp3", "other.mp3")
+			if tt.search {
+				tui.tm.Type("/q")
+				observed.waitForView(t, func(content string) bool {
+					return strings.Contains(content, "Search: q") && strings.Contains(content, "quiet.mp3") && !strings.Contains(content, "other.mp3")
+				})
+				if tt.apply {
+					tui.tm.Send(tea.KeyPressMsg{Code: tea.KeyEnter})
+				}
+				// The first Escape cancels or clears search, keeping Browser active.
+				tui.tm.Send(tea.KeyPressMsg{Code: tea.KeyEscape})
+				observed.waitForView(t, func(content string) bool {
+					return strings.Contains(content, dir) && strings.Contains(content, "Search: /") && strings.Contains(content, "quiet.mp3") && strings.Contains(content, "other.mp3")
+				})
+			}
+			tui.tm.Send(tea.KeyPressMsg{Code: tea.KeyEscape})
+			observed.waitForView(t, func(content string) bool {
+				return strings.Contains(content, "(empty)") && !strings.Contains(content, dir)
+			})
+			tui.tm.Type("q")
+			tui.waitFinished()
+		})
+	}
+}
+
 func TestModelBrowserAndPlaylistSearchesStaySeparate(t *testing.T) {
 	dir := t.TempDir()
 	for _, name := range []string{"quiet.mp3", "other.mp3"} {
@@ -192,7 +234,7 @@ func TestModelBrowserAndPlaylistSearchesStaySeparate(t *testing.T) {
 		tui.tm.Send(tea.KeyPressMsg{Code: tea.KeyTab})
 	}
 	observed.waitForView(t, func(content string) bool {
-		return strings.Contains(content, "Files") && strings.Contains(content, "Search: q") && strings.Contains(content, "quiet.mp3") && !strings.Contains(content, "other.mp3")
+		return strings.Contains(content, dir) && strings.Contains(content, "Search: q") && strings.Contains(content, "quiet.mp3") && !strings.Contains(content, "other.mp3")
 	})
 	tui.tm.Type("A")
 	state = tui.waitForState(func(state core.State) bool { return len(state.Playlist) == 3 })

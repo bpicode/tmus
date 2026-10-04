@@ -16,7 +16,8 @@ import (
 	"github.com/bpicode/tmus/internal/ui/theme"
 )
 
-const headerHeight = 4
+// The header contains the directory, search field, and separator.
+const headerHeight = 3
 
 type Model struct {
 	Cwd        string
@@ -159,12 +160,6 @@ func (m *Model) Init() tea.Cmd {
 
 func (m *Model) View() string {
 	var sb strings.Builder
-	title := m.styles.titleUnfocused
-	if m.focus {
-		title = m.styles.titleFocused
-	}
-	sb.WriteString(title.Render("📂 Files"))
-	sb.WriteString("\n")
 	sb.WriteString(m.styles.cwd.MaxWidth(m.layout.innerWidth).Render(sanitize.TerminalText(m.Cwd)))
 	sb.WriteString("\n")
 	sb.WriteString(m.searchView())
@@ -188,7 +183,7 @@ func (m *Model) View() string {
 
 	// Bubble List can exceed very small requested heights because its content
 	// and paginator have a minimum footprint. Keep the child inside the body
-	// allocated by updateLayout so it cannot push the panel border off-screen.
+	// allocated by updateLayout so it stays inside the tab content area.
 	bodyLines := strings.Split(m.list.View(), "\n")
 	bodyLines = bodyLines[:min(len(bodyLines), m.layout.bodyHeight)]
 	sb.WriteString(strings.Join(bodyLines, "\n"))
@@ -197,14 +192,7 @@ func (m *Model) View() string {
 }
 
 func (m *Model) renderPanel(content string) string {
-	return m.panelStyle().Width(m.width).Height(m.height).Render(content)
-}
-
-func (m *Model) panelStyle() lipgloss.Style {
-	if m.focus {
-		return m.styles.panelFocused
-	}
-	return m.styles.panelUnfocused
+	return m.styles.panel.Width(m.width).Height(m.height).Render(content)
 }
 
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
@@ -238,9 +226,8 @@ func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 }
 
 func (m *Model) updateLayout() {
-	panelStyle := m.panelStyle()
-	innerWidth := max(0, m.width-panelStyle.GetHorizontalFrameSize())
-	innerHeight := max(0, m.height-panelStyle.GetVerticalFrameSize())
+	innerWidth := max(0, m.width-m.styles.panel.GetHorizontalFrameSize())
+	innerHeight := max(0, m.height-m.styles.panel.GetVerticalFrameSize())
 	bodyHeight := max(0, innerHeight-headerHeight)
 
 	// Pagination visibility consumes height and depends on the page count that
@@ -348,6 +335,10 @@ func (m *Model) visibleEntries() []library.Entry {
 
 func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 	if !m.show || !m.focus {
+		return nil, false
+	}
+	// Leave Escape to the parent when there is no applied filter to clear.
+	if msg.String() == "esc" && !m.list.IsFiltered() {
 		return nil, false
 	}
 	switch msg.String() {

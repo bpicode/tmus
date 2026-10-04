@@ -95,7 +95,7 @@ var keybindings = content{
 				},
 				{
 					key1:     "esc",
-					helpText: "return to Playlist from Track, Lyrics or Help",
+					helpText: "return to Playlist from other tabs",
 				},
 			},
 		},

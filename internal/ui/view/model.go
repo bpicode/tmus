@@ -40,7 +40,7 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 		{ID: "playlist", Label: "Playlist"},
 		{ID: "track", Label: "Track"},
 		{ID: "lyrics", Label: "Lyrics"},
-		{ID: "browser", Label: "Browser"},
+		{ID: "browser", Label: "📂 Browser"},
 		{ID: "help", Label: "❓ Help"},
 	}, tabs.WithStyles(tabStyles))
 	if err != nil {
@@ -148,6 +148,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			}
 			cmds = append(cmds, cmd)
+		}
+		if msg.String() == "esc" && m.tabs.ActiveID() == "browser" {
+			_ = m.tabs.Select("playlist")
+			return m, m.updateActiveTab()
 		}
 		if msg.String() == "b" {
 			switch m.tabs.ActiveID() {

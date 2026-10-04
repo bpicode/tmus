@@ -7,8 +7,6 @@ import (
 )
 
 type styles struct {
-	titleUnfocused lipgloss.Style
-	titleFocused   lipgloss.Style
 	separator      lipgloss.Style
 	cwd            truncate.Left
 	dir            lipgloss.Style
@@ -18,14 +16,11 @@ type styles struct {
 	searchInactive lipgloss.Style
 	searchActive   lipgloss.Style
 	err            lipgloss.Style
-	panelFocused   lipgloss.Style
-	panelUnfocused lipgloss.Style
+	panel          lipgloss.Style
 }
 
 func newStyles(th theme.Theme) styles {
 	return styles{
-		titleUnfocused: lipgloss.NewStyle().Bold(true).Foreground(th.Secondary),
-		titleFocused:   lipgloss.NewStyle().Bold(true).Foreground(th.Primary),
 		separator:      lipgloss.NewStyle().Foreground(th.Muted),
 		cwd:            truncate.Left{Style: lipgloss.NewStyle().Foreground(th.Muted)},
 		dir:            lipgloss.NewStyle().Foreground(th.Primary),
@@ -35,7 +30,6 @@ func newStyles(th theme.Theme) styles {
 		searchInactive: lipgloss.NewStyle().Foreground(th.Muted),
 		searchActive:   lipgloss.NewStyle().Bold(true).Foreground(th.Secondary),
 		err:            lipgloss.NewStyle().Foreground(th.Danger),
-		panelFocused:   lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(th.Primary).Padding(0, 1),
-		panelUnfocused: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(th.Muted).Padding(0, 1),
+		panel:          lipgloss.NewStyle().Padding(0, 1),
 	}
 }

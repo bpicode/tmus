@@ -60,7 +60,7 @@ func TestModelResizesFrame(t *testing.T) {
 		v := m.View()
 		assert.Equal(t, size.Width, lipgloss.Width(v.Content))
 		assert.Equal(t, size.Height, lipgloss.Height(v.Content))
-		assert.Contains(t, ansi.Strip(v.Content), "│ Playlist │ Track │ Lyrics │ Browser │ ❓ Help │")
+		assert.Contains(t, ansi.Strip(v.Content), "│ Playlist │ Track │ Lyrics │ 📂 Browser │ ❓ Help │")
 		assert.True(t, v.AltScreen)
 		assert.Equal(t, th.Foreground, v.ForegroundColor)
 		assert.Equal(t, th.Background, v.BackgroundColor)

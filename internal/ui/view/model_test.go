@@ -54,13 +54,13 @@ func TestModelNavigation(t *testing.T) {
 func TestModelResizesFrame(t *testing.T) {
 	th := theme.Resolve(config.Default().TUI.Theme)
 	m, _ := newModelTest(t)
-	for _, size := range []tea.WindowSizeMsg{{Width: 80, Height: 24}, {Width: 60, Height: 12}} {
+	for _, size := range []tea.WindowSizeMsg{{Width: 80, Height: 24}, {Width: 64, Height: 12}} {
 		_, cmd := m.Update(size)
 		assert.Nil(t, cmd)
 		v := m.View()
 		assert.Equal(t, size.Width, lipgloss.Width(v.Content))
 		assert.Equal(t, size.Height, lipgloss.Height(v.Content))
-		assert.Contains(t, ansi.Strip(v.Content), "│ Playlist │ 🎵 Track │ 📜 Lyrics │ 📂 Browser │ ❓ Help │")
+		assert.Contains(t, ansi.Strip(v.Content), "│ 🎧 Playlist │ 🎵 Track │ 📜 Lyrics │ 📂 Browser │ ❓ Help │")
 		assert.True(t, v.AltScreen)
 		assert.Equal(t, th.Foreground, v.ForegroundColor)
 		assert.Equal(t, th.Background, v.BackgroundColor)

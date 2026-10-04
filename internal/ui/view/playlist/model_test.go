@@ -38,9 +38,9 @@ func TestWindowSizeUpdatesChildLayout(t *testing.T) {
 	const height = 10
 	_, _, _ = m.Update(tea.WindowSizeMsg{Width: width, Height: height})
 
-	innerHeight := height - m.styles.panelUnfocused.GetVerticalFrameSize()
+	innerHeight := height - m.styles.panel.GetVerticalFrameSize()
 	headerHeight := len(m.headerLines(m.app.State(), m.layout.innerWidth))
-	assert.Equal(t, width-m.styles.panelUnfocused.GetHorizontalFrameSize(), m.layout.innerWidth)
+	assert.Equal(t, width-m.styles.panel.GetHorizontalFrameSize(), m.layout.innerWidth)
 	assert.Equal(t, innerHeight, headerHeight+m.layout.bodyHeight+m.layout.footerHeight)
 	assert.Equal(t, m.layout.innerWidth, m.list.Width())
 	assert.Equal(t, m.layout.bodyHeight, m.list.Height())

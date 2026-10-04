@@ -48,7 +48,7 @@ func startBrowserModelTest(t *testing.T, m tea.Model, app *core.App, entries ...
 	tui := &tuiTest{t: t, appRef: app, tm: tm}
 	tui.waitForOutput("Search: /")
 	tm.Type("b")
-	tui.waitForOutput(append([]string{"Search: /"}, entries...)...)
+	tui.waitForOutput(entries...)
 	return tui
 }
 
@@ -77,7 +77,7 @@ func TestModelBrowserStartingDirectory(t *testing.T) {
 			for range 3 {
 				_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 			}
-			for _, size := range []tea.WindowSizeMsg{{Width: 80, Height: 24}, {Width: 60, Height: 12}} {
+			for _, size := range []tea.WindowSizeMsg{{Width: 80, Height: 24}, {Width: 64, Height: 12}} {
 				_, _ = m.Update(size)
 				content := m.View().Content
 				assert.Contains(t, content, "Search: /")

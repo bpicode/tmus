@@ -37,7 +37,7 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 	tabStyles.InactiveTab = lipgloss.NewStyle().Foreground(th.Muted)
 	tabStyles.Border = tabStyles.Border.BorderForeground(th.Primary)
 	tabModel, err := tabs.New([]tabs.Tab{
-		{ID: "playlist", Label: "Playlist"},
+		{ID: "playlist", Label: "🎧 Playlist"},
 		{ID: "track", Label: "🎵 Track"},
 		{ID: "lyrics", Label: "📜 Lyrics"},
 		{ID: "browser", Label: "📂 Browser"},

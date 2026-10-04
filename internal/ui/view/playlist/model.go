@@ -124,9 +124,8 @@ func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 }
 
 func (m *Model) updateLayout() {
-	panelStyle := m.panelStyle()
-	innerWidth := max(0, m.width-panelStyle.GetHorizontalFrameSize())
-	innerHeight := max(0, m.height-panelStyle.GetVerticalFrameSize())
+	innerWidth := max(0, m.width-m.styles.panel.GetHorizontalFrameSize())
+	innerHeight := max(0, m.height-m.styles.panel.GetVerticalFrameSize())
 
 	headerHeight := len(m.headerLines(m.app.State(), innerWidth))
 	remainingHeight := max(0, innerHeight-headerHeight)
@@ -238,14 +237,7 @@ func (m *Model) View() string {
 		lines = append(lines, strings.Split(m.footer.View(), "\n")...)
 	}
 
-	return m.panelStyle().Width(m.width).Height(m.height).Render(strings.Join(lines, "\n"))
-}
-
-func (m *Model) panelStyle() lipgloss.Style {
-	if m.focus {
-		return m.styles.panelFocused
-	}
-	return m.styles.panelUnfocused
+	return m.styles.panel.Width(m.width).Height(m.height).Render(strings.Join(lines, "\n"))
 }
 
 func (m *Model) headerLines(state core.State, width int) []string {

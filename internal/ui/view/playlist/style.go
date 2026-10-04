@@ -21,8 +21,7 @@ type styles struct {
 	statusPause     lipgloss.Style
 	statusStop      lipgloss.Style
 	separator       lipgloss.Style
-	panelFocused    lipgloss.Style
-	panelUnfocused  lipgloss.Style
+	panel           lipgloss.Style
 }
 
 func newStyles(th theme.Theme) styles {
@@ -41,8 +40,7 @@ func newStyles(th theme.Theme) styles {
 		statusPause:     lipgloss.NewStyle().Foreground(th.Warning),
 		statusStop:      lipgloss.NewStyle().Foreground(th.Danger),
 		separator:       lipgloss.NewStyle().Foreground(th.Muted),
-		panelFocused:    lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(th.Primary).Padding(0, 1),
-		panelUnfocused:  lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(th.Muted).Padding(0, 1),
+		panel:           lipgloss.NewStyle().Padding(0, 1),
 	}
 }
 

@@ -13,7 +13,6 @@ import (
 
 // State captures UI-related state persisted across runs.
 type State struct {
-	Focus   string  `toml:"focus"`
 	Browser Browser `toml:"browser"`
 	Player  Player  `toml:"player"`
 	Lyrics  Lyrics  `toml:"lyrics"`
@@ -21,8 +20,7 @@ type State struct {
 
 // Browser captures persisted state for the file browser.
 type Browser struct {
-	Hidden bool   `toml:"hidden"`
-	Cwd    string `toml:"cwd"`
+	Cwd string `toml:"cwd"`
 }
 
 // Player captures persisted state for the player.

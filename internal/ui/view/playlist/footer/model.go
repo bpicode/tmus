@@ -7,9 +7,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/ui/theme"
-	"github.com/bpicode/tmus/internal/ui/view/home/playlist/spectrum"
-	"github.com/bpicode/tmus/internal/ui/view/home/playlist/status"
-	"github.com/bpicode/tmus/internal/ui/view/home/playlist/volume"
+	"github.com/bpicode/tmus/internal/ui/view/playlist/spectrum"
+	"github.com/bpicode/tmus/internal/ui/view/playlist/status"
+	"github.com/bpicode/tmus/internal/ui/view/playlist/volume"
 )
 
 const (

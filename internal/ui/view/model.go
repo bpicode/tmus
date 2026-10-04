@@ -1,183 +1,280 @@
 package view
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
-
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
-	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/config"
+	"github.com/bpicode/tmus/internal/ui/components/tabs"
 	"github.com/bpicode/tmus/internal/ui/theme"
+	"github.com/bpicode/tmus/internal/ui/view/browser"
 	"github.com/bpicode/tmus/internal/ui/view/help"
-	"github.com/bpicode/tmus/internal/ui/view/home"
-	"github.com/bpicode/tmus/internal/ui/view/home/playlist"
 	"github.com/bpicode/tmus/internal/ui/view/lyrics"
+	"github.com/bpicode/tmus/internal/ui/view/playlist"
 	"github.com/bpicode/tmus/internal/ui/view/track_info"
 )
 
+// Model is the tabbed player UI.
 type Model struct {
 	app       *core.App
-	lib       *library.Library
-	home      *home.Model
-	help      *help.Model
+	playlist  *playlist.Model
 	trackInfo *track_info.Model
 	lyrics    *lyrics.Model
+	browser   *browser.Model
+	help      *help.Model
+	tabs      tabs.Model
 	events    eventChannels
 	width     int
-	height    int
 	styles    styles
 }
 
-type eventChannels struct {
-	state         <-chan core.StateEvent
-	unsubState    func()
-	metadata      <-chan core.MetadataEvent
-	unsubMetadata func()
-	lyrics        <-chan core.LyricsEvent
-	unsubLyrics   func()
-}
-
-func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.TUIConfig, th theme.Theme) *Model {
-	st, err := loadState()
+// NewModel creates the tabbed player. It restores
+// saved state, uses startDir when supplied, and opens supplied audio files.
+func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.TUIConfig, th theme.Theme) (*Model, error) {
+	tabStyles := tabs.DefaultStyles()
+	tabStyles.ActiveTab = lipgloss.NewStyle().Bold(true).Foreground(th.Primary)
+	tabStyles.InactiveTab = lipgloss.NewStyle().Foreground(th.Muted)
+	tabStyles.Border = tabStyles.Border.BorderForeground(th.Primary)
+	tabModel, err := tabs.New([]tabs.Tab{
+		{ID: "playlist", Label: "Playlist"},
+		{ID: "track", Label: "Track"},
+		{ID: "lyrics", Label: "Lyrics"},
+		{ID: "browser", Label: "Browser"},
+		{ID: "help", Label: "Help"},
+	}, tabs.WithStyles(tabStyles))
 	if err != nil {
-		st = State{}
+		return nil, err
 	}
-	lib := appRef.Library()
-
-	cwd := startDir
-	if cwd == "" && st.Browser.Cwd != "" {
-		cwd = st.Browser.Cwd
+	tabModel.Focus()
+	saved, err := loadState()
+	if err != nil {
+		saved = State{}
 	}
-	if cwd == "" {
-		if wd, err := os.Getwd(); err == nil {
-			cwd = wd
-		}
-	}
-	if entry, err := lib.EntryFromPath(cwd); err == nil {
-		if filesystemPath, ok := entry.FilesystemPath(); ok && filesystemPath == cwd {
-			if abs, err := filepath.Abs(cwd); err == nil {
-				cwd = abs
-			}
-			if resolved, err := filepath.EvalSymlinks(cwd); err == nil {
-				cwd = resolved
-			}
-		}
-	}
-
 	m := &Model{
-		app:       appRef,
-		lib:       lib,
-		home:      home.NewModel(home.Config{Cwd: cwd, HomeDir: cfg.BrowserHome, Theme: th, App: appRef, Library: lib, FPS: cfg.FPS}),
-		help:      help.NewModel(th),
-		trackInfo: track_info.NewModel(track_info.Config{Theme: th, ArtworkAspect: cfg.ArtworkAspect, ArtworkRenderer: cfg.ArtworkRenderer, App: appRef}),
-		lyrics:    lyrics.NewModel(lyrics.Config{Theme: th, App: appRef, FollowLine: st.Lyrics.FollowLine}),
-		styles:    newStyles(th),
+		app: appRef, tabs: tabModel, styles: newStyles(th),
+		playlist: playlist.NewModel(playlist.Config{Theme: th, App: appRef, FPS: cfg.FPS}),
+		trackInfo: track_info.NewModel(track_info.Config{
+			Theme: th, App: appRef, ArtworkAspect: cfg.ArtworkAspect, ArtworkRenderer: cfg.ArtworkRenderer,
+		}),
+		lyrics: lyrics.NewModel(lyrics.Config{Theme: th, App: appRef, FollowLine: saved.Lyrics.FollowLine}),
+		browser: browser.NewModel(browser.Config{
+			Cwd:     initialBrowserDir(appRef.Library(), startDir, saved.Browser.Cwd),
+			HomeDir: cfg.BrowserHome, Theme: th, App: appRef, Library: appRef.Library(),
+		}),
+		help: help.NewModel(th),
 	}
-	m.restore(st)
+	m.restorePlayer(saved.Player)
 	m.openFiles(openFiles)
-
-	return m
+	m.playlist.Show(true)
+	m.playlist.Focus(true)
+	return m, nil
 }
 
+// Init subscribes to app events and initializes the tab content.
 func (m *Model) Init() tea.Cmd {
 	m.events.state, m.events.unsubState = m.app.SubscribeStateEvents()
 	m.events.metadata, m.events.unsubMetadata = m.app.SubscribeMetadataEvents()
 	m.events.lyrics, m.events.unsubLyrics = m.app.SubscribeLyricsEvents()
-	m.home.Show(true)
-	return tea.Batch(
-		m.help.Init(),
-		m.trackInfo.Init(),
-		m.lyrics.Init(),
-		m.home.Init(),
-		m.listenForStateEvent(),
-		m.listenForMetadataEvent(),
-		m.listenForLyricsEvent(),
-		tickCmd(), // UI updates every second to keep things like elapsed time or lyrics updated.
-	)
+	return tea.Batch(m.tabs.Init(), playlistCmd(m.playlist.Init()), m.trackInfo.Init(), m.lyrics.Init(),
+		browserCmd(m.browser.Init()), m.help.Init(),
+		m.listenForStateEvent(), m.listenForMetadataEvent(), m.listenForLyricsEvent(), tickCmd())
 }
 
+// Update routes keyboard input to the active tab and background messages to
+// the content models.
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
-	var cmdSub tea.Cmd
-	var stop bool
-
-	m.help, cmdSub, stop = m.help.Update(msg)
-	if stop {
-		return m, cmdSub
-	}
-	cmds = append(cmds, cmdSub)
-
-	m.lyrics, cmdSub, stop = m.lyrics.Update(msg)
-	if stop {
-		return m, cmdSub
-	}
-	cmds = append(cmds, cmdSub)
-
-	m.trackInfo, cmdSub, stop = m.trackInfo.Update(msg)
-	if stop {
-		return m, cmdSub
-	}
-	cmds = append(cmds, cmdSub)
-
-	m.home, cmdSub, stop = m.home.Update(msg)
-	if stop {
-		return m, cmdSub
-	}
-	cmds = append(cmds, cmdSub)
-
 	switch msg := msg.(type) {
+	case browserMsg:
+		if batch, ok := msg.msg.(tea.BatchMsg); ok {
+			return m, childBatch(batch, browserCmd)
+		}
+		var cmd tea.Cmd
+		m.browser, cmd, _ = m.browser.Update(msg.msg)
+		return m, browserCmd(cmd)
+	case playlistMsg:
+		switch reply := msg.msg.(type) {
+		case tea.BatchMsg:
+			return m, childBatch(reply, playlistCmd)
+		case playlist.ToggleTrackInfoMsg, playlist.ToggleLyricsMsg:
+			return m.Update(reply)
+		}
+		var cmd tea.Cmd
+		m.playlist, cmd, _ = m.playlist.Update(msg.msg)
+		return m, playlistCmd(cmd)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
-		m.height = msg.Height
+		m.tabs.SetSize(msg.Width, msg.Height)
+		width, height := m.tabs.ContentSize()
+		size := tea.WindowSizeMsg{Width: width, Height: height}
+		var cmd tea.Cmd
+		m.playlist, cmd, _ = m.playlist.Update(size)
+		cmds = append(cmds, playlistCmd(cmd))
+		m.trackInfo, cmd, _ = m.trackInfo.Update(size)
+		cmds = append(cmds, cmd)
+		m.lyrics, cmd, _ = m.lyrics.Update(size)
+		cmds = append(cmds, cmd)
+		m.browser, cmd, _ = m.browser.Update(size)
+		cmds = append(cmds, browserCmd(cmd))
+		m.help, cmd, _ = m.help.Update(size)
+		return m, tea.Batch(append(cmds, cmd)...)
 	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "q", "ctrl+c":
-			cmds = append(cmds, tea.Sequence(m.Shutdown(), tea.Quit))
+		if msg.String() == "ctrl+c" {
+			m.lyrics.Shutdown()
+			return m, tea.Sequence(m.trackInfo.Show(false), tea.Quit)
 		}
-		switch msg.Key().Text {
-		case "?":
-			if !m.trackInfo.Visible() && !m.lyrics.Visible() {
-				m.help.Show(true)
+		if key.Matches(msg, m.tabs.KeyMap.Next, m.tabs.KeyMap.Previous) {
+			var cmd tea.Cmd
+			m.tabs, cmd = m.tabs.Update(msg)
+			return m, tea.Batch(cmd, m.updateActiveTab())
+		}
+		if m.tabs.ActiveID() == "playlist" {
+			var cmd tea.Cmd
+			var stop bool
+			m.playlist, cmd, stop = m.playlist.Update(msg)
+			cmd = playlistCmd(cmd)
+			if stop {
+				return m, cmd
+			}
+			cmds = append(cmds, cmd)
+		}
+		if m.tabs.ActiveID() == "browser" {
+			var cmd tea.Cmd
+			var stop bool
+			m.browser, cmd, stop = m.browser.Update(msg)
+			cmd = browserCmd(cmd)
+			if stop {
+				return m, cmd
+			}
+			cmds = append(cmds, cmd)
+		}
+		if msg.String() == "b" {
+			switch m.tabs.ActiveID() {
+			case "playlist":
+				_ = m.tabs.Select("browser")
+				return m, m.updateActiveTab()
+			case "browser":
+				_ = m.tabs.Select("playlist")
+				return m, m.updateActiveTab()
 			}
 		}
+		if msg.String() == "q" {
+			m.lyrics.Shutdown()
+			return m, tea.Sequence(m.trackInfo.Show(false), tea.Quit)
+		}
+		if msg.String() == "?" {
+			tab := "help"
+			if m.tabs.ActiveID() == "help" {
+				tab = "playlist"
+			}
+			_ = m.tabs.Select(tab)
+			return m, m.updateActiveTab()
+		}
+		if m.tabs.ActiveID() == "track" {
+			if msg.String() == "esc" || msg.String() == "i" {
+				_ = m.tabs.Select("playlist")
+				return m, m.updateActiveTab()
+			}
+			var cmd tea.Cmd
+			m.trackInfo, cmd, _ = m.trackInfo.Update(msg)
+			cmds = append(cmds, cmd)
+		}
+		if m.tabs.ActiveID() == "lyrics" {
+			if msg.String() == "esc" || msg.String() == "L" {
+				_ = m.tabs.Select("playlist")
+				return m, m.updateActiveTab()
+			}
+			var cmd tea.Cmd
+			m.lyrics, cmd, _ = m.lyrics.Update(msg)
+			cmds = append(cmds, cmd)
+		}
+		if m.tabs.ActiveID() == "help" {
+			if msg.String() == "esc" {
+				_ = m.tabs.Select("playlist")
+				return m, m.updateActiveTab()
+			}
+			var cmd tea.Cmd
+			m.help, cmd, _ = m.help.Update(msg)
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
 	case core.StateEvent:
 		cmds = append(cmds, m.listenForStateEvent())
+		if m.tabs.ActiveID() == "track" {
+			cmds = append(cmds, m.trackInfo.Show(true))
+		}
+		if m.tabs.ActiveID() == "lyrics" {
+			hasTracks := len(m.app.State().Playlist) > 0
+			if !hasTracks || !m.lyrics.Visible() {
+				m.lyrics.Show(hasTracks)
+			}
+		}
 	case core.MetadataEvent:
 		cmds = append(cmds, m.listenForMetadataEvent())
 	case core.LyricsEvent:
 		cmds = append(cmds, m.listenForLyricsEvent())
-	case playlist.ToggleLyricsMsg:
-		if !m.trackInfo.Visible() && !m.help.Visible() {
-			m.lyrics.Show(true)
-		}
-	case playlist.ToggleTrackInfoMsg:
-		if !m.lyrics.Visible() && !m.help.Visible() {
-			cmds = append(cmds, m.trackInfo.Show(true))
-		}
 	case tickMsg:
 		cmds = append(cmds, tickCmd())
+	case playlist.ToggleTrackInfoMsg:
+		_ = m.tabs.Select("track")
+		cmds = append(cmds, m.updateActiveTab())
+	case playlist.ToggleLyricsMsg:
+		_ = m.tabs.Select("lyrics")
+		cmds = append(cmds, m.updateActiveTab())
 	}
-
+	var cmd tea.Cmd
+	m.playlist, cmd, _ = m.playlist.Update(msg)
+	cmds = append(cmds, playlistCmd(cmd))
+	m.trackInfo, cmd, _ = m.trackInfo.Update(msg)
+	cmds = append(cmds, cmd)
+	m.lyrics, cmd, _ = m.lyrics.Update(msg)
+	cmds = append(cmds, cmd)
+	m.browser, cmd, _ = m.browser.Update(msg)
+	cmds = append(cmds, browserCmd(cmd))
+	m.help, cmd, _ = m.help.Update(msg)
+	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
 
-func (m *Model) View() tea.View {
-	content := ""
-	if m.width == 0 {
-		content = "loading..."
-	} else if m.help.Visible() {
-		content = m.help.View()
-	} else if m.trackInfo.Visible() {
-		content = m.trackInfo.View()
-	} else if m.lyrics.Visible() {
-		content = m.lyrics.View()
-	} else {
-		content = m.home.View()
-	}
+func (m *Model) updateActiveTab() tea.Cmd {
+	active := m.tabs.ActiveID() == "playlist"
+	m.playlist.Show(active)
+	m.playlist.Focus(active)
+	active = m.tabs.ActiveID() == "browser"
+	m.browser.Show(active)
+	m.browser.Focus(active)
+	m.lyrics.Show(m.tabs.ActiveID() == "lyrics")
+	m.help.Show(m.tabs.ActiveID() == "help")
+	return m.trackInfo.Show(m.tabs.ActiveID() == "track")
+}
 
+// View renders the tab frame and the selected tab's content.
+func (m *Model) View() tea.View {
+	content := "loading..."
+	if m.width > 0 {
+		active, _ := m.tabs.Active()
+		content = ""
+		switch active.ID {
+		case "playlist":
+			content = m.playlist.View()
+		case "track":
+			content = "No track selected."
+			if m.trackInfo.Visible() {
+				content = m.trackInfo.View()
+			}
+		case "lyrics":
+			content = "No track selected."
+			if m.lyrics.Visible() {
+				content = m.lyrics.View()
+			}
+		case "browser":
+			content = m.browser.View()
+		case "help":
+			content = m.help.View()
+		}
+		content = m.tabs.Render(content)
+	}
 	view := tea.NewView(content)
 	view.AltScreen = true
 	view.WindowTitle = "tmus"
@@ -186,125 +283,8 @@ func (m *Model) View() tea.View {
 	return view
 }
 
-func (m *Model) restore(s State) {
-	tracks := make([]core.Track, 0, len(s.Player.Playlist))
-	for _, entry := range s.Player.Playlist {
-		if entry.Path == "" {
-			continue
-		}
-		name := entry.Name
-		if name == "" {
-			if libraryEntry, err := m.lib.EntryFromPath(entry.Path); err == nil {
-				name = libraryEntry.Name()
-			}
-		}
-		tracks = append(tracks, core.Track{
-			Name:     name,
-			Path:     entry.Path,
-			Artist:   entry.Artist,
-			Title:    entry.Title,
-			Album:    entry.Album,
-			Duration: entry.Duration,
-		})
-	}
-	cursor := s.Player.Cursor
-	if cursor < 0 || cursor >= len(tracks) {
-		cursor = s.Player.Playing
-	}
-	m.app.Restore(tracks, cursor, ParseQueueMode(s.Player.QueueMode))
-	volume := core.DefaultVolume
-	if s.Player.Volume != nil {
-		volume = *s.Player.Volume
-	}
-	m.app.SetVolume(volume)
-	m.home.ShowBrowser(!s.Browser.Hidden)
-	switch s.Focus {
-	case "playlist":
-		m.home.FocusPlaylist()
-	default:
-		m.home.FocusBrowser()
-	}
-	if s.Browser.Hidden {
-		m.home.FocusPlaylist()
-	}
-}
-
-func (m *Model) openFiles(openFiles []string) {
-	if len(openFiles) == 0 {
-		return
-	}
-	startIndex := len(m.app.State().Playlist)
-	tracks := make([]core.Track, 0, len(openFiles))
-	for _, file := range openFiles {
-		entry, err := m.lib.EntryFromPath(normalizeInputPath(file))
-		if err == nil && entry.IsAudio() {
-			tracks = append(tracks, core.Track{
-				Name: entry.Name(),
-				Path: entry.Path(),
-			})
-		}
-	}
-	if len(tracks) == 0 {
-		return
-	}
-	_ = m.app.Dispatch(core.Command{Type: core.CmdAddAll, Tracks: tracks})
-	_ = m.app.Dispatch(core.Command{Type: core.CmdSelectIndex, Index: startIndex})
-	_ = m.app.Dispatch(core.Command{Type: core.CmdPlayFromCursor})
-}
-
-func normalizeInputPath(value string) string {
-	if value == "" || strings.Contains(value, "://") {
-		return value
-	}
-	path := filepath.Clean(value)
-	if abs, err := filepath.Abs(path); err == nil {
-		return abs
-	}
-	return path
-}
-
-func (m *Model) SaveState() error {
-	statePath, err := DefaultPath()
-	if err != nil {
-		return err
-	}
-	appState := m.app.State()
-	tracks := make([]Track, 0, len(appState.Playlist))
-	for _, track := range appState.Playlist {
-		tracks = append(tracks, Track{
-			Path:     track.Path,
-			Name:     track.Name,
-			Artist:   track.Artist,
-			Title:    track.Title,
-			Album:    track.Album,
-			Duration: track.Duration,
-		})
-	}
-	focus := "browser"
-	if m.home.PlaylistFocused() {
-		focus = "playlist"
-	}
-	return Save(statePath, State{
-		Focus: focus,
-		Browser: Browser{
-			Cwd:    m.home.BrowserCwd(),
-			Hidden: m.home.BrowserHidden(),
-		},
-		Player: Player{
-			Volume:    new(appState.Volume),
-			QueueMode: QueueModeString(appState.QueueMode),
-			Playlist:  tracks,
-			Playing:   appState.Playing,
-			Cursor:    appState.Cursor,
-		},
-		Lyrics: Lyrics{
-			FollowLine: m.lyrics.FollowLine(),
-		},
-	})
-}
-
-func (m *Model) Shutdown() tea.Cmd {
-	cleanupCmd := m.trackInfo.Show(false)
+// Shutdown releases resources owned by the UI. The runner owns app shutdown.
+func (m *Model) Shutdown() {
 	m.lyrics.Shutdown()
 	if m.events.unsubState != nil {
 		m.events.unsubState()
@@ -318,18 +298,8 @@ func (m *Model) Shutdown() tea.Cmd {
 		m.events.unsubLyrics()
 		m.events.unsubLyrics = nil
 	}
-	m.app.Shutdown()
-	return cleanupCmd
 }
 
-// stateClosedMsg is returned when the state event channel is closed.
-// This prevents infinite loops in Bubble Tea's background goroutines
-// where it would otherwise continuously read zero-values from a closed channel.
-// It does not need to be handled explicitly.
-type stateClosedMsg struct{}
-
-// listenForStateEvent returns a tea.Cmd that listens for state events
-// without blocking the main Update loop.
 func (m *Model) listenForStateEvent() tea.Cmd {
 	return func() tea.Msg {
 		event, ok := <-m.events.state
@@ -340,14 +310,6 @@ func (m *Model) listenForStateEvent() tea.Cmd {
 	}
 }
 
-// metadataClosedMsg is returned when the metadata event channel is closed.
-// This prevents infinite loops in Bubble Tea's background goroutines
-// where it would otherwise continuously read zero-values from a closed channel.
-// It does not need to be handled explicitly.
-type metadataClosedMsg struct{}
-
-// listenForMetadataEvent returns a tea.Cmd that listens for metadata events
-// without blocking the main Update loop.
 func (m *Model) listenForMetadataEvent() tea.Cmd {
 	return func() tea.Msg {
 		event, ok := <-m.events.metadata
@@ -358,14 +320,6 @@ func (m *Model) listenForMetadataEvent() tea.Cmd {
 	}
 }
 
-// lyricsClosedMsg is returned when the lyrics event channel is closed.
-// This prevents infinite loops in Bubble Tea's background goroutines
-// where it would otherwise continuously read zero-values from a closed channel.
-// It does not need to be handled explicitly.
-type lyricsClosedMsg struct{}
-
-// listenForLyricsEvent returns a tea.Cmd that listens for lyrics events
-// without blocking the main Update loop.
 func (m *Model) listenForLyricsEvent() tea.Cmd {
 	return func() tea.Msg {
 		event, ok := <-m.events.lyrics
@@ -374,12 +328,4 @@ func (m *Model) listenForLyricsEvent() tea.Cmd {
 		}
 		return event
 	}
-}
-
-type tickMsg time.Time
-
-func tickCmd() tea.Cmd {
-	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
-		return tickMsg(t)
-	})
 }

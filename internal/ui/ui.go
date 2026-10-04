@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"fmt"
+
 	tea "charm.land/bubbletea/v2"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/config"
@@ -8,21 +10,18 @@ import (
 	"github.com/bpicode/tmus/internal/ui/view"
 )
 
-// Run starts the TUI program.
+// Run creates and starts the TUI, shuts down the player, and saves its state.
 func Run(appRef *core.App, startDir string, cfg config.TUIConfig, openFiles []string) error {
-	th := theme.Resolve(cfg.Theme)
-	m := view.NewModel(appRef, startDir, openFiles, cfg, th)
-	final, err := tea.NewProgram(
-		m,
-		tea.WithFPS(cfg.FPS),
-	).Run()
+	m, err := view.NewModel(appRef, startDir, openFiles, cfg, theme.Resolve(cfg.Theme))
+	if err != nil {
+		appRef.ShutdownAndWait()
+		return fmt.Errorf("create view: %w", err)
+	}
+	_, err = tea.NewProgram(m, tea.WithFPS(cfg.FPS)).Run()
+	m.Shutdown()
+	appRef.ShutdownAndWait()
 	if err != nil {
 		return err
 	}
-	if finalModel, ok := final.(*view.Model); ok {
-		if err := finalModel.SaveState(); err != nil {
-			return err
-		}
-	}
-	return nil
+	return m.SaveState()
 }

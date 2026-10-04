@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestModel2ReceivesLyricsEvents(t *testing.T) {
+func TestModelReceivesLyricsEvents(t *testing.T) {
 	dir := t.TempDir()
 	tracks := []core.Track{
 		{Path: filepath.Join(dir, "one.mp3"), Name: "First song"},
@@ -28,7 +28,7 @@ func TestModel2ReceivesLyricsEvents(t *testing.T) {
 	}
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "one.lrc"), []byte("[00:01.00]First sidecar line"), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "two.lrc"), []byte("[00:01.00]Second sidecar line"), 0o600))
-	m, app := newModel2Test(t)
+	m, app := newModelTest(t)
 	app.Restore(tracks, 0, core.QueueModeLinear)
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(80, 24))
 	t.Cleanup(func() {
@@ -49,13 +49,13 @@ func TestModel2ReceivesLyricsEvents(t *testing.T) {
 	tui.waitFinished()
 }
 
-func TestModel2LyricsKeys(t *testing.T) {
+func TestModelLyricsKeys(t *testing.T) {
 	for _, press := range []tea.KeyPressMsg{
 		{Code: tea.KeyEscape}, {Code: 'L', Text: "L"},
 		{Code: 'q', Text: "q"}, {Code: 'c', Mod: tea.ModCtrl},
 	} {
 		t.Run(press.String(), func(t *testing.T) {
-			m, app := newModel2Test(t)
+			m, app := newModelTest(t)
 			app.Restore([]core.Track{{Path: "/music/one.flac", Name: "One"}}, 0, core.QueueModeLinear)
 			_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 			_, cmd := m.Update(tea.KeyPressMsg{Code: 'L', Text: "L"})
@@ -74,8 +74,8 @@ func TestModel2LyricsKeys(t *testing.T) {
 	}
 }
 
-func TestModel2LyricsScrollAndFollowSetting(t *testing.T) {
-	m, app := newModel2Test(t)
+func TestModelLyricsScrollAndFollowSetting(t *testing.T) {
+	m, app := newModelTest(t)
 	app.Restore([]core.Track{{Path: "/music/one.flac", Name: "One"}}, 0, core.QueueModeLinear)
 	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
 	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
@@ -115,8 +115,8 @@ func TestModel2LyricsScrollAndFollowSetting(t *testing.T) {
 	assert.False(t, saved.Lyrics.FollowLine)
 }
 
-func TestModel2LyricsEmptyAndResize(t *testing.T) {
-	m, app := newModel2Test(t)
+func TestModelLyricsEmptyAndResize(t *testing.T) {
+	m, app := newModelTest(t)
 	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})

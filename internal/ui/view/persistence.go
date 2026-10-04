@@ -3,6 +3,7 @@ package view
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
@@ -29,9 +30,9 @@ func initialBrowserDir(lib *library.Library, startDir, savedDir string) string {
 	return cwd
 }
 
-func (m *Model2) restorePlayer() {
-	tracks := make([]core.Track, 0, len(m.saved.Player.Playlist))
-	for _, entry := range m.saved.Player.Playlist {
+func (m *Model) restorePlayer(saved Player) {
+	tracks := make([]core.Track, 0, len(saved.Playlist))
+	for _, entry := range saved.Playlist {
 		if entry.Path == "" {
 			continue
 		}
@@ -46,19 +47,19 @@ func (m *Model2) restorePlayer() {
 			Album: entry.Album, Duration: entry.Duration,
 		})
 	}
-	cursor := m.saved.Player.Cursor
+	cursor := saved.Cursor
 	if cursor < 0 || cursor >= len(tracks) {
-		cursor = m.saved.Player.Playing
+		cursor = saved.Playing
 	}
-	m.app.Restore(tracks, cursor, ParseQueueMode(m.saved.Player.QueueMode))
+	m.app.Restore(tracks, cursor, ParseQueueMode(saved.QueueMode))
 	volume := core.DefaultVolume
-	if m.saved.Player.Volume != nil {
-		volume = *m.saved.Player.Volume
+	if saved.Volume != nil {
+		volume = *saved.Volume
 	}
 	m.app.SetVolume(volume)
 }
 
-func (m *Model2) openFiles(files []string) {
+func (m *Model) openFiles(files []string) {
 	if len(files) == 0 {
 		return
 	}
@@ -79,8 +80,7 @@ func (m *Model2) openFiles(files []string) {
 }
 
 // SaveState persists the player, lyrics follow setting, and browser directory.
-// It retains the original layout's focus and browser visibility settings.
-func (m *Model2) SaveState() error {
+func (m *Model) SaveState() error {
 	path, err := DefaultPath()
 	if err != nil {
 		return err
@@ -93,12 +93,23 @@ func (m *Model2) SaveState() error {
 			Album: track.Album, Duration: track.Duration,
 		})
 	}
-	saved := m.saved
-	saved.Player = Player{
-		Volume: new(appState.Volume), QueueMode: QueueModeString(appState.QueueMode),
-		Playlist: tracks, Playing: appState.Playing, Cursor: appState.Cursor,
+	return Save(path, State{
+		Player: Player{
+			Volume: new(appState.Volume), QueueMode: QueueModeString(appState.QueueMode),
+			Playlist: tracks, Playing: appState.Playing, Cursor: appState.Cursor,
+		},
+		Lyrics:  Lyrics{FollowLine: m.lyrics.FollowLine()},
+		Browser: Browser{Cwd: m.browser.Cwd},
+	})
+}
+
+func normalizeInputPath(value string) string {
+	if value == "" || strings.Contains(value, "://") {
+		return value
 	}
-	saved.Lyrics.FollowLine = m.lyrics.FollowLine()
-	saved.Browser.Cwd = m.browser.Cwd
-	return Save(path, saved)
+	path := filepath.Clean(value)
+	if abs, err := filepath.Abs(path); err == nil {
+		return abs
+	}
+	return path
 }

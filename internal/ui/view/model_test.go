@@ -2,188 +2,378 @@ package view_test
 
 import (
 	"bytes"
-	"io"
+	"image"
+	"image/png"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
+	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/config"
+	"github.com/bpicode/tmus/internal/ui/components/tabs"
 	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/bpicode/tmus/internal/ui/view"
-	_ "github.com/bpicode/tmus/testing"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/exp/teatest/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-const testTrack = "Britney Sheers - Maybe One More Line.mp3"
+func TestModelNavigation(t *testing.T) {
+	tests := []struct {
+		name string
+		key  tea.KeyPressMsg
+		id   string
+		text string
+	}{
+		{name: "next", key: tea.KeyPressMsg{Code: tea.KeyTab}, id: "track", text: "No track selected."},
+		{name: "previous wraps", key: tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}, id: "help", text: "tmus keybindings"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m, _ := newModelTest(t)
+			_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+			assert.Contains(t, m.View().Content, "(empty)")
+			updated, cmd := m.Update(tt.key)
+			require.NotNil(t, cmd)
+			change := cmd()
+			assert.Equal(t, tabs.ChangeMsg{Previous: "playlist", Current: tt.id}, change)
+			assert.Contains(t, updated.View().Content, tt.text)
+			_, cmd = m.Update(change)
+			assert.Nil(t, cmd)
+			assert.Contains(t, m.View().Content, tt.text)
+		})
+	}
+}
 
-func TestModelNavigatesToHelp(t *testing.T) {
-	tui := newTUITest(t)
-	tui.waitForHome()
-
-	tui.tm.Type("?")
-	tui.waitForOutput("tmus keybindings")
-
-	tui.tm.Type("?")
-	tui.waitForOutput("Files", "Playlist")
+func TestModelResizesFrame(t *testing.T) {
+	th := theme.Resolve(config.Default().TUI.Theme)
+	m, _ := newModelTest(t)
+	for _, size := range []tea.WindowSizeMsg{{Width: 80, Height: 24}, {Width: 60, Height: 12}} {
+		_, cmd := m.Update(size)
+		assert.Nil(t, cmd)
+		v := m.View()
+		assert.Equal(t, size.Width, lipgloss.Width(v.Content))
+		assert.Equal(t, size.Height, lipgloss.Height(v.Content))
+		assert.Contains(t, ansi.Strip(v.Content), "│ Playlist │ Track │ Lyrics │ Browser │ Help │")
+		assert.True(t, v.AltScreen)
+		assert.Equal(t, th.Foreground, v.ForegroundColor)
+		assert.Equal(t, th.Background, v.BackgroundColor)
+	}
 }
 
 func TestModelQuits(t *testing.T) {
-	tui := newTUITest(t)
-	tui.waitForHome()
-
-	tui.tm.Type("q")
-	tui.waitFinished()
-}
-
-func TestModelAddsFileToPlaylist(t *testing.T) {
-	tui := newTUITest(t, testTrack)
-	tui.waitForHome(testTrack)
-
-	tui.tm.Type("a")
-	state := tui.waitForState(func(state core.State) bool {
-		return len(state.Playlist) == 1
-	})
-
-	if got := state.Playlist[0].Name; got != testTrack {
-		t.Fatalf("expected playlist track %q, got %q", testTrack, got)
+	for _, press := range []tea.KeyPressMsg{{Code: 'q'}, {Code: 'c', Mod: tea.ModCtrl}} {
+		t.Run(press.String(), func(t *testing.T) {
+			m, app := newModelTest(t)
+			_, cmd := m.Update(press)
+			require.NotNil(t, cmd)
+			assert.IsType(t, tea.QuitMsg{}, cmd())
+			require.NoError(t, app.Dispatch(core.Command{Type: core.CmdSetVolume, Volume: 37}), "the runner owns app shutdown")
+		})
 	}
-	if got := state.Playlist[0].Path; got != filepath.Join(tui.startDir, testTrack) {
-		t.Fatalf("expected playlist path %q, got %q", filepath.Join(tui.startDir, testTrack), got)
+}
+
+func TestModelHelp(t *testing.T) {
+	m, _ := newModelTest(t)
+	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
+	_, _ = m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
+	assert.Contains(t, m.View().Content, "tmus keybindings")
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnd})
+	assert.Contains(t, m.View().Content, "esc to close")
+	assert.NotContains(t, m.View().Content, "tmus keybindings")
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyHome})
+	assert.Contains(t, m.View().Content, "tmus keybindings")
+	for _, size := range []tea.WindowSizeMsg{{Width: 70, Height: 18}, {Width: 90, Height: 30}} {
+		_, _ = m.Update(size)
+		content := m.View().Content
+		assert.Equal(t, size.Width, lipgloss.Width(content))
+		assert.Equal(t, size.Height, lipgloss.Height(content))
+		assert.Contains(t, content, "tmus keybindings")
 	}
-
-	// The numbered row is unique to the playlist; the browser only renders the filename.
-	tui.waitForOutput("1 Britney Sheers - Maybe One More Line")
-}
-
-func TestModelRemovesFileFromPlaylist(t *testing.T) {
-	tui := newTUITest(t, testTrack)
-	tui.waitForHome(testTrack)
-
-	tui.tm.Type("a")
-	tui.waitForState(func(state core.State) bool {
-		return len(state.Playlist) == 1
-	})
-
-	tui.tm.Send(tea.KeyPressMsg{Code: tea.KeyTab})
-	tui.tm.Type("x")
-	state := tui.waitForState(func(state core.State) bool {
-		return len(state.Playlist) == 0
-	})
-
-	if state.Cursor != -1 {
-		t.Fatalf("expected no playlist selection, got cursor %d", state.Cursor)
+	for _, close := range []tea.KeyPressMsg{{Code: tea.KeyEscape}, {Code: '?', Text: "?"}} {
+		_, _ = m.Update(close)
+		assert.Contains(t, m.View().Content, "Search: /")
+		assert.NotContains(t, m.View().Content, "tmus keybindings")
+		_, _ = m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
+		assert.Contains(t, m.View().Content, "tmus keybindings")
 	}
-	tui.waitForOutput("(empty)")
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
+	require.NotNil(t, cmd)
+	assert.IsType(t, tea.QuitMsg{}, cmd())
 }
 
-type tuiTest struct {
-	t        *testing.T
-	appRef   *core.App
-	tm       *teatest.TestModel
-	startDir string
-}
-
-func newTUITest(t *testing.T, fixtures ...string) *tuiTest {
+func newModelTest(t *testing.T, files ...string) (*view.Model, *core.App) {
 	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	startDir := t.TempDir()
-	for _, fixture := range fixtures {
-		copyFixture(t, startDir, fixture)
-	}
-
 	cfg := config.Default()
 	cfg.Cache.Dir = t.TempDir()
 	cfg.Lyrics.LrcLib.Enabled = false
-	cfg.TUI.ArtworkRenderer = "none"
-	cfg.TUI.BrowserHome = startDir
-	th := theme.Resolve(cfg.TUI.Theme)
+	app := core.New(cfg)
+	t.Cleanup(app.ShutdownAndWait)
+	m, err := view.NewModel(app, t.TempDir(), files, cfg.TUI, theme.Resolve(cfg.TUI.Theme))
+	require.NoError(t, err)
+	t.Cleanup(m.Shutdown)
+	return m, app
+}
 
-	appRef := core.New(cfg)
-	t.Cleanup(appRef.ShutdownAndWait)
-
-	tm := teatest.NewTestModel(
-		t,
-		view.NewModel(appRef, startDir, nil, cfg.TUI, th),
-		teatest.WithInitialTermSize(100, 30),
-	)
+func TestModelReceivesStateEvents(t *testing.T) {
+	m, app := newModelTest(t)
+	metadata, unsubscribe := app.SubscribeMetadataEvents()
+	t.Cleanup(unsubscribe)
+	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(80, 24))
 	t.Cleanup(func() {
 		_ = tm.Quit()
 		tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 	})
-
-	tui := &tuiTest{
-		t:        t,
-		appRef:   appRef,
-		tm:       tm,
-		startDir: startDir,
-	}
-	return tui
-}
-
-func (tui *tuiTest) waitForHome(values ...string) {
-	tui.t.Helper()
-	tui.waitForOutput(append([]string{"Files", "Playlist"}, values...)...)
-}
-
-func (tui *tuiTest) waitForOutput(values ...string) {
-	tui.t.Helper()
-	teatest.WaitFor(
-		tui.t,
-		tui.tm.Output(),
-		func(output []byte) bool {
-			for _, value := range values {
-				if !bytes.Contains(output, []byte(value)) {
-					return false
-				}
+	tui := &tuiTest{t: t, appRef: app, tm: tm}
+	tui.waitForOutput("(empty)")
+	require.NoError(t, app.Dispatch(core.Command{Type: core.CmdAddAll,
+		Tracks: []core.Track{{Path: "/music/one.flac", Name: "First background track"}}}))
+	tui.waitForOutput("First background track")
+	tm.Send(tea.KeyPressMsg{Code: tea.KeyTab})
+	tui.waitForOutput("Track info")
+	require.NoError(t, app.Dispatch(core.Command{Type: core.CmdAddAll,
+		Tracks: []core.Track{{Path: "/music/two.flac", Name: "Second background track"}}}))
+	tui.waitForState(func(state core.State) bool { return len(state.Playlist) == 2 })
+	tm.Send(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
+	tui.waitForOutput("Second background track")
+	tm.Type("q")
+	tui.waitFinished()
+	m.Shutdown()
+	require.NoError(t, app.Dispatch(core.Command{Type: core.CmdSetVolume, Volume: 37}), "model cleanup leaves the app running")
+	app.ShutdownAndWait()
+	for {
+		select {
+		case _, open := <-metadata:
+			if !open {
+				return
 			}
-			return true
-		},
-		teatest.WithDuration(2*time.Second),
-		teatest.WithCheckInterval(10*time.Millisecond),
-	)
-}
-
-func (tui *tuiTest) waitForState(condition func(core.State) bool) core.State {
-	tui.t.Helper()
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		state := tui.appRef.State()
-		if condition(state) {
-			return state
+		default:
+			t.Fatal("metadata events are still open after app shutdown")
 		}
-		time.Sleep(10 * time.Millisecond)
 	}
-	state := tui.appRef.State()
-	tui.t.Fatalf("condition not met after 2s; last application state: %+v", state)
-	return state
 }
 
-func (tui *tuiTest) waitFinished() {
-	tui.t.Helper()
-	tui.tm.WaitFinished(tui.t, teatest.WithFinalTimeout(time.Second))
+func TestModelOpensAudioArguments(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "example.mp3")
+	// An empty file exercises queue insertion without producing audio.
+	require.NoError(t, os.WriteFile(path, nil, 0o600))
+	_, app := newModelTest(t, path, filepath.Join(t.TempDir(), "notes.txt"))
+	require.Eventually(t, func() bool {
+		state := app.State()
+		return len(state.Playlist) == 1
+	}, time.Second, time.Millisecond)
+	assert.Equal(t, path, app.State().Playlist[0].Path)
 }
 
-func copyFixture(t *testing.T, targetDir, name string) {
-	t.Helper()
-	source, err := os.Open(filepath.Join("testdata", name))
-	if err != nil {
-		t.Fatalf("open fixture: %v", err)
-	}
-	defer source.Close()
+func TestModelUpdatesPlaylistWhileHidden(t *testing.T) {
+	m, app := newModelTest(t)
+	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	app.Restore([]core.Track{{Path: "/music/example.flac", Name: "Updated track"}}, 0, core.QueueModeLinear)
+	_, _ = m.Update(core.StateEvent{Changes: core.StateChangePlaylist})
+	assert.Contains(t, m.View().Content, "Track info")
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
+	assert.Contains(t, m.View().Content, "Updated track")
+}
 
-	target, err := os.OpenFile(filepath.Join(targetDir, name), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-	if err != nil {
-		t.Fatalf("create fixture copy: %v", err)
+func TestModelRoutesPlaylistKeys(t *testing.T) {
+	m, app := newModelTest(t)
+	tracks := []core.Track{{Path: "/music/one.flac", Name: "One"}, {Path: "/music/two.flac", Name: "Two"}}
+	app.Restore(tracks, 0, core.QueueModeLinear)
+	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	_, _ = m.Update(core.StateEvent{Changes: core.StateChangePlaylist})
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	assert.Equal(t, 0, app.State().Cursor, "inactive playlist ignores navigation")
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	require.Eventually(t, func() bool { return app.State().Cursor == 1 }, time.Second, time.Millisecond)
+}
+
+func TestModelSearchAcceptsQuitLetter(t *testing.T) {
+	m, app := newModelTest(t)
+	app.Restore([]core.Track{{Path: "/music/quiet.flac", Name: "Quiet track"}}, 0, core.QueueModeLinear)
+	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	_, _ = m.Update(core.StateEvent{Changes: core.StateChangePlaylist})
+	_, _ = m.Update(tea.KeyPressMsg{Code: '/', Text: "/"})
+	_, _ = m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
+	assert.Contains(t, ansi.Strip(m.View().Content), "q", "q is entered into the search")
+	require.NoError(t, app.Dispatch(core.Command{Type: core.CmdSelectIndex, Index: 0}), "search does not shut down the app")
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+	require.NotNil(t, cmd)
+	assert.IsType(t, tea.QuitMsg{}, cmd())
+}
+
+func TestModelRestoresAndSavesPlayerState(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	path, err := view.DefaultPath()
+	require.NoError(t, err)
+	saved := view.State{
+		Browser: view.Browser{Cwd: filepath.Join(t.TempDir(), "music")},
+		Lyrics:  view.Lyrics{FollowLine: true},
+		Player: view.Player{
+			Volume: new(37), QueueMode: "repeat-all", Playing: -1, Cursor: 0,
+			Playlist: []view.Track{{Path: "/music/one.flac", Name: "Restored track"}},
+		},
 	}
-	if _, err := io.Copy(target, source); err != nil {
-		_ = target.Close()
-		t.Fatalf("copy fixture: %v", err)
+	require.NoError(t, view.Save(path, saved))
+	// Previous versions also persisted split-pane focus and browser visibility.
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	legacy := "focus = \"browser\"\n" + strings.Replace(string(data), "[browser]\n", "[browser]\nhidden = true\n", 1)
+	require.NoError(t, os.WriteFile(path, []byte(legacy), 0o600))
+	cfg := config.Default()
+	cfg.Cache.Dir = t.TempDir()
+	cfg.Lyrics.LrcLib.Enabled = false
+	app := core.New(cfg)
+	t.Cleanup(app.ShutdownAndWait)
+	m, err := view.NewModel(app, "", nil, cfg.TUI, theme.Resolve(cfg.TUI.Theme))
+	require.NoError(t, err)
+	t.Cleanup(m.Shutdown)
+	assert.Equal(t, "Restored track", app.State().Playlist[0].Name)
+	assert.Equal(t, 37, app.State().Volume)
+	assert.Equal(t, core.QueueModeRepeatAll, app.State().QueueMode)
+	app.SetVolume(42)
+	require.NoError(t, m.SaveState())
+	got, err := view.Load(path)
+	require.NoError(t, err)
+	assert.Equal(t, 42, *got.Player.Volume)
+	assert.Equal(t, saved.Player.Playlist, got.Player.Playlist)
+	assert.Equal(t, saved.Browser, got.Browser)
+	assert.Equal(t, saved.Lyrics, got.Lyrics)
+	data, err = os.ReadFile(path)
+	require.NoError(t, err)
+	assert.NotContains(t, string(data), "focus =")
+	assert.NotContains(t, string(data), "hidden =")
+}
+
+func TestModelTrackFollowsSelection(t *testing.T) {
+	m, app := newModelTest(t)
+	app.Restore([]core.Track{
+		{Path: "/music/one.flac", Name: "One"},
+		{Path: "/music/two.flac", Name: "Two"},
+	}, 0, core.QueueModeLinear)
+	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	_, _ = m.Update(core.StateEvent{Changes: core.StateChangePlaylist})
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'i', Text: "i"})
+	require.NotNil(t, cmd)
+	_, _ = m.Update(cmd())
+	assert.Contains(t, m.View().Content, "Track info")
+	assert.Contains(t, m.View().Content, "/music/one.flac")
+	assert.Contains(t, m.View().Content, "Loading...")
+	tracks := app.State().Playlist
+	first := core.MetadataEvent{
+		TrackID: tracks[0].ID, Path: tracks[0].Path, Scope: core.MetadataExtended,
+		Metadata: library.Metadata{Title: "First title", Artist: "First artist"},
 	}
-	if err := target.Close(); err != nil {
-		t.Fatalf("close fixture copy: %v", err)
+	_, _ = m.Update(first)
+	assert.Contains(t, m.View().Content, "First title")
+	assert.Contains(t, m.View().Content, "First artist")
+	_, _ = m.Update(core.StateEvent{Changes: core.StateChangeVolume})
+	assert.Contains(t, m.View().Content, "First title", "unrelated updates retain loaded metadata")
+
+	require.NoError(t, app.Dispatch(core.Command{Type: core.CmdSelectIndex, Index: 1}))
+	require.Eventually(t, func() bool { return app.State().Cursor == 1 }, time.Second, time.Millisecond)
+	_, _ = m.Update(core.StateEvent{Changes: core.StateChangeSelection})
+	assert.Contains(t, m.View().Content, "/music/two.flac")
+	assert.NotContains(t, m.View().Content, "First title")
+	_, _ = m.Update(first)
+	assert.NotContains(t, m.View().Content, "First title", "late metadata for the previous track is ignored")
+	_, _ = m.Update(core.MetadataEvent{
+		TrackID: tracks[1].ID, Path: tracks[1].Path, Scope: core.MetadataExtended,
+		Metadata: library.Metadata{Title: "Second title"},
+	})
+	assert.Contains(t, m.View().Content, "Second title")
+
+	for _, size := range []tea.WindowSizeMsg{{Width: 70, Height: 18}, {Width: 90, Height: 30}} {
+		_, _ = m.Update(size)
+		content := m.View().Content
+		assert.Equal(t, size.Width, lipgloss.Width(content))
+		assert.Equal(t, size.Height, lipgloss.Height(content))
+		assert.Contains(t, content, "Second title")
 	}
+	app.Restore(nil, -1, core.QueueModeLinear)
+	_, _ = m.Update(core.StateEvent{Changes: core.StateChangePlaylist})
+	assert.Contains(t, m.View().Content, "No track selected.")
+	assert.NotContains(t, m.View().Content, "Second title")
+}
+
+func TestModelTrackKeys(t *testing.T) {
+	for _, press := range []tea.KeyPressMsg{
+		{Code: tea.KeyEscape}, {Code: 'i', Text: "i"},
+		{Code: 'q', Text: "q"}, {Code: 'c', Mod: tea.ModCtrl},
+	} {
+		t.Run(press.String(), func(t *testing.T) {
+			m, app := newModelTest(t)
+			app.Restore([]core.Track{{Path: "/music/one.flac", Name: "One"}}, 0, core.QueueModeLinear)
+			_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+			_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+			_, cmd := m.Update(press)
+			if press.String() == "q" || press.String() == "ctrl+c" {
+				require.NotNil(t, cmd)
+				assert.IsType(t, tea.QuitMsg{}, cmd())
+			} else {
+				assert.Contains(t, m.View().Content, "Search: /")
+				assert.NotContains(t, m.View().Content, "Track info")
+			}
+		})
+	}
+}
+
+func TestModelTrackScrolls(t *testing.T) {
+	m, app := newModelTest(t)
+	app.Restore([]core.Track{{Path: "/music/one.flac", Name: "One"}}, 0, core.QueueModeLinear)
+	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 14})
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	track := app.State().Playlist[0]
+	_, _ = m.Update(core.MetadataEvent{
+		TrackID: track.ID, Path: track.Path, Scope: core.MetadataExtended,
+		Metadata: library.Metadata{Title: "At the top", Year: 2026},
+	})
+	assert.Contains(t, m.View().Content, "At the top")
+	assert.NotContains(t, m.View().Content, "2026")
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnd})
+	assert.Contains(t, m.View().Content, "2026")
+	assert.NotContains(t, m.View().Content, "At the top")
+	_, _ = m.Update(core.StateEvent{Changes: core.StateChangeVolume})
+	assert.Contains(t, m.View().Content, "2026", "unrelated state updates retain scroll position")
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyHome})
+	assert.Contains(t, m.View().Content, "At the top")
+}
+
+func TestModelReleasesTrackArtworkOnTabChange(t *testing.T) {
+	t.Setenv("KITTY_WINDOW_ID", "1")
+	m, app := newModelTest(t)
+	app.Restore([]core.Track{{Path: "/music/one.flac", Name: "One"}}, 0, core.QueueModeLinear)
+	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	var picture bytes.Buffer
+	require.NoError(t, png.Encode(&picture, image.NewRGBA(image.Rect(0, 0, 2, 2))))
+	track := app.State().Playlist[0]
+	_, cmd := m.Update(core.MetadataEvent{
+		TrackID: track.ID, Path: track.Path, Scope: core.MetadataExtended,
+		Metadata: library.Metadata{Picture: &library.Picture{Data: picture.Bytes()}},
+	})
+	require.NotNil(t, cmd)
+	// The other command in this batch waits for the next metadata event.
+	batch, ok := cmd().(tea.BatchMsg)
+	require.True(t, ok)
+	upload, ok := batch[len(batch)-1]().(tea.RawMsg)
+	require.True(t, ok)
+	assert.Contains(t, upload.Msg, "a=T", "the configured artwork renderer uploads the picture")
+	_, cmd = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	require.NotNil(t, cmd)
+	batch, ok = cmd().(tea.BatchMsg)
+	require.True(t, ok)
+	cleanup, ok := batch[len(batch)-1]().(tea.RawMsg)
+	require.True(t, ok)
+	assert.Contains(t, cleanup.Msg, "a=d", "leaving Track deletes its terminal image")
+	assert.Contains(t, m.View().Content, "Loading...")
 }

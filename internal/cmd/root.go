@@ -22,11 +22,6 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		ui2, _ := cmd.Flags().GetBool("ui2")
-		if ui2 {
-			return ui.Run2(core.New(cfg), startDir, cfg.TUI, args)
-		}
-
 		ipcSession, err := ipc.Open(cfg.IPC, args)
 		if err != nil {
 			return err
@@ -37,6 +32,7 @@ var rootCmd = &cobra.Command{
 		defer collectErr(&err, "ipc", ipcSession.Close)
 
 		playerApp := core.New(cfg)
+		defer playerApp.ShutdownAndWait()
 
 		if err := ipcSession.Serve(playerApp); err != nil {
 			return fmt.Errorf("serve ipc: %w", err)
@@ -70,5 +66,4 @@ func Execute() {
 func init() {
 	addConfigFlags(rootCmd)
 	rootCmd.Flags().StringP("dir", "d", "", "starting directory for the file browser")
-	rootCmd.Flags().Bool("ui2", false, "use the experimental tabbed UI")
 }

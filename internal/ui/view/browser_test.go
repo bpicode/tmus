@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newBrowserModel2Test(t *testing.T, startDir string, saved view.State) (*view.Model2, *core.App) {
+func newBrowserModelTest(t *testing.T, startDir string, saved view.State) (*view.Model, *core.App) {
 	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	path, err := view.DefaultPath()
@@ -32,13 +32,13 @@ func newBrowserModel2Test(t *testing.T, startDir string, saved view.State) (*vie
 	cfg.TUI.BrowserHome = startDir
 	app := core.New(cfg)
 	t.Cleanup(app.ShutdownAndWait)
-	m, err := view.NewModel2(app, startDir, nil, cfg.TUI, theme.Resolve(cfg.TUI.Theme))
+	m, err := view.NewModel(app, startDir, nil, cfg.TUI, theme.Resolve(cfg.TUI.Theme))
 	require.NoError(t, err)
 	t.Cleanup(m.Shutdown)
 	return m, app
 }
 
-func startBrowserModel2Test(t *testing.T, m tea.Model, app *core.App, entries ...string) *tuiTest {
+func startBrowserModelTest(t *testing.T, m tea.Model, app *core.App, entries ...string) *tuiTest {
 	t.Helper()
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(80, 24))
 	t.Cleanup(func() {
@@ -52,7 +52,7 @@ func startBrowserModel2Test(t *testing.T, m tea.Model, app *core.App, entries ..
 	return tui
 }
 
-func TestModel2BrowserStartingDirectory(t *testing.T) {
+func TestModelBrowserStartingDirectory(t *testing.T) {
 	explicitDir, savedDir := t.TempDir(), t.TempDir()
 	wd, err := os.Getwd()
 	require.NoError(t, err)
@@ -65,8 +65,8 @@ func TestModel2BrowserStartingDirectory(t *testing.T) {
 		{name: "relative directory", start: ".", want: wd},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			m, _ := newBrowserModel2Test(t, tt.start, view.State{
-				Focus: "browser", Browser: view.Browser{Cwd: tt.saved, Hidden: true},
+			m, _ := newBrowserModelTest(t, tt.start, view.State{
+				Browser: view.Browser{Cwd: tt.saved},
 			})
 			require.NoError(t, m.SaveState())
 			path, err := view.DefaultPath()
@@ -74,8 +74,6 @@ func TestModel2BrowserStartingDirectory(t *testing.T) {
 			saved, err := view.Load(path)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, saved.Browser.Cwd)
-			assert.True(t, saved.Browser.Hidden, "the original layout's visibility is retained")
-			assert.Equal(t, "browser", saved.Focus)
 			for range 3 {
 				_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 			}
@@ -90,13 +88,13 @@ func TestModel2BrowserStartingDirectory(t *testing.T) {
 	}
 }
 
-func TestModel2BrowserAddsTracks(t *testing.T) {
+func TestModelBrowserAddsTracks(t *testing.T) {
 	dir := t.TempDir()
 	for _, name := range []string{"one.mp3", "two.flac"} {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, name), nil, 0o600))
 	}
-	m, app := newBrowserModel2Test(t, dir, view.State{})
-	tui := startBrowserModel2Test(t, m, app, "one.mp3", "two.flac")
+	m, app := newBrowserModelTest(t, dir, view.State{})
+	tui := startBrowserModelTest(t, m, app, "one.mp3", "two.flac")
 	tui.tm.Type("a")
 	state := tui.waitForState(func(state core.State) bool { return len(state.Playlist) == 1 })
 	assert.Equal(t, filepath.Join(dir, "one.mp3"), state.Playlist[0].Path)
@@ -114,14 +112,31 @@ func TestModel2BrowserAddsTracks(t *testing.T) {
 	assert.Len(t, app.State().Playlist, 2)
 }
 
-func TestModel2BrowserNavigatesAndSavesDirectory(t *testing.T) {
+func TestModelRemovesTrackAddedFromBrowser(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "song.mp3"), nil, 0o600))
+	m, app := newBrowserModelTest(t, dir, view.State{})
+	tui := startBrowserModelTest(t, m, app, "song.mp3")
+	tui.tm.Type("a")
+	tui.waitForState(func(state core.State) bool { return len(state.Playlist) == 1 })
+	tui.tm.Type("b")
+	tui.waitForOutput("1 song.mp3")
+	tui.tm.Type("x")
+	state := tui.waitForState(func(state core.State) bool { return len(state.Playlist) == 0 })
+	assert.Equal(t, -1, state.Cursor)
+	tui.waitForOutput("(empty)")
+	tui.tm.Type("q")
+	tui.waitFinished()
+}
+
+func TestModelBrowserNavigatesAndSavesDirectory(t *testing.T) {
 	dir := t.TempDir()
 	album := filepath.Join(dir, "album")
 	require.NoError(t, os.Mkdir(album, 0o700))
 	require.NoError(t, os.WriteFile(filepath.Join(album, "song.mp3"), nil, 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, ".hidden.mp3"), nil, 0o600))
-	m, app := newBrowserModel2Test(t, dir, view.State{})
-	tui := startBrowserModel2Test(t, m, app, "album")
+	m, app := newBrowserModelTest(t, dir, view.State{})
+	tui := startBrowserModelTest(t, m, app, "album")
 	tui.tm.Send(tea.KeyPressMsg{Code: tea.KeyEnter})
 	// Directory replies must still reach Browser while another tab is active.
 	tui.tm.Send(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
@@ -148,15 +163,15 @@ func TestModel2BrowserNavigatesAndSavesDirectory(t *testing.T) {
 	assert.Equal(t, album, saved.Browser.Cwd)
 }
 
-func TestModel2BrowserAndPlaylistSearchesStaySeparate(t *testing.T) {
+func TestModelBrowserAndPlaylistSearchesStaySeparate(t *testing.T) {
 	dir := t.TempDir()
 	for _, name := range []string{"quiet.mp3", "other.mp3"} {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, name), nil, 0o600))
 	}
-	m, app := newBrowserModel2Test(t, dir, view.State{})
+	m, app := newBrowserModelTest(t, dir, view.State{})
 	app.Restore([]core.Track{{Path: "/music/playlist.flac", Name: "Playlist entry"}}, 0, core.QueueModeLinear)
-	observed := &observedModel2{Model: m}
-	tui := startBrowserModel2Test(t, observed, app, "quiet.mp3", "other.mp3")
+	observed := &observedModel{Model: m}
+	tui := startBrowserModelTest(t, observed, app, "quiet.mp3", "other.mp3")
 	tui.tm.Type("/q")
 	observed.waitForView(t, func(content string) bool {
 		return strings.Contains(content, "Search: q") && strings.Contains(content, "quiet.mp3") && !strings.Contains(content, "other.mp3")
@@ -188,19 +203,19 @@ func TestModel2BrowserAndPlaylistSearchesStaySeparate(t *testing.T) {
 
 // Observe complete views on the program goroutine rather than reconstructing
 // the renderer's incremental terminal output or reading the model concurrently.
-type observedModel2 struct {
+type observedModel struct {
 	tea.Model
 	mu      sync.Mutex
 	content string
 }
 
-func (m *observedModel2) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *observedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.Model, cmd = m.Model.Update(msg)
 	return m, cmd
 }
 
-func (m *observedModel2) View() tea.View {
+func (m *observedModel) View() tea.View {
 	v := m.Model.View()
 	m.mu.Lock()
 	m.content = ansi.Strip(v.Content)
@@ -208,7 +223,7 @@ func (m *observedModel2) View() tea.View {
 	return v
 }
 
-func (m *observedModel2) waitForView(t *testing.T, matches func(string) bool) {
+func (m *observedModel) waitForView(t *testing.T, matches func(string) bool) {
 	t.Helper()
 	require.Eventually(t, func() bool {
 		m.mu.Lock()

@@ -17,7 +17,7 @@ import (
 	"github.com/bpicode/tmus/internal/ui/components/sanitize"
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 	"github.com/bpicode/tmus/internal/ui/theme"
-	"github.com/bpicode/tmus/internal/ui/view/home/playlist/footer"
+	"github.com/bpicode/tmus/internal/ui/view/playlist/footer"
 )
 
 type Model struct {

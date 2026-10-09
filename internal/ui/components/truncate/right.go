@@ -11,9 +11,9 @@ type Right struct {
 	lipgloss.Style
 }
 
-func (r Right) MaxWidth(w int) Left {
+func (r Right) MaxWidth(w int) Right {
 	style := r.Style.MaxWidth(w).Transform(func(s string) string { return truncateRightMulti(s, w) })
-	return Left{Style: style}
+	return Right{Style: style}
 }
 
 func truncateRightMulti(s string, w int) string {

@@ -24,16 +24,16 @@ func (m Model) ContentSize() (width, height int) {
 }
 
 // View renders the three-row tab bar, including the top border and the rule
-// below the tabs. Labels are rendered as supplied. The assigned width must fit
-// all tabs; extra space follows the last tab's separator. There is no overflow
-// handling.
+// below the tabs. Labels retain their natural widths; extra space follows the
+// last tab's separator. When the tabs do not fit, the header extends beyond the
+// assigned width for the terminal to clip.
 // It returns an empty string below three columns or three rows.
 func (m Model) View() string {
 	if m.width < 3 || m.height < headerHeight {
 		return ""
 	}
 	if len(m.tabs) == 0 {
-		return m.Styles.headerStyle(true, true).Width(m.width).Render("")
+		return m.Styles.headerStyle(true, true, true).Width(m.width).Render("")
 	}
 	renderedTabs := make([]string, 0, len(m.tabs)+1)
 	used := 0
@@ -44,14 +44,14 @@ func (m Model) View() string {
 		}
 		text := style.Render(tab.Label)
 		last := i == len(m.tabs)-1
-		rendered := m.Styles.headerStyle(i == 0, last).Render(text)
+		rendered := m.Styles.headerStyle(i == 0, last, false).Render(text)
 		remaining := m.width - used - lipgloss.Width(rendered)
+		if last && remaining == 0 {
+			rendered = m.Styles.headerStyle(i == 0, true, true).Render(text)
+		}
+		renderedTabs = append(renderedTabs, rendered)
 		if last && remaining > 0 {
-			rendered = m.Styles.headerStyle(i == 0, false).Render(text)
-			renderedTabs = append(renderedTabs, rendered,
-				m.Styles.headerStyle(false, true).Padding(0).Width(remaining).Render(""))
-		} else {
-			renderedTabs = append(renderedTabs, rendered)
+			renderedTabs = append(renderedTabs, m.Styles.fillerStyle().Width(remaining).Render(""))
 		}
 		used += lipgloss.Width(rendered)
 	}
@@ -62,7 +62,8 @@ func (m Model) View() string {
 // It pads or clips content to ContentSize without wrapping or scrolling.
 // When the tabs fit, the result occupies the assigned size. It returns an empty
 // string below three columns or five rows. ANSI styles and Unicode cell widths
-// are preserved.
+// are preserved. When the tabs overflow, the content's right border and
+// bottom-right corner are omitted. ContentSize is unchanged.
 func (m Model) Render(content string) string {
 	width, height := m.ContentSize()
 	if width == 0 {
@@ -70,6 +71,8 @@ func (m Model) Render(content string) string {
 	}
 	// Clip before applying the frame's width, which would otherwise wrap text.
 	content = lipgloss.NewStyle().Height(height).MaxHeight(height).MaxWidth(width).Render(content)
-	body := m.Styles.Border.Border(m.Styles.Border.GetBorderStyle(), false, true, true, true).Width(m.width).Render(content)
-	return lipgloss.JoinVertical(lipgloss.Left, m.View(), body)
+	header := m.View()
+	fits := lipgloss.Width(header) <= m.width
+	body := m.Styles.Border.Border(m.Styles.Border.GetBorderStyle(), false, fits, true, true).Width(m.width).Render(content)
+	return lipgloss.JoinVertical(lipgloss.Left, header, body)
 }

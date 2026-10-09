@@ -26,15 +26,25 @@ func DefaultStyles() Styles {
 	}
 }
 
-func (s Styles) headerStyle(first, last bool) lipgloss.Style {
+func (s Styles) headerStyle(first, last, frameEdge bool) lipgloss.Style {
 	border := s.Border.GetBorderStyle()
 	border.BottomLeft = border.MiddleLeft
-	if last {
+	border.BottomRight = border.MiddleBottom
+	if frameEdge {
 		border.BottomRight = border.MiddleRight
-	} else {
+	}
+	if !last {
 		border.TopRight = border.MiddleTop
-		border.BottomRight = border.MiddleBottom
 		border.Right = border.Left
 	}
 	return s.Border.Border(border, true, true, true, first).Padding(0, 1)
+}
+
+func (s Styles) fillerStyle() lipgloss.Style {
+	border := s.Border.GetBorderStyle()
+	// Keep a right border so Lip Gloss renders and styles the corner, but leave
+	// the two rows above the separator blank.
+	border.Right = " "
+	border.BottomRight = border.TopRight
+	return s.Border.Border(border, false, true, true, false).Padding(1, 0, 0, 0)
 }

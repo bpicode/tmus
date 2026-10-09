@@ -24,15 +24,19 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "remaining width", items: []tabs.Tab{{ID: "one", Label: "One"}, {ID: "two", Label: "Two"}}, width: 15,
-			want: "┌─────┬─────┬─┐\n│ One │ Two │ │\n├─────┴─────┴─┤",
+			want: "┌─────┬─────┐  \n│ One │ Two │  \n├─────┴─────┴─┐",
 		},
 		{
 			name: "single tab with remaining width", items: []tabs.Tab{{ID: "one", Label: "One"}}, width: 12,
-			want: "┌─────┬────┐\n│ One │    │\n├─────┴────┤",
+			want: "┌─────┐     \n│ One │     \n├─────┴────┐",
 		},
 		{
 			name: "one remaining column", items: []tabs.Tab{{ID: "one", Label: "One"}, {ID: "two", Label: "Two"}}, width: 14,
-			want: "┌─────┬─────┬┐\n│ One │ Two ││\n├─────┴─────┴┤",
+			want: "┌─────┬─────┐ \n│ One │ Two │ \n├─────┴─────┴┐",
+		},
+		{
+			name: "overflow retains natural widths", items: []tabs.Tab{{ID: "one", Label: "One"}, {ID: "two", Label: "Two"}}, width: 12,
+			want: "┌─────┬─────┐\n│ One │ Two │\n├─────┴─────┴",
 		},
 		{
 			name: "no tabs", width: 8,
@@ -100,7 +104,7 @@ func TestRenderUnicodeAndColors(t *testing.T) {
 	m.SetSize(6, 7)
 	color := lipgloss.NewStyle().Foreground(lipgloss.Red)
 	view := m.Render("音楽界\né👩‍💻xy\n" + color.Render("abcdef"))
-	assert.Equal(t, "┌───┬┐\n│ A ││\n├───┴┤\n│音楽│\n│é👩‍💻x│\n│abcd│\n└────┘", ansi.Strip(view))
+	assert.Equal(t, "┌───┐ \n│ A │ \n├───┴┐\n│音楽│\n│é👩‍💻x│\n│abcd│\n└────┘", ansi.Strip(view))
 	assert.Contains(t, view, color.Render("abcd"))
 }
 
@@ -174,6 +178,55 @@ func TestNativeBorderColors(t *testing.T) {
 	assert.Contains(t, view, lipgloss.NewStyle().Foreground(lipgloss.Green).Render("│"))
 	assert.Contains(t, view, lipgloss.NewStyle().Background(lipgloss.Yellow).Render("╰───────────╯"))
 	assert.Equal(t, configured, m.Styles.Border)
+
+	// A single spare column still needs a corner on the separator, with the
+	// separator's native colors rather than the top border's colors.
+	m.SetSize(14, 5)
+	view = m.Render("body")
+	lines := strings.Split(ansi.Strip(view), "\n")
+	assert.Equal(t, "╭─────┬─────╮ ", lines[0])
+	assert.Equal(t, "│ One │ Two │ ", lines[1])
+	assert.Equal(t, "├─────┴─────┴╮", lines[2])
+	assert.Contains(t, view, lipgloss.NewStyle().Background(lipgloss.Yellow).Render("╮"))
+	assert.Equal(t, configured, m.Styles.Border)
+}
+
+func TestRenderFitTransitions(t *testing.T) {
+	m, err := tabs.New([]tabs.Tab{{ID: "one", Label: "One"}, {ID: "two", Label: "Two"}})
+	require.NoError(t, err)
+	require.NoError(t, m.Select("two"))
+	m.Focus()
+	tests := []struct {
+		name  string
+		width int
+		want  string
+	}{
+		{name: "spare width", width: 15, want: "┌─────┬─────┐\n│ One │ Two │\n├─────┴─────┴─┐\n│body         │\n└─────────────┘"},
+		{name: "one spare column", width: 14, want: "┌─────┬─────┐\n│ One │ Two │\n├─────┴─────┴┐\n│body        │\n└────────────┘"},
+		{name: "exact fit", width: 13, want: "┌─────┬─────┐\n│ One │ Two │\n├─────┴─────┤\n│body       │\n└───────────┘"},
+		{name: "one column too narrow", width: 12, want: "┌─────┬─────\n│ One │ Two\n├─────┴─────\n│body\n└───────────"},
+		{name: "cut at tab boundary", width: 7, want: "┌─────┬\n│ One │\n├─────┴\n│body\n└──────"},
+		{name: "minimum width", width: 3, want: "┌──\n│ O\n├──\n│b\n└──"},
+		{name: "fits again after resize", width: 13, want: "┌─────┬─────┐\n│ One │ Two │\n├─────┴─────┤\n│body       │\n└───────────┘"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m.SetSize(tt.width, 5)
+			width, height := m.ContentSize()
+			assert.Equal(t, tt.width-2, width)
+			assert.Equal(t, 1, height)
+			lines := strings.Split(ansi.Strip(m.Render("body")), "\n")
+			require.Len(t, lines, 5)
+			for i, line := range lines {
+				// Match the visible terminal cells while retaining natural tab
+				// widths in View and Render.
+				lines[i] = strings.TrimRight(ansi.Truncate(line, tt.width, ""), " ")
+			}
+			assert.Equal(t, tt.want, strings.Join(lines, "\n"))
+			assert.Equal(t, "two", m.ActiveID())
+			assert.True(t, m.Focused())
+		})
+	}
 }
 
 func TestRenderingResize(t *testing.T) {

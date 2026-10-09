@@ -2,6 +2,7 @@ package tabs_test
 
 import (
 	"fmt"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -33,12 +34,14 @@ func ExampleNew() {
 		"one": "First tab content",
 		"two": "Second tab content",
 	}
-	fmt.Println(m.Render(content[m.ActiveID()]))
+	for line := range strings.SplitSeq(m.Render(content[m.ActiveID()]), "\n") {
+		fmt.Println(strings.TrimRight(line, " "))
+	}
 
 	// Output:
-	// ╭─────┬─────┬──────╮
-	// │ One │ Two │      │
-	// ├─────┴─────┴──────┤
+	// ╭─────┬─────╮
+	// │ One │ Two │
+	// ├─────┴─────┴──────╮
 	// │Second tab content│
 	// ╰──────────────────╯
 }

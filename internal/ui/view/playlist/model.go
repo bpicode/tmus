@@ -14,6 +14,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
+	"github.com/bpicode/tmus/internal/ui/components/bar"
 	"github.com/bpicode/tmus/internal/ui/components/sanitize"
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 	"github.com/bpicode/tmus/internal/ui/theme"
@@ -231,27 +232,14 @@ func (m *Model) View() string {
 	state := m.app.State()
 	lines := m.headerLines(state, m.layout.innerWidth)
 	lines = append(lines, m.bodyLines()...)
-
-	if m.layout.footerHeight > 0 {
-		lines = append(lines, m.styles.separator.Render(strings.Repeat("─", m.layout.innerWidth)))
-		lines = append(lines, strings.Split(m.footer.View(), "\n")...)
-	}
-
+	lines = append(lines, m.footerLines(state)...)
 	return m.styles.panel.Width(m.width).Height(m.height).Render(strings.Join(lines, "\n"))
 }
 
 func (m *Model) headerLines(state core.State, width int) []string {
-	title := m.styles.titleUnfocused
-	if m.focus {
-		title = m.styles.titleFocused
-	}
-	titleLine := fmt.Sprintf("%s (%s, %s)", title.Render("🎵 Playlist"), m.styles.playStateStyle(state).Render(playStateLabel(state)), m.styles.statusQueueMode.Render(queueModeLabel(state.QueueMode)))
-	titleLine = truncate.Right{}.MaxWidth(width).Render(titleLine)
-
 	lines := []string{
-		titleLine,
 		m.searchView(),
-		m.styles.separator.Render(strings.Repeat("─", width)),
+		bar.Horizontal(width, bar.WithStyle(m.styles.separator)).View(),
 	}
 	if state.PlaylistErr != nil {
 		lines = append(lines, m.styles.err.Render(sanitize.TerminalText(state.PlaylistErr.Error())))
@@ -280,6 +268,27 @@ func (m *Model) bodyLines() []string {
 	for range m.layout.bodyHeight - 1 {
 		lines = append(lines, "")
 	}
+	return lines
+}
+
+func (m *Model) footerLines(state core.State) []string {
+	if m.layout.footerHeight <= 0 {
+		return nil
+	}
+
+	barText := lipgloss.JoinHorizontal(lipgloss.Top,
+		m.styles.separator.Render("["),
+		m.styles.playStateStyle(state).Render(playStateLabel(state)),
+		m.styles.separator.Render("|"),
+		m.styles.statusQueueMode.Render(queueModeLabel(state.QueueMode)),
+		m.styles.separator.Render("]"),
+	)
+	hBar := bar.Horizontal(m.layout.innerWidth, bar.WithStyle(m.styles.separator), bar.WithText(barText, bar.PlacementRight))
+	remaining := strings.Split(m.footer.View(), "\n")
+
+	lines := make([]string, 0, 1+len(remaining))
+	lines = append(lines, hBar.View())
+	lines = append(lines, remaining...)
 	return lines
 }
 

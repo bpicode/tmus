@@ -7,8 +7,6 @@ import (
 )
 
 type styles struct {
-	titleUnfocused  lipgloss.Style
-	titleFocused    lipgloss.Style
 	searchInactive  lipgloss.Style
 	searchActive    lipgloss.Style
 	err             lipgloss.Style
@@ -26,8 +24,6 @@ type styles struct {
 
 func newStyles(th theme.Theme) styles {
 	return styles{
-		titleUnfocused:  lipgloss.NewStyle().Bold(true).Foreground(th.Secondary),
-		titleFocused:    lipgloss.NewStyle().Bold(true).Foreground(th.Primary),
 		searchInactive:  lipgloss.NewStyle().Foreground(th.Muted),
 		searchActive:    lipgloss.NewStyle().Bold(true).Foreground(th.Secondary),
 		err:             lipgloss.NewStyle().Foreground(th.Danger),

@@ -64,8 +64,8 @@ func TestViewDoesNotResizeChildren(t *testing.T) {
 func TestHeaderLinesIncludePlaylistError(t *testing.T) {
 	m, _ := newSpectrumCommandTestModel(t)
 
-	assert.Len(t, m.headerLines(core.State{}, 80), 3)
-	assert.Len(t, m.headerLines(core.State{PlaylistErr: errors.New("test")}, 80), 4)
+	assert.Len(t, m.headerLines(core.State{}, 80), 2)
+	assert.Len(t, m.headerLines(core.State{PlaylistErr: errors.New("test")}, 80), 3)
 }
 
 func TestBodyLinesFillEmptyBody(t *testing.T) {

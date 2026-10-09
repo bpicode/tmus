@@ -1,11 +1,10 @@
 package help
 
 import (
-	"strings"
-
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/bpicode/tmus/internal/ui/components/bar"
 	"github.com/bpicode/tmus/internal/ui/theme"
 )
 
@@ -49,7 +48,7 @@ func (m *Model) View() string {
 	width := m.viewport.Width()
 	content := m.styles.footer.MaxWidth(width).Render(keybindings.appendix)
 	if m.height-m.styles.padding.GetVerticalFrameSize() >= 2 {
-		separator := m.styles.separator.Render(strings.Repeat("─", width))
+		separator := bar.Horizontal(width, bar.WithStyle(m.styles.separator)).View()
 		content = separator + "\n" + content
 	}
 	if m.viewport.Height() > 0 {

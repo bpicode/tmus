@@ -11,6 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
+	"github.com/bpicode/tmus/internal/ui/components/bar"
 	"github.com/bpicode/tmus/internal/ui/components/errorview"
 	"github.com/bpicode/tmus/internal/ui/components/sanitize"
 	"github.com/bpicode/tmus/internal/ui/theme"
@@ -164,7 +165,7 @@ func (m *Model) View() string {
 	sb.WriteString("\n")
 	sb.WriteString(m.searchView())
 	sb.WriteString("\n")
-	sb.WriteString(m.styles.separator.Render(strings.Repeat("─", m.layout.innerWidth)))
+	sb.WriteString(bar.Horizontal(m.layout.innerWidth, bar.WithStyle(m.styles.separator)).View())
 	sb.WriteString("\n")
 
 	if m.errorView.HasErr() {

@@ -16,7 +16,7 @@ func (m *Model) SetSize(width, height int) {
 // ContentSize returns the space inside Render's frame, after reserving two
 // columns for the sides, three rows for the header, and one for the bottom.
 // It returns (0, 0) when the frame and one content row cannot fit.
-func (m Model) ContentSize() (width, height int) {
+func (m *Model) ContentSize() (width, height int) {
 	if m.width < 3 || m.height < headerHeight+2 {
 		return 0, 0
 	}
@@ -28,7 +28,7 @@ func (m Model) ContentSize() (width, height int) {
 // last tab's separator. When the tabs do not fit, the header extends beyond the
 // assigned width for the terminal to clip.
 // It returns an empty string below three columns or three rows.
-func (m Model) View() string {
+func (m *Model) View() string {
 	if m.width < 3 || m.height < headerHeight {
 		return ""
 	}
@@ -64,7 +64,7 @@ func (m Model) View() string {
 // string below three columns or five rows. ANSI styles and Unicode cell widths
 // are preserved. When the tabs overflow, the content's right border and
 // bottom-right corner are omitted. ContentSize is unchanged.
-func (m Model) Render(content string) string {
+func (m *Model) Render(content string) string {
 	width, height := m.ContentSize()
 	if width == 0 {
 		return ""

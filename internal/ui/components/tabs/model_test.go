@@ -86,10 +86,7 @@ func TestNewInvalidIDs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m, err := tabs.New(tt.items)
 			require.ErrorContains(t, err, tt.err)
-			active, ok := m.Active()
-			assert.False(t, ok)
-			assert.Equal(t, tabs.Tab{}, active)
-			assert.Empty(t, m.ActiveID())
+			assert.Nil(t, m)
 		})
 	}
 }
@@ -165,15 +162,6 @@ func TestNewCopiesTabs(t *testing.T) {
 	active.Label = "Changed"
 	active, _ = m.Active()
 	assert.Equal(t, tabs.Tab{ID: "two", Label: "Two"}, active)
-}
-
-func TestModelCopySelection(t *testing.T) {
-	m, err := tabs.New([]tabs.Tab{{ID: "one"}, {ID: "two"}})
-	require.NoError(t, err)
-	other := m
-	require.NoError(t, other.Select("two"))
-	assert.Equal(t, "one", m.ActiveID())
-	assert.Equal(t, "two", other.ActiveID())
 }
 
 func TestZeroValue(t *testing.T) {

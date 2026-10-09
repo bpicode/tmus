@@ -36,7 +36,7 @@ func TestNavigation(t *testing.T) {
 			if tt.initial != "" {
 				require.NoError(t, m.Select(tt.initial))
 			}
-			tt.move(&m)
+			tt.move(m)
 			assert.Equal(t, tt.want, m.ActiveID())
 			assert.False(t, m.Focused(), "programmatic navigation does not require focus")
 		})
@@ -112,7 +112,6 @@ func TestUpdateNavigation(t *testing.T) {
 			updated, cmd := m.Update(tt.msg)
 			assert.Equal(t, tt.want, updated.ActiveID())
 			assert.Equal(t, tt.focused, updated.Focused())
-			assert.Equal(t, tt.initial, m.ActiveID(), "Update must not mutate the input model")
 			if tt.initial == tt.want {
 				assert.Nil(t, cmd)
 				return
@@ -136,8 +135,9 @@ func TestUpdateWithoutNavigationTargets(t *testing.T) {
 				m, err := tabs.New(items[:count])
 				require.NoError(t, err)
 				m.Focus()
+				previous := m.ActiveID()
 				updated, cmd := m.Update(msg)
-				assert.Equal(t, m.ActiveID(), updated.ActiveID())
+				assert.Equal(t, previous, updated.ActiveID())
 				assert.Nil(t, cmd)
 			})
 		}

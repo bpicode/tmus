@@ -23,7 +23,7 @@ type Model struct {
 	lyrics    *lyrics.Model
 	browser   *browser.Model
 	help      *help.Model
-	tabs      tabs.Model
+	tabs      *tabs.Model
 	events    eventChannels
 	width     int
 	styles    styles

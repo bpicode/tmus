@@ -56,6 +56,7 @@ func TestNewOptions(t *testing.T) {
 				{Code: tea.KeyTab}, {Code: tea.KeyTab, Mod: tea.ModShift},
 				{Code: tea.KeyRight}, {Code: tea.KeyLeft},
 			} {
+				require.NoError(t, m.Select("one"))
 				want := "one"
 				switch press.String() {
 				case tt.next:

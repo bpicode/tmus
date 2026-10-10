@@ -355,8 +355,7 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 				Type:  core.CmdAdd,
 				Track: core.Track{Name: selected.Name(), Path: selected.Path()},
 			}
-			_ = m.app.Dispatch(cmd)
-			return nil, true
+			return m.dispatch(cmd), true
 		}
 		return m.openSelection(), true
 	case "backspace", "left", "h":
@@ -368,8 +367,7 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 					Type:  core.CmdAdd,
 					Track: core.Track{Name: selected.Name(), Path: selected.Path()},
 				}
-				_ = m.app.Dispatch(cmd)
-				return nil, true
+				return m.dispatch(cmd), true
 			}
 		}
 		return nil, true
@@ -384,8 +382,7 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 		}
 		if len(tracks) > 0 {
 			cmd := core.Command{Type: core.CmdAddAll, Tracks: tracks}
-			_ = m.app.Dispatch(cmd)
-			return nil, true
+			return m.dispatch(cmd), true
 		}
 		return nil, true
 	case "ctrl+r":
@@ -449,4 +446,14 @@ func clamp(v, min, max int) int {
 		return max
 	}
 	return v
+}
+
+// dispatch displays command errors in the browser error view.
+func (m *Model) dispatch(cmd core.Command) tea.Cmd {
+	if err := m.app.Dispatch(cmd); err != nil {
+		m.errorView.SetErr(err)
+		return nil
+	}
+	m.errorView.SetErr(nil)
+	return nil
 }

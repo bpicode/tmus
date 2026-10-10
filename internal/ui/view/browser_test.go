@@ -222,7 +222,7 @@ func TestModelBrowserAndPlaylistSearchesStaySeparate(t *testing.T) {
 	tui.tm.Type("A")
 	state := tui.waitForState(func(state core.State) bool { return len(state.Playlist) == 2 })
 	assert.Equal(t, filepath.Join(dir, "quiet.mp3"), state.Playlist[1].Path)
-	tui.waitForOutput("File added")
+	tui.waitForOutput("added")
 	tui.tm.Send(tea.KeyPressMsg{Code: tea.KeyTab})
 	tui.tm.Send(tea.KeyPressMsg{Code: tea.KeyTab})
 	tui.waitForOutput("Playlist entry")

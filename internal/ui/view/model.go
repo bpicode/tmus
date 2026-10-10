@@ -1,8 +1,6 @@
 package view
 
 import (
-	"fmt"
-
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -218,14 +216,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 	case core.StateEvent:
-		if msg.Source == core.StateEventCommand && msg.Changes&core.StateChangePlaylist != 0 {
-			switch msg.Command.Type {
-			case core.CmdAdd:
-				cmds = append(cmds, notification.Info("File added"))
-			case core.CmdAddAll:
-				cmds = append(cmds, notification.Info(addedFilesText(len(msg.Command.Tracks))))
-			}
-		}
 		cmds = append(cmds, m.listenForStateEvent())
 		if m.tabs.ActiveID() == "track" {
 			cmds = append(cmds, m.trackInfo.Show(true))
@@ -354,11 +344,4 @@ func (m *Model) listenForLyricsEvent() tea.Cmd {
 		}
 		return event
 	}
-}
-
-func addedFilesText(count int) string {
-	if count == 1 {
-		return "File added"
-	}
-	return fmt.Sprintf("%d files added", count)
 }

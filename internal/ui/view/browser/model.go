@@ -1,6 +1,7 @@
 package browser
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/ui/components/bar"
 	"github.com/bpicode/tmus/internal/ui/components/errorview"
+	"github.com/bpicode/tmus/internal/ui/components/notification"
 	"github.com/bpicode/tmus/internal/ui/components/sanitize"
 	"github.com/bpicode/tmus/internal/ui/theme"
 )
@@ -355,7 +357,8 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 				Type:  core.CmdAdd,
 				Track: core.Track{Name: selected.Name(), Path: selected.Path()},
 			}
-			return m.dispatch(cmd), true
+			_ = m.app.Dispatch(cmd)
+			return notification.Info(fmt.Sprintf("✅ added '%s'", selected.Name())), true
 		}
 		return m.openSelection(), true
 	case "backspace", "left", "h":
@@ -367,7 +370,8 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 					Type:  core.CmdAdd,
 					Track: core.Track{Name: selected.Name(), Path: selected.Path()},
 				}
-				return m.dispatch(cmd), true
+				_ = m.app.Dispatch(cmd)
+				return notification.Info(fmt.Sprintf("✅ added '%s'", selected.Name())), true
 			}
 		}
 		return nil, true
@@ -382,7 +386,8 @@ func (m *Model) updateNav(msg tea.KeyMsg) (tea.Cmd, bool) {
 		}
 		if len(tracks) > 0 {
 			cmd := core.Command{Type: core.CmdAddAll, Tracks: tracks}
-			return m.dispatch(cmd), true
+			_ = m.app.Dispatch(cmd)
+			return notification.Info(fmt.Sprintf("✅ %d files added", len(tracks))), true
 		}
 		return nil, true
 	case "ctrl+r":
@@ -446,14 +451,4 @@ func clamp(v, min, max int) int {
 		return max
 	}
 	return v
-}
-
-// dispatch displays command errors in the browser error view.
-func (m *Model) dispatch(cmd core.Command) tea.Cmd {
-	if err := m.app.Dispatch(cmd); err != nil {
-		m.errorView.SetErr(err)
-		return nil
-	}
-	m.errorView.SetErr(nil)
-	return nil
 }

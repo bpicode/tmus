@@ -28,14 +28,14 @@ type Msg struct {
 
 type expiredMsg struct{ id uint64 }
 
-// Success returns a command that displays a success notification.
-func Success(text string) tea.Cmd {
-	return func() tea.Msg { return Msg{Text: text, msgType: msgTypeSuccess} }
-}
-
 // Info returns a command that displays an informational notification.
 func Info(text string) tea.Cmd {
 	return func() tea.Msg { return Msg{Text: text, msgType: msgTypeInfo} }
+}
+
+// Success returns a command that displays a success notification.
+func Success(text string) tea.Cmd {
+	return func() tea.Msg { return Msg{Text: text, msgType: msgTypeSuccess} }
 }
 
 // Warn returns a command that displays a warning notification.

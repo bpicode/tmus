@@ -6,6 +6,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/config"
+	"github.com/bpicode/tmus/internal/ui/components/notification"
 	"github.com/bpicode/tmus/internal/ui/components/tabs"
 	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/bpicode/tmus/internal/ui/view/browser"
@@ -17,16 +18,17 @@ import (
 
 // Model is the tabbed player UI.
 type Model struct {
-	app       *core.App
-	playlist  *playlist.Model
-	trackInfo *track_info.Model
-	lyrics    *lyrics.Model
-	browser   *browser.Model
-	help      *help.Model
-	tabs      *tabs.Model
-	events    eventChannels
-	width     int
-	styles    styles
+	notifications *notification.Model
+	app           *core.App
+	playlist      *playlist.Model
+	trackInfo     *track_info.Model
+	lyrics        *lyrics.Model
+	browser       *browser.Model
+	help          *help.Model
+	tabs          *tabs.Model
+	events        eventChannels
+	width         int
+	styles        styles
 }
 
 // NewModel creates the tabbed player. It restores
@@ -53,7 +55,8 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 	}
 	m := &Model{
 		app: appRef, tabs: tabModel, styles: newStyles(th),
-		playlist: playlist.NewModel(playlist.Config{Theme: th, App: appRef, FPS: cfg.FPS}),
+		notifications: notification.New(notification.WithStyles(newNotificationStyles(th))),
+		playlist:      playlist.NewModel(playlist.Config{Theme: th, App: appRef, FPS: cfg.FPS}),
 		trackInfo: track_info.NewModel(track_info.Config{
 			Theme: th, App: appRef, ArtworkAspect: cfg.ArtworkAspect, ArtworkRenderer: cfg.ArtworkRenderer,
 		}),
@@ -84,9 +87,15 @@ func (m *Model) Init() tea.Cmd {
 // Update routes keyboard input to the active tab and background messages to
 // the content models.
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if cmd, handled := m.notifications.Update(msg); handled {
+		return m, cmd
+	}
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case browserMsg:
+		if cmd, handled := m.notifications.Update(msg.msg); handled {
+			return m, cmd
+		}
 		if batch, ok := msg.msg.(tea.BatchMsg); ok {
 			return m, childBatch(batch, browserCmd)
 		}
@@ -94,6 +103,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.browser, cmd, _ = m.browser.Update(msg.msg)
 		return m, browserCmd(cmd)
 	case playlistMsg:
+		if cmd, handled := m.notifications.Update(msg.msg); handled {
+			return m, cmd
+		}
 		switch reply := msg.msg.(type) {
 		case tea.BatchMsg:
 			return m, childBatch(reply, playlistCmd)
@@ -279,7 +291,7 @@ func (m *Model) View() tea.View {
 		}
 		content = m.tabs.Render(content)
 	}
-	view := tea.NewView(content)
+	view := tea.NewView(m.notifications.Overlay(content))
 	view.AltScreen = true
 	view.WindowTitle = "tmus"
 	view.ForegroundColor = m.styles.foreground

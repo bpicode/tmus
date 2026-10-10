@@ -15,6 +15,7 @@ import (
 	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/app/library"
 	"github.com/bpicode/tmus/internal/config"
+	"github.com/bpicode/tmus/internal/ui/components/notification"
 	"github.com/bpicode/tmus/internal/ui/components/tabs"
 	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/bpicode/tmus/internal/ui/view"
@@ -377,4 +378,18 @@ func TestModelReleasesTrackArtworkOnTabChange(t *testing.T) {
 	require.True(t, ok)
 	assert.Contains(t, cleanup.Msg, "a=d", "leaving Track deletes its terminal image")
 	assert.Contains(t, m.View().Content, "Loading...")
+}
+
+func TestModelNotificationAcrossTabs(t *testing.T) {
+	m, _ := newModelTest(t)
+	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	_, cmd := m.Update(notification.Success("File added")())
+	require.NotNil(t, cmd)
+	assert.Contains(t, ansi.Strip(m.View().Content), "File added")
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	content := m.View().Content
+	assert.Contains(t, ansi.Strip(content), "File added")
+	assert.Contains(t, content, "No track selected.")
+	assert.Equal(t, 80, lipgloss.Width(content))
+	assert.Equal(t, 24, lipgloss.Height(content))
 }

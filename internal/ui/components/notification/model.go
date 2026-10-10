@@ -11,20 +11,36 @@ import (
 	"github.com/bpicode/tmus/internal/ui/components/truncate"
 )
 
-// ShowMsg requests a notification. Use Success, Info, or Error to create one.
-type ShowMsg struct {
+type msgType int
+
+const (
+	msgTypeInfo msgType = iota
+	msgTypeSuccess
+	msgTypeWarn
+	msgTypeError
+)
+
+// Msg requests a notification. Use Success, Info, or Error to create one.
+type Msg struct {
 	Text    string
-	IsError bool
+	msgType msgType
 }
 
 type expiredMsg struct{ id uint64 }
 
 // Success returns a command that displays a success notification.
-func Success(text string) tea.Cmd { return Info(text) }
+func Success(text string) tea.Cmd {
+	return func() tea.Msg { return Msg{Text: text, msgType: msgTypeSuccess} }
+}
 
 // Info returns a command that displays an informational notification.
 func Info(text string) tea.Cmd {
-	return func() tea.Msg { return ShowMsg{Text: text} }
+	return func() tea.Msg { return Msg{Text: text, msgType: msgTypeInfo} }
+}
+
+// Warn returns a command that displays a warning notification.
+func Warn(text string) tea.Cmd {
+	return func() tea.Msg { return Msg{Text: text, msgType: msgTypeWarn} }
 }
 
 // Error returns a command that displays an error notification.
@@ -33,12 +49,12 @@ func Error(err error) tea.Cmd {
 	if err == nil {
 		return nil
 	}
-	return func() tea.Msg { return ShowMsg{Text: err.Error(), IsError: true} }
+	return func() tea.Msg { return Msg{Text: err.Error(), msgType: msgTypeError} }
 }
 
 // Model owns a single notification. New messages replace the current message.
 type Model struct {
-	message ShowMsg
+	message Msg
 	id      uint64
 	styles  Styles
 }
@@ -46,6 +62,10 @@ type Model struct {
 // Styles defines notification colors independently of the host application.
 // Nil colors leave the terminal's corresponding default color unchanged.
 type Styles struct {
+	Info        lipgloss.Style
+	Success     lipgloss.Style
+	Warn        lipgloss.Style
+	Error       lipgloss.Style
 	Foreground  color.Color
 	Background  color.Color
 	InfoBorder  color.Color
@@ -55,34 +75,51 @@ type Styles struct {
 // DefaultStyles returns notification colors suitable for an unthemed terminal.
 func DefaultStyles() Styles {
 	return Styles{
-		InfoBorder:  lipgloss.Cyan,
-		ErrorBorder: lipgloss.Red,
+		Info:    lipgloss.NewStyle().Foreground(lipgloss.Cyan).Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Cyan).Padding(0, 1),
+		Success: lipgloss.NewStyle().Foreground(lipgloss.Green).Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Green).Padding(0, 1),
+		Warn:    lipgloss.NewStyle().Foreground(lipgloss.Yellow).Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Yellow).Padding(0, 1),
+		Error:   lipgloss.NewStyle().Foreground(lipgloss.Red).Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Red).Padding(0, 1),
+	}
+}
+
+type Option func(*Model)
+
+// WithStyles replaces the complete notification styles.
+func WithStyles(styles Styles) Option {
+	return func(m *Model) {
+		m.styles = styles
 	}
 }
 
 // New creates a notification model with the supplied styles.
-func New(styles Styles) *Model { return &Model{styles: styles} }
+func New(opts ...Option) *Model {
+	m := &Model{styles: DefaultStyles()}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
 
 // Update handles notification requests and expiry messages.
 // The boolean reports whether the message belongs to this component.
 func (m *Model) Update(msg tea.Msg) (tea.Cmd, bool) {
 	switch msg := msg.(type) {
-	case ShowMsg:
+	case Msg:
 		m.id++
 		msg.Text = sanitize.TerminalText(msg.Text)
 		m.message = msg
 		if msg.Text == "" {
 			return nil, true
 		}
-		lifetime := 3 * time.Second
-		if msg.IsError {
-			lifetime = 6 * time.Second
+		lifetime := 2 * time.Second
+		if msg.msgType == msgTypeError {
+			lifetime = 4 * time.Second
 		}
 		id := m.id
 		return tea.Tick(lifetime, func(time.Time) tea.Msg { return expiredMsg{id: id} }), true
 	case expiredMsg:
 		if msg.id == m.id {
-			m.message = ShowMsg{}
+			m.message = Msg{}
 		}
 		return nil, true
 	default:
@@ -93,22 +130,36 @@ func (m *Model) Update(msg tea.Msg) (tea.Cmd, bool) {
 // Overlay draws the current notification above content without changing its size.
 // On terminals too small for a bordered notification, only content is shown.
 func (m *Model) Overlay(content string) string {
-	width, height := lipgloss.Width(content), lipgloss.Height(content)
-	if m.message.Text == "" || width < 8 || height < 3 {
+	if m.message.Text == "" {
 		return content
 	}
-	color := m.styles.InfoBorder
-	label := "✓ "
-	if m.message.IsError {
-		color, label = m.styles.ErrorBorder, "! "
+	width, height := lipgloss.Width(content), lipgloss.Height(content)
+	if width < 8 || height < 3 {
+		return content
 	}
-	style := lipgloss.NewStyle().
-		Foreground(m.styles.Foreground).Background(m.styles.Background).
-		Border(lipgloss.RoundedBorder()).BorderForeground(color).Padding(0, 1)
-	text := (truncate.Right{}).MaxWidth(min(50, width-4)).Render(label + m.message.Text)
+	var style lipgloss.Style
+	switch m.message.msgType {
+	case msgTypeError:
+		style = m.styles.Error
+	case msgTypeWarn:
+		style = m.styles.Warn
+	case msgTypeSuccess:
+		style = m.styles.Success
+	default:
+		style = m.styles.Info
+	}
+	textWidth := min(50, width-style.GetHorizontalFrameSize())
+	if textWidth <= 0 {
+		return content
+	}
+	text := (truncate.Right{}).MaxWidth(textWidth).Render(m.message.Text)
 	toast := style.Render(text)
-	x := max(0, width-lipgloss.Width(toast)-1)
-	y := max(0, height-lipgloss.Height(toast)-1)
+	toastWidth, toastHeight := lipgloss.Width(toast), lipgloss.Height(toast)
+	if toastWidth > width || toastHeight > height {
+		return content
+	}
+	x := max(0, width-toastWidth-2)
+	y := max(0, height-toastHeight-1)
 	rendered := lipgloss.NewCompositor(
 		lipgloss.NewLayer(content),
 		lipgloss.NewLayer(toast).X(x).Y(y).Z(1),

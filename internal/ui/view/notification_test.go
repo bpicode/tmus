@@ -2,6 +2,7 @@ package view
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"testing/synctest"
 
@@ -21,13 +22,13 @@ func TestChildNotificationsReachRoot(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
-				m := &Model{notifications: notification.New(notification.DefaultStyles())}
-				_, expiry := m.Update(tt.wrap(notification.Error(errors.New("Could not add file")))())
+				m := &Model{notifications: notification.New()}
+				base := strings.TrimSuffix(strings.Repeat(strings.Repeat(".", 40)+"\n", 4), "\n")
+				_, expiry := m.Update(tt.wrap(notification.Error(errors.New("could not add file")))())
 				require.NotNil(t, expiry)
-				assert.Contains(t, m.notifications.Overlay("                  "+"\n"+"                  "+"\n"+"                  "), "Could not")
+				assert.Contains(t, m.notifications.Overlay(base), "could not add file")
 				_, cmd := m.Update(expiry())
 				assert.Nil(t, cmd)
-				base := "                  "
 				assert.Equal(t, base, m.notifications.Overlay(base))
 			})
 		})

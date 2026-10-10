@@ -57,7 +57,7 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 	}
 	m := &Model{
 		app: appRef, tabs: tabModel, styles: newStyles(th),
-		notifications: notification.New(newNotificationStyles(th)),
+		notifications: notification.New(notification.WithStyles(newNotificationStyles(th))),
 		playlist:      playlist.NewModel(playlist.Config{Theme: th, App: appRef, FPS: cfg.FPS}),
 		trackInfo: track_info.NewModel(track_info.Config{
 			Theme: th, App: appRef, ArtworkAspect: cfg.ArtworkAspect, ArtworkRenderer: cfg.ArtworkRenderer,
@@ -221,9 +221,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Source == core.StateEventCommand && msg.Changes&core.StateChangePlaylist != 0 {
 			switch msg.Command.Type {
 			case core.CmdAdd:
-				cmds = append(cmds, notification.Success("File added"))
+				cmds = append(cmds, notification.Info("File added"))
 			case core.CmdAddAll:
-				cmds = append(cmds, notification.Success(addedFilesText(len(msg.Command.Tracks))))
+				cmds = append(cmds, notification.Info(addedFilesText(len(msg.Command.Tracks))))
 			}
 		}
 		cmds = append(cmds, m.listenForStateEvent())

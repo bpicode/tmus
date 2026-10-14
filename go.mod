@@ -12,7 +12,7 @@ require (
 	github.com/charmbracelet/x/ansi v0.11.9
 	github.com/charmbracelet/x/exp/teatest/v2 v2.0.0-20260730164118-7e2d3e6c5238
 	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8
-	github.com/godbus/dbus/v5 v5.2.2
+	github.com/godbus/dbus/v5 v5.2.3
 	github.com/gopxl/beep/v2 v2.1.1
 	github.com/jfreymuth/vorbis v1.0.2
 	github.com/jj11hh/opus v1.0.1

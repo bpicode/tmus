@@ -443,12 +443,6 @@ func (i browserListItem) FilterValue() string {
 	return sanitize.TerminalText(i.entry.Name())
 }
 
-func clamp(v, min, max int) int {
-	if v < min {
-		return min
-	}
-	if v > max {
-		return max
-	}
-	return v
+func clamp(v, lower, upper int) int {
+	return min(max(v, lower), upper)
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"slices"
 	"sort"
 	"time"
 
@@ -526,7 +527,7 @@ func readM4AAACConfig(r io.ReadSeeker, start, end uint64) ([]byte, error) {
 	}
 	for _, descriptor := range esds.Descriptors {
 		if descriptor.Tag == mp4.DecSpecificInfoTag && len(descriptor.Data) > 0 {
-			return append([]byte(nil), descriptor.Data...), nil
+			return slices.Clone(descriptor.Data), nil
 		}
 	}
 	return nil, errors.New("AAC esds box has no decoder-specific configuration")

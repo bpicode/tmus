@@ -89,7 +89,7 @@ func validateWindowsRuntimeSecurity(sd *windows.SECURITY_DESCRIPTOR, user *windo
 		return errors.New("runtime directory must have a restrictive DACL")
 	}
 	userAccess := false
-	for i := uint16(0); i < dacl.AceCount; i++ {
+	for i := range dacl.AceCount {
 		var ace *windows.ACCESS_ALLOWED_ACE
 		if err := windows.GetAce(dacl, uint32(i), &ace); err != nil {
 			return fmt.Errorf("read DACL entry: %w", err)

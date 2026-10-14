@@ -12,10 +12,9 @@ func parse(value string) ([]Line, bool) {
 	if strings.TrimSpace(value) == "" {
 		return nil, false
 	}
-	raw := strings.Split(value, "\n")
-	lines := make([]Line, 0, len(raw))
+	lines := make([]Line, 0, strings.Count(value, "\n")+1)
 	timed := false
-	for _, line := range raw {
+	for line := range strings.SplitSeq(value, "\n") {
 		if isLrcTagLine(line) {
 			continue
 		}

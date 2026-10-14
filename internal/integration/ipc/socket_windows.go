@@ -85,8 +85,8 @@ func isUnixSocketUnsupported(err error) bool {
 	// Older Windows versions can report WSAEINVAL when creating an AF_UNIX
 	// socket. The same code from bind or connect is an operational failure,
 	// not a reason for auto mode to disable IPC.
-	var syscallErr *os.SyscallError
-	if !errors.As(err, &syscallErr) || syscallErr.Syscall != "socket" {
+	syscallErr, ok := errors.AsType[*os.SyscallError](err)
+	if !ok || syscallErr.Syscall != "socket" {
 		return false
 	}
 	return errors.Is(syscallErr.Err, windows.WSAEAFNOSUPPORT) || errors.Is(syscallErr.Err, windows.WSAEINVAL)

@@ -2,6 +2,7 @@ package core
 
 import (
 	"path/filepath"
+	"slices"
 )
 
 func (a *App) addTrack(track Track) {
@@ -40,7 +41,7 @@ func (a *App) removeAt(index int) (removedPlaying bool, removed bool) {
 		return false, false
 	}
 	removedPlaying = index == a.state.Playing
-	a.state.Playlist = append(a.state.Playlist[:index], a.state.Playlist[index+1:]...)
+	a.state.Playlist = slices.Delete(a.state.Playlist, index, index+1)
 	a.queue.Reset()
 	if len(a.state.Playlist) == 0 {
 		a.state.Playing = -1
@@ -196,14 +197,8 @@ func (a *App) applyQueueDecision(d QueueDecision) int {
 	return -1
 }
 
-func clamp(v, min, max int) int {
-	if v < min {
-		return min
-	}
-	if v > max {
-		return max
-	}
-	return v
+func clamp(v, lower, upper int) int {
+	return min(max(v, lower), upper)
 }
 
 func (a *App) nextID() uint64 {

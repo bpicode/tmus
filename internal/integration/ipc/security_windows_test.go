@@ -91,7 +91,7 @@ func TestPrepareWindowsRuntimeDir(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, acl)
 				assert.EqualValues(t, 3, acl.AceCount)
-				for i := uint16(0); i < acl.AceCount; i++ {
+				for i := range acl.AceCount {
 					var ace *windows.ACCESS_ALLOWED_ACE
 					require.NoError(t, windows.GetAce(acl, uint32(i), &ace))
 					require.EqualValues(t, windows.ACCESS_ALLOWED_ACE_TYPE, ace.Header.AceType)

@@ -79,6 +79,8 @@ func (m *Model) Init() tea.Cmd {
 	m.events.state, m.events.unsubState = m.app.SubscribeStateEvents()
 	m.events.metadata, m.events.unsubMetadata = m.app.SubscribeMetadataEvents()
 	m.events.lyrics, m.events.unsubLyrics = m.app.SubscribeLyricsEvents()
+	// Read after subscribing so changes made during startup are not missed.
+	m.playlist.SetState(m.app.State())
 	return tea.Batch(m.tabs.Init(), playlistCmd(m.playlist.Init()), m.trackInfo.Init(), m.lyrics.Init(),
 		browserCmd(m.browser.Init()), m.help.Init(),
 		m.listenForStateEvent(), m.listenForMetadataEvent(), m.listenForLyricsEvent(), tickCmd())
@@ -216,17 +218,20 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 	case core.StateEvent:
+		state := m.app.State()
+		m.playlist.SetState(state)
 		cmds = append(cmds, m.listenForStateEvent())
 		if m.tabs.ActiveID() == "track" {
 			cmds = append(cmds, m.trackInfo.Show(true))
 		}
 		if m.tabs.ActiveID() == "lyrics" {
-			hasTracks := len(m.app.State().Playlist) > 0
+			hasTracks := len(state.Playlist) > 0
 			if !hasTracks || !m.lyrics.Visible() {
 				m.lyrics.Show(hasTracks)
 			}
 		}
 	case core.MetadataEvent:
+		m.playlist.SetState(m.app.State())
 		cmds = append(cmds, m.listenForMetadataEvent())
 	case core.LyricsEvent:
 		cmds = append(cmds, m.listenForLyricsEvent())

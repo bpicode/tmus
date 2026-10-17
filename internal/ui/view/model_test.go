@@ -186,6 +186,44 @@ func TestModelUpdatesPlaylistWhileHidden(t *testing.T) {
 	assert.Contains(t, m.View().Content, "Updated track")
 }
 
+func TestModelPlaylistUsesSnapshotUntilEvent(t *testing.T) {
+	tests := []struct {
+		name string
+		msg  tea.Msg
+	}{
+		{name: "state event", msg: core.StateEvent{Changes: core.StateChangeVolume}},
+		{name: "metadata event", msg: core.MetadataEvent{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m, app := newModelTest(t)
+			app.Restore([]core.Track{{Name: "First snapshot"}}, 0, core.QueueModeShuffle)
+			app.SetVolume(25)
+			_, _ = m.Update(core.StateEvent{Changes: core.StateChangePlaylist})
+			size := tea.WindowSizeMsg{Width: 80, Height: 24}
+			_, _ = m.Update(size)
+			before := m.View().Content
+			require.Contains(t, ansi.Strip(before), "First snapshot")
+			require.Contains(t, ansi.Strip(before), "25%")
+
+			// Change the backend without delivering its notification to the UI.
+			app.Restore([]core.Track{{Name: "Second snapshot"}}, 0, core.QueueModeRepeatAll)
+			app.SetVolume(75)
+			assert.Equal(t, before, m.View().Content)
+			_, _ = m.Update(size)
+			assert.Equal(t, before, m.View().Content, "layout also uses the stored snapshot")
+
+			// Any invalidation reads the latest state, regardless of its change flags.
+			_, _ = m.Update(tt.msg)
+			after := ansi.Strip(m.View().Content)
+			assert.Contains(t, after, "Second snapshot")
+			assert.Contains(t, after, "stopped|repeat-all")
+			assert.Contains(t, after, "75%")
+			assert.NotContains(t, after, "First snapshot")
+		})
+	}
+}
+
 func TestModelRoutesPlaylistKeys(t *testing.T) {
 	m, app := newModelTest(t)
 	tracks := []core.Track{{Path: "/music/one.flac", Name: "One"}, {Path: "/music/two.flac", Name: "Two"}}

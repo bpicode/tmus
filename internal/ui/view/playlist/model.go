@@ -27,6 +27,7 @@ type Model struct {
 	show   bool
 	focus  bool
 	app    *core.App
+	state  core.State
 	list   list.Model
 	footer *footer.Model
 
@@ -87,9 +88,7 @@ func NewModel(cfg Config) *Model {
 }
 
 func (m *Model) Init() tea.Cmd {
-	_, cmd, _ := m.syncState()
-	m.updateLayout()
-	return tea.Batch(cmd, m.footer.Init())
+	return m.footer.Init()
 }
 
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
@@ -104,12 +103,6 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 		m, cmd, stop = m.handleSizeMsg(msg)
 	case tea.KeyPressMsg:
 		m, cmd, stop = m.handleKeyPressMsg(msg)
-	case core.StateEvent:
-		m, cmd, stop = m.syncState()
-		m.updateLayout()
-	case core.MetadataEvent:
-		m, cmd, stop = m.syncState()
-		m.updateLayout()
 	default:
 		m, cmd, stop = m.handleRemaining(msg)
 	}
@@ -128,7 +121,7 @@ func (m *Model) updateLayout() {
 	innerWidth := max(0, m.width-m.styles.panel.GetHorizontalFrameSize())
 	innerHeight := max(0, m.height-m.styles.panel.GetVerticalFrameSize())
 
-	headerHeight := len(m.headerLines(m.app.State(), innerWidth))
+	headerHeight := len(m.headerLines(m.state, innerWidth))
 	remainingHeight := max(0, innerHeight-headerHeight)
 
 	// Reserve the parent-owned separator before sizing the footer. If the footer
@@ -229,10 +222,9 @@ func (m *Model) handleRemaining(msg tea.Msg) (*Model, tea.Cmd, bool) {
 }
 
 func (m *Model) View() string {
-	state := m.app.State()
-	lines := m.headerLines(state, m.layout.innerWidth)
+	lines := m.headerLines(m.state, m.layout.innerWidth)
 	lines = append(lines, m.bodyLines()...)
-	lines = append(lines, m.footerLines(state)...)
+	lines = append(lines, m.footerLines(m.state)...)
 	return m.styles.panel.Width(m.width).Height(m.height).Render(strings.Join(lines, "\n"))
 }
 
@@ -318,25 +310,27 @@ func (m *Model) Show(show bool) {
 	}
 }
 
-func (m *Model) syncState() (*Model, tea.Cmd, bool) {
-	state := m.app.State()
+// SetState updates the rows, selection, and layout from the parent's snapshot.
+// The snapshot's playlist must not be mutated after it is supplied.
+func (m *Model) SetState(state core.State) {
+	m.state = state
 	m.playing = state.Playing
 	m.playState = state.Playback.State
 	m.updateItems(state)
+	m.updateLayout()
 
 	cursor := selectedTrack(state)
 	if m.filterActive() {
 		m.ensureFilteredSelection(state)
-		return m, nil, false
+		return
 	}
 	if cursor >= 0 {
 		m.selectTrack(cursor)
-		return m, nil, false
+		return
 	}
 	if len(m.list.VisibleItems()) > 0 {
 		m.list.Select(0)
 	}
-	return m, nil, false
 }
 
 func (m *Model) updateNav(msg tea.KeyMsg, state core.State) (tea.Cmd, bool) {

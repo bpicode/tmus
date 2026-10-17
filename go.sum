@@ -33,8 +33,8 @@ github.com/charmbracelet/x/ansi v0.11.9 h1:kIrqLBxtTVbLyyHO2Evoi93EjQo1mylWmpNEs
 github.com/charmbracelet/x/ansi v0.11.9/go.mod h1:DG/hpOnaI2QJ/KMMqLL2h0KVhluuJLazf8973P+Vy5w=
 github.com/charmbracelet/x/exp/golden v0.0.0-20251109135125-8916d276318f h1:8CnFOYzrMArVN42jYaGvnBo3mxdONgt09fly+9B96GY=
 github.com/charmbracelet/x/exp/golden v0.0.0-20251109135125-8916d276318f/go.mod h1:V8n/g3qVKNxr2FR37Y+otCsMySvZr601T0C7coEP0bw=
-github.com/charmbracelet/x/exp/teatest/v2 v2.0.0-20260730164118-7e2d3e6c5238 h1:joJ4aZH2MlNB/8BEOOV2uS44uLh7LSAqEswb8WVFIpY=
-github.com/charmbracelet/x/exp/teatest/v2 v2.0.0-20260730164118-7e2d3e6c5238/go.mod h1:aRoQwQWmN9LBG2xi3sVByMFt2fdkPCagd0GAJ1qwOfw=
+github.com/charmbracelet/x/exp/teatest/v2 v2.0.0-20261012121918-43427fdbad12 h1:PfhH8pPgC74IjLWlOFajVSv0DEg7VAgoOP9RLx8TsAw=
+github.com/charmbracelet/x/exp/teatest/v2 v2.0.0-20261012121918-43427fdbad12/go.mod h1:aRoQwQWmN9LBG2xi3sVByMFt2fdkPCagd0GAJ1qwOfw=
 github.com/charmbracelet/x/term v0.2.2 h1:xVRT/S2ZcKdhhOuSP4t5cLi5o+JxklsoEObBSgfgZRk=
 github.com/charmbracelet/x/term v0.2.2/go.mod h1:kF8CY5RddLWrsgVwpw4kAa6TESp6EB5y3uxGLeCqzAI=
 github.com/charmbracelet/x/termios v0.1.1 h1:o3Q2bT8eqzGnGPOYheoYS8eEleT5ZVNYNy8JawjaNZY=
@@ -69,8 +69,8 @@ github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7
 github.com/go-logr/logr v1.2.0/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
 github.com/go-logr/logr v1.4.3 h1:CjnDlHq8ikf6E492q6eKboGOC0T8CDaOvkHCIg8idEI=
 github.com/go-logr/logr v1.4.3/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
-github.com/godbus/dbus/v5 v5.2.3 h1:IQNSXULh6Nc4ZH8ETJ5Mdsj8loUFCWSBnsjmJkyjUB8=
-github.com/godbus/dbus/v5 v5.2.3/go.mod h1:3AAv2+hPq5rdnr5txxxRwiGjPXamgoIHgz9FPBfOp3c=
+github.com/godbus/dbus/v5 v5.2.4 h1:F2gUCy++NMIxGmo9J+z5le/+ZC8W1OgeR51P4i9ZB/U=
+github.com/godbus/dbus/v5 v5.2.4/go.mod h1:3AAv2+hPq5rdnr5txxxRwiGjPXamgoIHgz9FPBfOp3c=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
 github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
 github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da h1:oI5xCqsCo564l8iNU+DwB5epxmsaqB+rhGL0m5jtYqE=

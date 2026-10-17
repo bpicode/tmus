@@ -46,8 +46,8 @@ type Config struct {
 func NewModel(cfg Config) *Model {
 	return &Model{
 		spectrum: spectrum.NewModel(formatLabel(spectrumLabel), cfg.App, cfg.FPS, cfg.Theme),
-		status:   status.NewModel(formatLabel(playingLabel), cfg.App, cfg.Theme),
-		volume:   volume.NewModel(formatLabel(volumeLabel), cfg.App, cfg.Theme),
+		status:   status.NewModel(formatLabel(playingLabel), cfg.Theme),
+		volume:   volume.NewModel(formatLabel(volumeLabel), cfg.Theme),
 	}
 }
 
@@ -78,8 +78,8 @@ func (m *Model) Height() int {
 	return m.layout.height
 }
 
-// View renders the footer content.
-func (m *Model) View() string {
+// View renders playback status and volume from the parent's state snapshot.
+func (m *Model) View(state core.State) string {
 	if m.layout.height == 0 {
 		return ""
 	}
@@ -89,10 +89,10 @@ func (m *Model) View() string {
 		lines = append(lines, strings.Split(m.spectrum.View(m.layout.spectrumRows), "\n")...)
 	}
 	if m.layout.showStatus {
-		lines = append(lines, m.status.View())
+		lines = append(lines, m.status.View(state))
 	}
 	if m.layout.showVolume {
-		lines = append(lines, m.volume.View())
+		lines = append(lines, m.volume.View(state.Volume))
 	}
 	return strings.Join(lines, "\n")
 }

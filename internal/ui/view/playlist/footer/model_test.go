@@ -2,9 +2,46 @@ package footer
 
 import (
 	"testing"
+	"time"
 
+	"github.com/bpicode/tmus/internal/app/core"
+	"github.com/bpicode/tmus/internal/config"
+	"github.com/bpicode/tmus/internal/ui/theme"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestViewUsesSuppliedSnapshot(t *testing.T) {
+	// Rendering status and volume needs no running app or state-reader stub.
+	m := NewModel(Config{Theme: theme.Resolve(config.Default().TUI.Theme)})
+	m.SetSize(80, 2)
+	started := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	paused := core.State{
+		Playlist: []core.Track{{Name: "Snapshot track"}},
+		Playing:  0,
+		Volume:   75,
+		Playback: core.Playback{
+			State: core.PlaybackPaused, StartedAt: started,
+			PausedAt: started.Add(42 * time.Second), Duration: 3 * time.Minute,
+		},
+	}
+	tests := []struct {
+		name   string
+		state  core.State
+		status string
+		volume string
+	}{
+		{name: "paused", state: paused, status: "Snapshot track [00:42/03:00]", volume: "75%"},
+		{name: "stopped", state: core.State{Volume: 25}, status: "none", volume: "25%"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			view := ansi.Strip(m.View(tt.state))
+			assert.Contains(t, view, "Playing:  "+tt.status)
+			assert.Contains(t, view, tt.volume)
+		})
+	}
+}
 
 func TestSpectrumRowCount(t *testing.T) {
 	tests := []struct {

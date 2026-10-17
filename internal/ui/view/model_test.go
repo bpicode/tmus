@@ -345,6 +345,52 @@ func TestModelTrackFollowsSelection(t *testing.T) {
 	assert.NotContains(t, m.View().Content, "Second title")
 }
 
+func TestModelTrackUsesRootSnapshot(t *testing.T) {
+	tests := []struct {
+		name string
+		msg  func(core.Track) tea.Msg
+	}{
+		{name: "state event", msg: func(core.Track) tea.Msg {
+			return core.StateEvent{Changes: core.StateChangeVolume}
+		}},
+		{name: "late metadata event", msg: func(track core.Track) tea.Msg {
+			return core.MetadataEvent{
+				TrackID: track.ID, Path: track.Path, Scope: core.MetadataExtended,
+				Metadata: library.Metadata{Title: "Late metadata"},
+			}
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m, app := newModelTest(t)
+			app.Restore([]core.Track{
+				{Path: "/music/one.flac", Name: "One"},
+				{Path: "/music/two.flac", Name: "Two"},
+			}, 0, core.QueueModeLinear)
+			_, _ = m.Update(core.StateEvent{Changes: core.StateChangePlaylist})
+			_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+			tracks := app.State().Playlist
+
+			require.NoError(t, app.Dispatch(core.Command{Type: core.CmdSelectIndex, Index: 1}))
+			require.Eventually(t, func() bool { return app.State().Cursor == 1 }, time.Second, time.Millisecond)
+			// Opening Track uses the same snapshot as the playlist until an event arrives.
+			_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+			assert.Contains(t, m.View().Content, tracks[0].Path)
+			assert.NotContains(t, m.View().Content, tracks[1].Path)
+
+			_, _ = m.Update(tt.msg(tracks[0]))
+			assert.Contains(t, m.View().Content, tracks[1].Path)
+			assert.Contains(t, m.View().Content, "Loading...")
+			assert.NotContains(t, m.View().Content, "Late metadata")
+			_, _ = m.Update(core.MetadataEvent{
+				TrackID: tracks[1].ID, Path: tracks[1].Path, Scope: core.MetadataExtended,
+				Metadata: library.Metadata{Title: "Current metadata"},
+			})
+			assert.Contains(t, m.View().Content, "Current metadata")
+		})
+	}
+}
+
 func TestModelTrackKeys(t *testing.T) {
 	for _, press := range []tea.KeyPressMsg{
 		{Code: tea.KeyEscape}, {Code: 'i', Text: "i"},
@@ -353,8 +399,10 @@ func TestModelTrackKeys(t *testing.T) {
 		t.Run(press.String(), func(t *testing.T) {
 			m, app := newModelTest(t)
 			app.Restore([]core.Track{{Path: "/music/one.flac", Name: "One"}}, 0, core.QueueModeLinear)
+			_, _ = m.Update(core.StateEvent{Changes: core.StateChangePlaylist})
 			_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 			_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+			require.Contains(t, m.View().Content, "/music/one.flac")
 			_, cmd := m.Update(press)
 			if press.String() == "q" || press.String() == "ctrl+c" {
 				require.NotNil(t, cmd)
@@ -370,6 +418,7 @@ func TestModelTrackKeys(t *testing.T) {
 func TestModelTrackScrolls(t *testing.T) {
 	m, app := newModelTest(t)
 	app.Restore([]core.Track{{Path: "/music/one.flac", Name: "One"}}, 0, core.QueueModeLinear)
+	_, _ = m.Update(core.StateEvent{Changes: core.StateChangePlaylist})
 	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 11})
 	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	track := app.State().Playlist[0]
@@ -392,6 +441,7 @@ func TestModelReleasesTrackArtworkOnTabChange(t *testing.T) {
 	t.Setenv("KITTY_WINDOW_ID", "1")
 	m, app := newModelTest(t)
 	app.Restore([]core.Track{{Path: "/music/one.flac", Name: "One"}}, 0, core.QueueModeLinear)
+	_, _ = m.Update(core.StateEvent{Changes: core.StateChangePlaylist})
 	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	var picture bytes.Buffer
@@ -416,6 +466,48 @@ func TestModelReleasesTrackArtworkOnTabChange(t *testing.T) {
 	require.True(t, ok)
 	assert.Contains(t, cleanup.Msg, "a=d", "leaving Track deletes its terminal image")
 	assert.Contains(t, m.View().Content, "Loading...")
+}
+
+func TestModelOrdersArtworkWhenMetadataChangesSelection(t *testing.T) {
+	t.Setenv("KITTY_WINDOW_ID", "1")
+	m, app := newModelTest(t)
+	app.Restore([]core.Track{
+		{Path: "/music/one.flac", Name: "One"},
+		{Path: "/music/two.flac", Name: "Two"},
+	}, 0, core.QueueModeLinear)
+	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(80, 24))
+	t.Cleanup(func() {
+		_ = tm.Quit()
+		tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
+	})
+	tui := &tuiTest{t: t, appRef: app, tm: tm}
+	tui.waitForOutput("One", "Two")
+	tm.Send(tea.KeyPressMsg{Code: tea.KeyTab})
+	tui.waitForOutput("/music/one.flac")
+	var picture bytes.Buffer
+	require.NoError(t, png.Encode(&picture, image.NewRGBA(image.Rect(0, 0, 2, 2))))
+	tracks := app.State().Playlist
+	metadata := library.Metadata{Picture: &library.Picture{Data: picture.Bytes()}}
+	tm.Send(core.MetadataEvent{
+		TrackID: tracks[0].ID, Path: tracks[0].Path, Scope: core.MetadataExtended, Metadata: metadata,
+	})
+	tui.waitForOutput("a=T")
+
+	// Both tracks share an image ID. Deleting the old image after uploading
+	// the new one would remove the artwork from the terminal.
+	app.Restore(tracks, 1, core.QueueModeLinear)
+	tm.Send(core.MetadataEvent{
+		TrackID: tracks[1].ID, Path: tracks[1].Path, Scope: core.MetadataExtended, Metadata: metadata,
+	})
+	deleted, uploaded := -1, -1
+	teatest.WaitFor(t, tm.Output(), func(output []byte) bool {
+		deleted = bytes.Index(output, []byte("a=d"))
+		uploaded = bytes.Index(output, []byte("a=T"))
+		return deleted >= 0 && uploaded >= 0
+	}, teatest.WithDuration(2*time.Second), teatest.WithCheckInterval(10*time.Millisecond))
+	assert.Greater(t, uploaded, deleted, "new artwork is uploaded after the deletion")
+	tm.Type("q")
+	tui.waitFinished()
 }
 
 func TestModelNotificationAcrossTabs(t *testing.T) {

@@ -108,7 +108,7 @@ func (m *Model) handleKeyPressMsg(msg tea.KeyPressMsg) (*Model, tea.Cmd, bool) {
 	}
 	switch msg.String() {
 	case "q", "esc", "i":
-		return m, m.Show(false), true
+		return m, m.Hide(), true
 	case "up", "k":
 		m.viewport.ScrollUp(1)
 		return m, nil, true
@@ -132,49 +132,51 @@ func (m *Model) handleKeyPressMsg(msg tea.KeyPressMsg) (*Model, tea.Cmd, bool) {
 	}
 }
 
-func (m *Model) Show(show bool) tea.Cmd {
-	if show {
-		state := m.app.State()
-		if len(state.Playlist) == 0 {
-			return m.Show(false)
-		}
-		cursor := state.Playing
-		if state.Cursor != -1 {
-			cursor = state.Cursor
-		}
-		if cursor < 0 || cursor >= len(state.Playlist) {
-			return m.Show(false)
-		}
-		track := state.Playlist[cursor]
-		if track.ID == 0 || track.Path == "" {
-			return m.Show(false)
-		}
-		if m.show && track.ID == m.trackID && track.Path == m.trackPath {
-			return nil
-		}
-
-		m.show = true
-		m.trackID = track.ID
-		m.trackPath = track.Path
-		m.loading = true
-		m.err = ""
-		m.viewport.GotoTop()
-		m.data = library.Metadata{}
-		_ = m.app.Dispatch(core.Command{
-			Type:    core.CmdRequestMetadata,
-			TrackID: track.ID,
-			Path:    track.Path,
-			Scope:   core.MetadataExtended,
-		})
-	} else {
-		m.show = false
-		m.trackID = 0
-		m.trackPath = ""
-		m.loading = false
-		m.err = ""
-		m.viewport.GotoTop()
-		m.data = library.Metadata{}
+// Show opens or refreshes track information using the parent's state snapshot.
+func (m *Model) Show(state core.State) tea.Cmd {
+	if len(state.Playlist) == 0 {
+		return m.Hide()
 	}
+	cursor := state.Playing
+	if state.Cursor != -1 {
+		cursor = state.Cursor
+	}
+	if cursor < 0 || cursor >= len(state.Playlist) {
+		return m.Hide()
+	}
+	track := state.Playlist[cursor]
+	if track.ID == 0 || track.Path == "" {
+		return m.Hide()
+	}
+	if m.show && track.ID == m.trackID && track.Path == m.trackPath {
+		return nil
+	}
+
+	m.show = true
+	m.trackID = track.ID
+	m.trackPath = track.Path
+	m.loading = true
+	m.err = ""
+	m.viewport.GotoTop()
+	m.data = library.Metadata{}
+	_ = m.app.Dispatch(core.Command{
+		Type:    core.CmdRequestMetadata,
+		TrackID: track.ID,
+		Path:    track.Path,
+		Scope:   core.MetadataExtended,
+	})
+	return rawCmd(m.syncArtwork())
+}
+
+// Hide closes track information and clears its metadata and terminal artwork.
+func (m *Model) Hide() tea.Cmd {
+	m.show = false
+	m.trackID = 0
+	m.trackPath = ""
+	m.loading = false
+	m.err = ""
+	m.viewport.GotoTop()
+	m.data = library.Metadata{}
 	return rawCmd(m.syncArtwork())
 }
 

@@ -20,6 +20,7 @@ import (
 type Model struct {
 	notifications *notification.Model
 	app           *core.App
+	state         core.State
 	playlist      *playlist.Model
 	trackInfo     *track_info.Model
 	lyrics        *lyrics.Model
@@ -80,8 +81,8 @@ func (m *Model) Init() tea.Cmd {
 	m.events.metadata, m.events.unsubMetadata = m.app.SubscribeMetadataEvents()
 	m.events.lyrics, m.events.unsubLyrics = m.app.SubscribeLyricsEvents()
 	// Read after subscribing so changes made during startup are not missed.
-	m.playlist.SetState(m.app.State())
-	return tea.Batch(m.tabs.Init(), playlistCmd(m.playlist.Init()), m.trackInfo.Init(), m.lyrics.Init(),
+	stateCmd := m.refreshState()
+	return tea.Batch(stateCmd, m.tabs.Init(), playlistCmd(m.playlist.Init()), m.trackInfo.Init(), m.lyrics.Init(),
 		browserCmd(m.browser.Init()), m.help.Init(),
 		m.listenForStateEvent(), m.listenForMetadataEvent(), m.listenForLyricsEvent(), tickCmd())
 }
@@ -93,6 +94,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 	var cmds []tea.Cmd
+	var trackCmd tea.Cmd
 	switch msg := msg.(type) {
 	case browserMsg:
 		if cmd, handled := m.notifications.Update(msg.msg); handled {
@@ -136,7 +138,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		if msg.String() == "ctrl+c" {
 			m.lyrics.Shutdown()
-			return m, tea.Sequence(m.trackInfo.Show(false), tea.Quit)
+			return m, tea.Sequence(m.trackInfo.Hide(), tea.Quit)
 		}
 		if key.Matches(msg, m.tabs.KeyMap.Next, m.tabs.KeyMap.Previous) {
 			var cmd tea.Cmd
@@ -179,7 +181,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if msg.String() == "q" {
 			m.lyrics.Shutdown()
-			return m, tea.Sequence(m.trackInfo.Show(false), tea.Quit)
+			return m, tea.Sequence(m.trackInfo.Hide(), tea.Quit)
 		}
 		if msg.String() == "?" {
 			tab := "help"
@@ -218,21 +220,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 	case core.StateEvent:
-		state := m.app.State()
-		m.playlist.SetState(state)
 		cmds = append(cmds, m.listenForStateEvent())
-		if m.tabs.ActiveID() == "track" {
-			cmds = append(cmds, m.trackInfo.Show(true))
-		}
+		trackCmd = m.refreshState()
 		if m.tabs.ActiveID() == "lyrics" {
-			hasTracks := len(state.Playlist) > 0
+			hasTracks := len(m.state.Playlist) > 0
 			if !hasTracks || !m.lyrics.Visible() {
 				m.lyrics.Show(hasTracks)
 			}
 		}
 	case core.MetadataEvent:
-		m.playlist.SetState(m.app.State())
 		cmds = append(cmds, m.listenForMetadataEvent())
+		trackCmd = m.refreshState()
 	case core.LyricsEvent:
 		cmds = append(cmds, m.listenForLyricsEvent())
 	case tickMsg:
@@ -248,6 +246,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.playlist, cmd, _ = m.playlist.Update(msg)
 	cmds = append(cmds, playlistCmd(cmd))
 	m.trackInfo, cmd, _ = m.trackInfo.Update(msg)
+	if trackCmd != nil {
+		// Clear the previous artwork before applying a new metadata reply.
+		cmd = tea.Sequence(trackCmd, cmd)
+	}
 	cmds = append(cmds, cmd)
 	m.lyrics, cmd, _ = m.lyrics.Update(msg)
 	cmds = append(cmds, cmd)
@@ -256,6 +258,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.help, cmd, _ = m.help.Update(msg)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
+}
+
+func (m *Model) refreshState() tea.Cmd {
+	m.state = m.app.State()
+	m.playlist.SetState(m.state)
+	if m.tabs.ActiveID() == "track" {
+		return m.trackInfo.Show(m.state)
+	}
+	return nil
 }
 
 func (m *Model) updateActiveTab() tea.Cmd {
@@ -267,7 +278,10 @@ func (m *Model) updateActiveTab() tea.Cmd {
 	m.browser.Focus(active)
 	m.lyrics.Show(m.tabs.ActiveID() == "lyrics")
 	m.help.Show(m.tabs.ActiveID() == "help")
-	return m.trackInfo.Show(m.tabs.ActiveID() == "track")
+	if m.tabs.ActiveID() == "track" {
+		return m.trackInfo.Show(m.state)
+	}
+	return m.trackInfo.Hide()
 }
 
 // View renders the tab frame and the selected tab's content.

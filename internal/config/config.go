@@ -74,6 +74,7 @@ type ThemeConfig struct {
 	Working    string `toml:"working,omitempty" comment:"Override working indications."`
 	Background string `toml:"background,omitempty" comment:"Override the background color; use 'terminal' for the terminal default."`
 	Foreground string `toml:"foreground,omitempty" comment:"Override the foreground color; use 'terminal' for the terminal default."`
+	Border     string `toml:"border,omitempty" comment:"Override the border style: 'rounded', 'normal', 'ascii', 'block', 'double', 'thick', 'hidden', 'markdown'."`
 }
 
 type TUIConfig struct {

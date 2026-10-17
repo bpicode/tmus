@@ -19,6 +19,6 @@ func newStyles(th theme.Theme) styles {
 		subtitle:    lipgloss.NewStyle().Foreground(th.Muted),
 		error:       lipgloss.NewStyle().Foreground(th.Danger),
 		metadataKey: lipgloss.NewStyle().Bold(true).Foreground(th.Secondary),
-		artwork:     lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(th.Secondary),
+		artwork:     lipgloss.NewStyle().Border(th.Border).BorderForeground(th.Secondary),
 	}
 }

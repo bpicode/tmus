@@ -8,7 +8,7 @@ import (
 	"github.com/bpicode/tmus/internal/config"
 )
 
-// Theme holds the pre-parsed lipgloss colors for the UI.
+// Theme holds the resolved colors and border shape for the UI.
 type Theme struct {
 	Foreground color.Color
 	Background color.Color
@@ -20,22 +20,24 @@ type Theme struct {
 	Warning    color.Color
 	Danger     color.Color
 	Working    color.Color
+	Border     lipgloss.Border
 }
 
-// Resolve selects a preset, applies color overrides, and constructs a Theme.
+// Resolve selects a preset, applies overrides, and constructs a Theme.
 func Resolve(cfg config.ThemeConfig) Theme {
-	colors := resolveColors(cfg, rand.IntN)
+	def := resolveDefinition(cfg, rand.IntN)
 	return Theme{
-		Foreground: toColor(colors.foreground),
-		Background: toColor(colors.background),
-		Primary:    toColor(colors.primary),
-		Secondary:  toColor(colors.secondary),
-		Muted:      toColor(colors.muted),
-		Highlight:  toColor(colors.highlight),
-		Info:       toColor(colors.info),
-		Danger:     toColor(colors.danger),
-		Warning:    toColor(colors.warning),
-		Working:    toColor(colors.working),
+		Foreground: toColor(def.foreground),
+		Background: toColor(def.background),
+		Primary:    toColor(def.primary),
+		Secondary:  toColor(def.secondary),
+		Muted:      toColor(def.muted),
+		Highlight:  toColor(def.highlight),
+		Info:       toColor(def.info),
+		Danger:     toColor(def.danger),
+		Warning:    toColor(def.warning),
+		Working:    toColor(def.working),
+		Border:     toBorder(def.border),
 	}
 }
 
@@ -44,4 +46,27 @@ func toColor(s string) color.Color {
 		return nil
 	}
 	return lipgloss.Color(s)
+}
+
+func toBorder(border string) lipgloss.Border {
+	switch border {
+	case "rounded":
+		return lipgloss.RoundedBorder()
+	case "normal":
+		return lipgloss.NormalBorder()
+	case "ascii":
+		return lipgloss.ASCIIBorder()
+	case "block":
+		return lipgloss.BlockBorder()
+	case "double":
+		return lipgloss.DoubleBorder()
+	case "thick":
+		return lipgloss.ThickBorder()
+	case "hidden":
+		return lipgloss.HiddenBorder()
+	case "markdown":
+		return lipgloss.MarkdownBorder()
+	default:
+		return lipgloss.RoundedBorder()
+	}
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestResolveColors(t *testing.T) {
+func TestResolveDefinition(t *testing.T) {
 	tests := []struct {
 		name       string
 		preset     string
@@ -30,38 +30,41 @@ func TestResolveColors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := config.ThemeConfig{Preset: tt.preset}
 
-			colors := resolveColors(cfg, constantZero)
+			def := resolveDefinition(cfg, constantZero)
 
-			assert.Equal(t, tt.primary, colors.primary)
-			assert.Equal(t, tt.background, colors.background)
-			assert.NotEmpty(t, colors.secondary)
-			assert.NotEmpty(t, colors.muted)
-			assert.NotEmpty(t, colors.highlight)
-			assert.NotEmpty(t, colors.info)
-			assert.NotEmpty(t, colors.danger)
-			assert.NotEmpty(t, colors.warning)
-			assert.NotEmpty(t, colors.working)
+			assert.Equal(t, tt.primary, def.primary)
+			assert.Equal(t, tt.background, def.background)
+			assert.NotEmpty(t, def.secondary)
+			assert.NotEmpty(t, def.muted)
+			assert.NotEmpty(t, def.highlight)
+			assert.NotEmpty(t, def.info)
+			assert.NotEmpty(t, def.danger)
+			assert.NotEmpty(t, def.warning)
+			assert.NotEmpty(t, def.working)
+			assert.Equal(t, "rounded", def.border)
 		})
 	}
 }
 
-func TestResolveColorsAppliesOverrides(t *testing.T) {
-	cfg := config.ThemeConfig{Preset: "catppuccin-mocha", Primary: "#abcdef", Background: terminalColor}
+func TestResolveDefinitionAppliesOverrides(t *testing.T) {
+	cfg := config.ThemeConfig{Preset: "catppuccin-mocha", Primary: "#abcdef", Background: terminalColor, Border: "double"}
 
-	colors := resolveColors(cfg, constantZero)
+	def := resolveDefinition(cfg, constantZero)
 
-	assert.Equal(t, "#abcdef", colors.primary)
-	assert.Empty(t, colors.background)
-	assert.Equal(t, "#94e2d5", colors.secondary)
+	assert.Equal(t, "#abcdef", def.primary)
+	assert.Empty(t, def.background)
+	assert.Equal(t, "#94e2d5", def.secondary)
+	assert.Equal(t, "double", def.border)
 }
 
-func TestResolveColorsFallsBackForUnknownPreset(t *testing.T) {
-	cfg := config.ThemeConfig{Preset: "unknown", Primary: "#abcdef"}
+func TestResolveDefinitionFallsBackForUnknownPreset(t *testing.T) {
+	cfg := config.ThemeConfig{Preset: "unknown", Primary: "#abcdef", Border: "thick"}
 
-	colors := resolveColors(cfg, constantZero)
+	def := resolveDefinition(cfg, constantZero)
 
-	assert.Equal(t, "#abcdef", colors.primary)
-	assert.Equal(t, "14", colors.secondary)
+	assert.Equal(t, "#abcdef", def.primary)
+	assert.Equal(t, "14", def.secondary)
+	assert.Equal(t, "thick", def.border)
 }
 
 func TestRandomCanSelectEveryConcretePreset(t *testing.T) {
@@ -75,9 +78,9 @@ func TestRandomCanSelectEveryConcretePreset(t *testing.T) {
 				return index
 			}
 
-			colors := resolveColors(cfg, sequential)
+			def := resolveDefinition(cfg, sequential)
 
-			assert.Equal(t, want.palette.primary, colors.primary)
+			assert.Equal(t, want.definition, def)
 		})
 	}
 }

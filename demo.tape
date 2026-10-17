@@ -7,7 +7,6 @@ Set Theme "Catppuccin Frappe"
 Set FontSize 14
 Set Width 1280
 Set Height 640
-Set Margin 100
 Set Padding 0
 Set Framerate 30
 Set PlaybackSpeed 1
@@ -24,7 +23,7 @@ Type "cp testdata/*.mp3 /tmp/tmus-demo/Music"
 Enter
 Type "mkdir -p /tmp/tmus-demo/.config"
 Enter
-Type "export $XDG_CONFIG_HOME=/tmp/tmus-demo/.config"
+Type "export XDG_CONFIG_HOME=/tmp/tmus-demo/.config"
 Enter
 Type "./tmus -d /tmp/tmus-demo/Music"
 Enter

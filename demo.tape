@@ -12,9 +12,15 @@ Set Framerate 30
 Set PlaybackSpeed 1
 Set TypingSpeed 50ms
 
+# All player state lives in the disposable container.
+Env COLORTERM "truecolor"
+Env XDG_CONFIG_HOME "/tmp/tmus-demo/.config"
+Env XDG_CACHE_HOME "/tmp/tmus-demo/.cache"
+Env TMUS_MPRIS_ENABLED "false"
+Env TMUS_IPC_SINGLE_INSTANCE "off"
+Env TMUS_LYRICS_LRCLIB_ENABLED "false"
+
 Hide
-Type "export COLORTERM=truecolor"
-Enter
 Type "rm -rf /tmp/tmus-demo/"
 Enter
 Type "mkdir -p /tmp/tmus-demo/Music"
@@ -22,8 +28,6 @@ Enter
 Type "cp testdata/*.mp3 /tmp/tmus-demo/Music"
 Enter
 Type "mkdir -p /tmp/tmus-demo/.config"
-Enter
-Type "export XDG_CONFIG_HOME=/tmp/tmus-demo/.config"
 Enter
 Type "./tmus -d /tmp/tmus-demo/Music"
 Enter

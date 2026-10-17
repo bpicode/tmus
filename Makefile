@@ -19,7 +19,7 @@ NOTICE_PACKAGES := . github.com/ebitengine/purego github.com/inconshreveable/mou
 NOTICE_REPORT := go tool go-licenses report $(NOTICE_PACKAGES) --ignore github.com/bpicode/tmus
 NOTICE_CHECK := go tool go-licenses check $(NOTICE_PACKAGES) --ignore github.com/bpicode/tmus
 
-.PHONY: build lint test notices notices-check completions manpages install install-desktop install-icons icons uninstall demotape
+.PHONY: build lint test notices notices-check completions manpages install install-desktop install-icons icons uninstall demotape socialtape
 
 build:
 	go build -o $(BIN_NAME) .
@@ -82,4 +82,8 @@ uninstall:
 	rm -rf $(CONFIG_DIR)
 
 demotape: build
-	podman run --rm --device /dev/snd --entrypoint /bin/bash -v $(PWD):/vhs ghcr.io/charmbracelet/vhs -c "cd /vhs && apt update && apt install -y libasound2-dev && vhs demo.tape"
+	podman run --rm --device /dev/snd --entrypoint /bin/bash -v "$(PWD):/vhs" ghcr.io/charmbracelet/vhs -c "cd /vhs && apt update && apt install -y libasound2-dev && vhs demo.tape"
+
+# Everything except the existing Go build runs in the disposable container.
+socialtape: build
+	podman run --rm --device /dev/snd --entrypoint /bin/bash -v "$(PWD):/vhs" ghcr.io/charmbracelet/vhs -c "cd /vhs && apt update && apt install -y libasound2-dev && vhs social.tape"

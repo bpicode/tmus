@@ -59,7 +59,7 @@ func NewModel(appRef *core.App, startDir string, openFiles []string, cfg config.
 		notifications: notification.New(notification.WithStyles(newNotificationStyles(th))),
 		playlist:      playlist.NewModel(playlist.Config{Theme: th, App: appRef, FPS: cfg.FPS}),
 		trackInfo: track_info.NewModel(track_info.Config{
-			Theme: th, App: appRef, ArtworkAspect: cfg.ArtworkAspect, ArtworkRenderer: cfg.ArtworkRenderer,
+			Theme: th, ArtworkAspect: cfg.ArtworkAspect, ArtworkRenderer: cfg.ArtworkRenderer,
 		}),
 		lyrics: lyrics.NewModel(lyrics.Config{Theme: th, App: appRef, FollowLine: saved.Lyrics.FollowLine}),
 		browser: browser.NewModel(browser.Config{
@@ -264,7 +264,7 @@ func (m *Model) refreshState() tea.Cmd {
 	m.state = m.app.State()
 	m.playlist.SetState(m.state)
 	if m.tabs.ActiveID() == "track" {
-		return m.trackInfo.Show(m.state)
+		return m.showTrackInfo()
 	}
 	return nil
 }
@@ -279,7 +279,7 @@ func (m *Model) updateActiveTab() tea.Cmd {
 	m.lyrics.Show(m.tabs.ActiveID() == "lyrics")
 	m.help.Show(m.tabs.ActiveID() == "help")
 	if m.tabs.ActiveID() == "track" {
-		return m.trackInfo.Show(m.state)
+		return m.showTrackInfo()
 	}
 	return m.trackInfo.Hide()
 }

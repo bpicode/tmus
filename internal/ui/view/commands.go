@@ -1,6 +1,36 @@
 package view
 
-import tea "charm.land/bubbletea/v2"
+import (
+	"fmt"
+
+	tea "charm.land/bubbletea/v2"
+	"github.com/bpicode/tmus/internal/app/core"
+	"github.com/bpicode/tmus/internal/ui/components/notification"
+)
+
+func (m *Model) showTrackInfo() tea.Cmd {
+	cmd, request := m.trackInfo.Show(m.state)
+	if request == nil {
+		return cmd
+	}
+	err := m.app.Dispatch(core.Command{
+		Type:    core.CmdRequestMetadata,
+		TrackID: request.TrackID,
+		Path:    request.Path,
+		Scope:   core.MetadataExtended,
+	})
+	if err == nil {
+		return cmd
+	}
+	err = fmt.Errorf("request track metadata: %w", err)
+	_, failedCmd, _ := m.trackInfo.Update(core.MetadataEvent{
+		TrackID: request.TrackID,
+		Path:    request.Path,
+		Scope:   core.MetadataExtended,
+		Err:     err,
+	})
+	return tea.Batch(cmd, failedCmd, notification.Error(err))
+}
 
 // Child command replies retain their origin even after switching tabs.
 type browserMsg struct{ msg tea.Msg }

@@ -29,7 +29,6 @@ type Model struct {
 	viewport  viewport.Model
 	artwork   terminalimage.Model
 	data      library.Metadata
-	app       *core.App
 	styles    styles
 }
 
@@ -37,7 +36,6 @@ type Config struct {
 	Theme           theme.Theme
 	ArtworkAspect   float64
 	ArtworkRenderer string
-	App             *core.App
 }
 
 func NewModel(cfg Config) *Model {
@@ -51,7 +49,6 @@ func NewModel(cfg Config) *Model {
 	return &Model{
 		viewport: vp,
 		artwork:  terminalimage.NewModel(artworkAspect, "No artwork", terminalimage.Renderer(cfg.ArtworkRenderer)),
-		app:      cfg.App,
 		styles:   styles,
 	}
 }
@@ -133,23 +130,24 @@ func (m *Model) handleKeyPressMsg(msg tea.KeyPressMsg) (*Model, tea.Cmd, bool) {
 }
 
 // Show opens or refreshes track information using the parent's state snapshot.
-func (m *Model) Show(state core.State) tea.Cmd {
+// It returns terminal commands and an optional metadata request for the parent.
+func (m *Model) Show(state core.State) (tea.Cmd, *MetadataRequest) {
 	if len(state.Playlist) == 0 {
-		return m.Hide()
+		return m.Hide(), nil
 	}
 	cursor := state.Playing
 	if state.Cursor != -1 {
 		cursor = state.Cursor
 	}
 	if cursor < 0 || cursor >= len(state.Playlist) {
-		return m.Hide()
+		return m.Hide(), nil
 	}
 	track := state.Playlist[cursor]
 	if track.ID == 0 || track.Path == "" {
-		return m.Hide()
+		return m.Hide(), nil
 	}
 	if m.show && track.ID == m.trackID && track.Path == m.trackPath {
-		return nil
+		return nil, nil
 	}
 
 	m.show = true
@@ -159,13 +157,10 @@ func (m *Model) Show(state core.State) tea.Cmd {
 	m.err = ""
 	m.viewport.GotoTop()
 	m.data = library.Metadata{}
-	_ = m.app.Dispatch(core.Command{
-		Type:    core.CmdRequestMetadata,
+	return rawCmd(m.syncArtwork()), &MetadataRequest{
 		TrackID: track.ID,
 		Path:    track.Path,
-		Scope:   core.MetadataExtended,
-	})
-	return rawCmd(m.syncArtwork())
+	}
 }
 
 // Hide closes track information and clears its metadata and terminal artwork.

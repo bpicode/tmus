@@ -1,6 +1,7 @@
 package mpris
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"maps"
@@ -386,33 +387,21 @@ func (s *Service) metadataMap(state core.State) map[string]dbus.Variant {
 		return metadata
 	}
 	track := state.Playlist[state.Playing]
-	title := state.Playback.NowPlaying.Title
-	if title == "" {
-		title = state.Playback.NowPlaying.DisplayTitle
-	}
-	if title == "" {
-		title = state.Playback.NowPlaying.SourceName
-	}
-	if title == "" {
-		title = track.Title
-	}
-	if title == "" {
-		title = track.Name
-	}
+	title := cmp.Or(
+		state.Playback.NowPlaying.Title,
+		state.Playback.NowPlaying.DisplayTitle,
+		state.Playback.NowPlaying.SourceName,
+		track.Title,
+		track.Name,
+	)
 	if title != "" {
 		metadata["xesam:title"] = dbus.MakeVariant(title)
 	}
-	artist := state.Playback.NowPlaying.Artist
-	if artist == "" {
-		artist = track.Artist
-	}
+	artist := cmp.Or(state.Playback.NowPlaying.Artist, track.Artist)
 	if artist != "" {
 		metadata["xesam:artist"] = dbus.MakeVariant([]string{artist})
 	}
-	album := state.Playback.NowPlaying.Album
-	if album == "" {
-		album = track.Album
-	}
+	album := cmp.Or(state.Playback.NowPlaying.Album, track.Album)
 	if album != "" {
 		metadata["xesam:album"] = dbus.MakeVariant(album)
 	}

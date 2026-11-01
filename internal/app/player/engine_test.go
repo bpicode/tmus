@@ -58,7 +58,7 @@ func TestEngineCloseAndWaitConcurrentCalls(t *testing.T) {
 
 func TestEngineSeekReturnsOnShutdown(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		e := &Engine{ctx: ctx, cancel: cancel, cmdCh: make(chan command, 1)}
 		result := make(chan SeekResult, 1)
 		go func() { result <- e.SeekTo(0) }()

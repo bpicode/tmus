@@ -58,7 +58,7 @@ func TestUnixSocketSessionCloseWaitsForActiveHandler(t *testing.T) {
 	t.Cleanup(func() { _ = client.Close() })
 
 	listenerClosed := make(chan struct{})
-	var closeListener sync.Once
+	closeListener := sync.OnceFunc(func() { close(listenerClosed) })
 	accepted := false
 	ln := stubListener{
 		accept: func() (net.Conn, error) {
@@ -70,7 +70,7 @@ func TestUnixSocketSessionCloseWaitsForActiveHandler(t *testing.T) {
 			return nil, net.ErrClosed
 		},
 		close: func() error {
-			closeListener.Do(func() { close(listenerClosed) })
+			closeListener()
 			return nil
 		},
 	}

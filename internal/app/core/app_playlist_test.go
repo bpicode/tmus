@@ -1,6 +1,7 @@
 package core
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,8 +27,7 @@ func TestRemoveAtClearsUnusedTrack(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			playlist := make([]Track, len(tracks))
-			copy(playlist, tracks)
+			playlist := slices.Clone(tracks)
 			a := &App{
 				state: State{Playlist: playlist, Playing: 1, Cursor: 2},
 				queue: LinearStrategy{},

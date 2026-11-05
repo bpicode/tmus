@@ -1,6 +1,7 @@
 package core
 
 import (
+	"cmp"
 	"fmt"
 	"time"
 )
@@ -42,11 +43,5 @@ func (n NowPlaying) DisplayName() string {
 	if n.Artist != "" && n.Title != "" {
 		return fmt.Sprintf("%s - %s", n.Artist, n.Title)
 	}
-	if n.DisplayTitle != "" {
-		return n.DisplayTitle
-	}
-	if n.Title != "" {
-		return n.Title
-	}
-	return n.SourceName
+	return cmp.Or(n.DisplayTitle, n.Title, n.SourceName)
 }

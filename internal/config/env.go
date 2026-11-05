@@ -101,19 +101,13 @@ func implementsTextUnmarshaler(value reflect.Value) bool {
 }
 
 func setEnvValue(value reflect.Value, raw string) error {
-	if value.CanAddr() && value.Addr().Type().Implements(textUnmarshalerType) {
-		unmarshaler := value.Addr().Interface().(encoding.TextUnmarshaler)
-		if err := unmarshaler.UnmarshalText([]byte(raw)); err != nil {
-			return err
+	if value.CanAddr() {
+		if unmarshaler, ok := reflect.TypeAssert[encoding.TextUnmarshaler](value.Addr()); ok {
+			return unmarshaler.UnmarshalText([]byte(raw))
 		}
-		return nil
 	}
-	if value.Type().Implements(textUnmarshalerType) {
-		unmarshaler := value.Interface().(encoding.TextUnmarshaler)
-		if err := unmarshaler.UnmarshalText([]byte(raw)); err != nil {
-			return err
-		}
-		return nil
+	if unmarshaler, ok := reflect.TypeAssert[encoding.TextUnmarshaler](value); ok {
+		return unmarshaler.UnmarshalText([]byte(raw))
 	}
 
 	switch value.Kind() {

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"math"
 	"testing"
-	"time"
+	"testing/synctest"
 
 	"github.com/gopxl/beep/v2"
 	"github.com/stretchr/testify/assert"
@@ -102,43 +102,45 @@ func TestSpectrumStreamerPreservesSamplesAndReturnValues(t *testing.T) {
 }
 
 func TestSpectrumAnalyzerWindowOverlapAcrossChunks(t *testing.T) {
-	analyzer := newSpectrumAnalyzer(beep.SampleRate(48000))
-	t.Cleanup(analyzer.close)
-	analyzer.startPlayback(1)
-	samples := sineWindow(48000, 1000, 1, 1)
-	sequence := analyzer.latestSnapshot().Sequence
+	synctest.Test(t, func(t *testing.T) {
+		analyzer := newSpectrumAnalyzer(beep.SampleRate(48000))
+		t.Cleanup(analyzer.close)
+		analyzer.startPlayback(1)
+		samples := sineWindow(48000, 1000, 1, 1)
+		sequence := analyzer.latestSnapshot().Sequence
 
-	for offset, chunkIndex := 0, 0; offset < len(samples); chunkIndex++ {
-		sizes := [...]int{1, 17, 511, 29, 256, 777}
-		size := min(sizes[chunkIndex%len(sizes)], len(samples)-offset)
-		analyzer.captureSamples(samples[offset : offset+size])
-		offset += size
-	}
-	first := waitForSpectrum(t, analyzer, sequence)
-	assert.Equal(t, uint64(spectrumWindowSize), first.EndFrame)
+		for offset, chunkIndex := 0, 0; offset < len(samples); chunkIndex++ {
+			sizes := [...]int{1, 17, 511, 29, 256, 777}
+			size := min(sizes[chunkIndex%len(sizes)], len(samples)-offset)
+			analyzer.captureSamples(samples[offset : offset+size])
+			offset += size
+		}
+		first := waitForSpectrum(t, analyzer, sequence)
+		assert.Equal(t, uint64(spectrumWindowSize), first.EndFrame)
 
-	analyzer.captureSamples(samples[:spectrumHopSize-1])
-	assert.Equal(t, first.Sequence, analyzer.latestSnapshot().Sequence)
-	analyzer.captureSamples(samples[:1])
-	second := waitForSpectrum(t, analyzer, first.Sequence)
-	assert.Equal(t, uint64(spectrumWindowSize+spectrumHopSize), second.EndFrame)
+		analyzer.captureSamples(samples[:spectrumHopSize-1])
+		assert.Equal(t, first.Sequence, analyzer.latestSnapshot().Sequence)
+		analyzer.captureSamples(samples[:1])
+		second := waitForSpectrum(t, analyzer, first.Sequence)
+		assert.Equal(t, uint64(spectrumWindowSize+spectrumHopSize), second.EndFrame)
+	})
 }
 
 func TestSpectrumAnalyzerDropsWorkWithoutBlocking(t *testing.T) {
-	analyzer := &spectrumAnalyzer{
-		freeBuffers: make(chan *spectrumWorkBuffer, 1),
-		workQueue:   make(chan spectrumWork, 1),
-	}
-	analyzer.freeBuffers <- new(spectrumWorkBuffer)
-	analyzer.playbackID.Store(1)
-	analyzer.generation.Store(1)
-	samples := sineWindow(48000, 1000, 1, 1)
+	synctest.Test(t, func(t *testing.T) {
+		analyzer := &spectrumAnalyzer{
+			freeBuffers: make(chan *spectrumWorkBuffer, 1),
+			workQueue:   make(chan spectrumWork, 1),
+		}
+		analyzer.freeBuffers <- new(spectrumWorkBuffer)
+		analyzer.playbackID.Store(1)
+		analyzer.generation.Store(1)
+		samples := sineWindow(48000, 1000, 1, 1)
 
-	started := time.Now()
-	analyzer.captureSamples(samples[:])
-	analyzer.captureSamples(samples[:spectrumHopSize])
-	assert.Less(t, time.Since(started), 100*time.Millisecond)
-	assert.Positive(t, analyzer.droppedWindows.Load())
+		analyzer.captureSamples(samples[:])
+		analyzer.captureSamples(samples[:spectrumHopSize])
+		assert.Positive(t, analyzer.droppedWindows.Load())
+	})
 }
 
 func TestSpectrumAnalyzerRejectsStaleWork(t *testing.T) {
@@ -155,28 +157,30 @@ func TestSpectrumAnalyzerRejectsStaleWork(t *testing.T) {
 }
 
 func TestSpectrumAnalyzerLifecycle(t *testing.T) {
-	analyzer := newSpectrumAnalyzer(beep.SampleRate(48000))
-	t.Cleanup(analyzer.close)
-	samples := sineWindow(48000, 1000, 1, 1)
+	synctest.Test(t, func(t *testing.T) {
+		analyzer := newSpectrumAnalyzer(beep.SampleRate(48000))
+		t.Cleanup(analyzer.close)
+		samples := sineWindow(48000, 1000, 1, 1)
 
-	analyzer.startPlayback(7)
-	started := analyzer.latestSnapshot()
-	assert.Equal(t, uint64(7), started.PlaybackID)
-	assert.NotZero(t, started.Generation)
-	analyzer.captureSamples(samples[:])
-	analyzed := waitForSpectrum(t, analyzer, started.Sequence)
-	assert.Equal(t, uint64(7), analyzed.PlaybackID)
-	assert.Equal(t, started.Generation, analyzed.Generation)
+		analyzer.startPlayback(7)
+		started := analyzer.latestSnapshot()
+		assert.Equal(t, uint64(7), started.PlaybackID)
+		assert.NotZero(t, started.Generation)
+		analyzer.captureSamples(samples[:])
+		analyzed := waitForSpectrum(t, analyzer, started.Sequence)
+		assert.Equal(t, uint64(7), analyzed.PlaybackID)
+		assert.Equal(t, started.Generation, analyzed.Generation)
 
-	analyzer.resetGeneration(7)
-	reset := analyzer.latestSnapshot()
-	assert.Greater(t, reset.Generation, analyzed.Generation)
-	assert.Zero(t, reset.Bands)
+		analyzer.resetGeneration(7)
+		reset := analyzer.latestSnapshot()
+		assert.Greater(t, reset.Generation, analyzed.Generation)
+		assert.Zero(t, reset.Bands)
 
-	analyzer.invalidatePlayback()
-	invalid := analyzer.latestSnapshot()
-	assert.Zero(t, invalid.PlaybackID)
-	assert.Zero(t, invalid.Bands)
+		analyzer.invalidatePlayback()
+		invalid := analyzer.latestSnapshot()
+		assert.Zero(t, invalid.PlaybackID)
+		assert.Zero(t, invalid.Bands)
+	})
 }
 
 func TestSpectrumCaptureAllocations(t *testing.T) {
@@ -259,10 +263,8 @@ func strongestBand(bands [SpectrumBandCount]float64) int {
 
 func waitForSpectrum(t *testing.T, analyzer *spectrumAnalyzer, afterSequence uint64) SpectrumSnapshot {
 	t.Helper()
-	var snapshot SpectrumSnapshot
-	require.Eventually(t, func() bool {
-		snapshot = analyzer.latestSnapshot()
-		return snapshot.Sequence > afterSequence
-	}, time.Second, time.Millisecond)
+	synctest.Wait()
+	snapshot := analyzer.latestSnapshot()
+	require.Greater(t, snapshot.Sequence, afterSequence)
 	return snapshot
 }

@@ -64,9 +64,7 @@ func (m *Model) View() string {
 }
 
 func formatDuration(d time.Duration) string {
-	if d < 0 {
-		d = 0
-	}
+	d = max(d, 0)
 	sec := int(d.Seconds())
 	minute := sec / 60
 	sec = sec % 60

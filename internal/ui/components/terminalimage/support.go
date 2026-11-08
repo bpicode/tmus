@@ -28,9 +28,6 @@ func (m *Model) boxRect() rect {
 	targetWidth := max(int(float64(m.height)*m.aspect), 1)
 	boxWidth := min(m.width, targetWidth)
 	boxHeight := max(min(m.height, int(float64(boxWidth)/m.aspect)), 1)
-	if boxWidth > m.width {
-		boxWidth = m.width
-	}
 	targetWidth = int(float64(boxHeight) * m.aspect)
 	if targetWidth > 0 && targetWidth < boxWidth {
 		boxWidth = targetWidth

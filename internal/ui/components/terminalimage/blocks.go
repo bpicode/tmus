@@ -166,11 +166,7 @@ func (m *Model) renderImageMono(box rect, img image.Image) string {
 			bottom := blendOnBlack(resized[(iy*2+1)*pixelWidth+ix])
 			luma := (luminance(top) + luminance(bottom)) / 2.0
 			idx := int(luma*float64(len(ramps)-1) + 0.5)
-			if idx < 0 {
-				idx = 0
-			} else if idx >= len(ramps) {
-				idx = len(ramps) - 1
-			}
+			idx = min(max(idx, 0), len(ramps)-1)
 			sb.WriteRune(ramps[idx])
 		}
 		lines[y] = sb.String()

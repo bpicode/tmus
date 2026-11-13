@@ -9,31 +9,19 @@ import (
 )
 
 type Model struct {
-	show          bool
-	lines         []string
-	maxLineLength int
-	width         int
-	height        int
-	viewport      viewport.Model
-	styles        styles
+	show     bool
+	width    int
+	height   int
+	viewport viewport.Model
+	styles   styles
 }
 
 func NewModel(th theme.Theme) *Model {
-	styles := newStyles(th)
-	lines := keybindings.render(styles)
-	maxLineLength := lipgloss.Width(keybindings.appendix)
-	for _, line := range lines {
-		maxLineLength = max(maxLineLength, lipgloss.Width(line))
-	}
 	vp := viewport.New()
 	vp.LeftGutterFunc = viewport.NoGutter
-	vp.SetContentLines(lines)
 	return &Model{
-		show:          false,
-		lines:         lines,
-		maxLineLength: maxLineLength,
-		viewport:      vp,
-		styles:        styles,
+		viewport: vp,
+		styles:   newStyles(th),
 	}
 }
 
@@ -72,7 +60,14 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
 	m.width = msg.Width
 	m.height = msg.Height
-	m.viewport.SetWidth(max(min(m.maxLineLength, m.width-m.styles.padding.GetHorizontalFrameSize()), 0))
+	width := max(m.width-m.styles.padding.GetHorizontalFrameSize(), 0)
+	lines := keybindings.render(m.styles, width)
+	contentWidth := lipgloss.Width(keybindings.appendix)
+	for _, line := range lines {
+		contentWidth = max(contentWidth, lipgloss.Width(line))
+	}
+	m.viewport.SetWidth(min(contentWidth, width))
+	m.viewport.SetContentLines(lines)
 	// Reserve one row for the separator and one for the scroll hint.
 	m.viewport.SetHeight(max(m.height-m.styles.padding.GetVerticalFrameSize()-2, 0))
 	return m, nil, false

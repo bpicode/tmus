@@ -15,10 +15,17 @@ import (
 
 func TestModelShowsKeybindings(t *testing.T) {
 	m := NewModel(theme.Theme{})
-	m.Update(tea.WindowSizeMsg{Width: 100, Height: 100})
 	m.Show(true)
-	r := m.View()
-	assert.Contains(t, strings.ToLower(r), "keybindings")
+	for _, width := range []int{100, 40, 100} {
+		m.Update(tea.WindowSizeMsg{Width: width, Height: 100})
+		assert.Contains(t, strings.ToLower(m.View()), "keybindings")
+		content := ansi.Strip(m.viewport.GetContent())
+		assert.LessOrEqual(t, lipgloss.Width(content), width-m.styles.padding.GetHorizontalFrameSize())
+		assert.Contains(t, content, "tab / shift+tab")
+		// Long descriptions remain readable after wrapping and resizing back.
+		text := strings.Join(strings.Fields(content), " ")
+		assert.Contains(t, text, "show lyrics of selected track (opens 'Lyrics' tab)")
+	}
 }
 
 func TestModelRendersEmptyIfNotShown(t *testing.T) {

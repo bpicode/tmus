@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/table"
 )
 
 type content struct {
@@ -12,23 +13,42 @@ type content struct {
 	appendix string
 }
 
-func (h *content) render(styles styles) []string {
+func (h *content) render(styles styles, width int) []string {
+	if width < 1 {
+		return nil
+	}
 	maxWidthKey := 0
 	for _, s := range h.sections {
 		for _, hk := range s.helpKeys {
-			maxWidthKey = max(maxWidthKey, hk.width(styles))
+			maxWidthKey = max(maxWidthKey, lipgloss.Width(hk.renderKeys(styles)))
 		}
 	}
 
-	keyPadLeft := 4
-	keyFillMiddle := maxWidthKey + 4
+	// Share the key column width across sections, leaving room for descriptions.
+	keyWidth := min(maxWidthKey+8, max(width-1, 1))
+	keyPadding := min(4, (keyWidth-1)/2)
+	keyStyle := lipgloss.NewStyle().Width(keyWidth).Padding(0, keyPadding)
+	t := table.New().Width(width).FitContent().
+		BorderTop(false).BorderBottom(false).
+		BorderLeft(false).BorderRight(false).BorderColumn(false).
+		StyleFunc(func(_, col int) lipgloss.Style {
+			if col == 0 {
+				return keyStyle
+			}
+			return lipgloss.NewStyle()
+		})
 
 	lines := []string{
 		styles.title.Render(h.title),
 		"",
 	}
 	for _, s := range h.sections {
-		lines = append(lines, s.render(keyPadLeft, keyFillMiddle, styles)...)
+		t.ClearRows()
+		for _, k := range s.helpKeys {
+			t.Row(k.renderKeys(styles), k.helpText)
+		}
+		lines = append(lines, styles.subtitle.Render(s.subtitle))
+		lines = append(lines, strings.Split(t.Render(), "\n")...)
 		lines = append(lines, "")
 	}
 	return lines
@@ -39,27 +59,10 @@ type helpSection struct {
 	helpKeys []helpKey
 }
 
-func (h *helpSection) render(keyPadLeft, keyFillMiddle int, styles styles) []string {
-	lines := []string{
-		styles.subtitle.Render(h.subtitle),
-	}
-	for _, k := range h.helpKeys {
-		lines = append(lines, k.render(keyPadLeft, keyFillMiddle, styles))
-	}
-	return lines
-}
-
 type helpKey struct {
 	key1     string
 	key2     string
 	helpText string
-}
-
-func (h *helpKey) render(padLeft, fillMiddle int, styles styles) string {
-	paddingLeft := strings.Repeat(" ", max(padLeft, 0))
-	paddingMiddle := strings.Repeat(" ", max(fillMiddle-h.width(styles), 0))
-	keys := h.renderKeys(styles)
-	return paddingLeft + keys + paddingMiddle + h.helpText
 }
 
 func (h *helpKey) renderKeys(styles styles) string {
@@ -67,11 +70,6 @@ func (h *helpKey) renderKeys(styles styles) string {
 		return styles.helpKey.Render(h.key1)
 	}
 	return styles.helpKey.Render(h.key1) + " / " + styles.helpKey.Render(h.key2)
-}
-
-func (h *helpKey) width(styles styles) int {
-	rendered := h.renderKeys(styles)
-	return lipgloss.Width(rendered)
 }
 
 var keybindings = content{

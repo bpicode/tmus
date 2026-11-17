@@ -137,8 +137,8 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/llehouerou/alac v0.2.0 h1:PoSViu1ing10Jk8z2VV5tpSXfx9eNrYyPNeioy77W4o=
 github.com/llehouerou/alac v0.2.0/go.mod h1:XVWvwfBPs01mYBtKtz9V4vf73o/TCYSzlv3I0z5lB1M=
-github.com/llehouerou/go-faad2 v0.3.0 h1:cCj1lJd3VfnTSDSnKMjNFFEYsp5KsHmQxCLxSY4ExB8=
-github.com/llehouerou/go-faad2 v0.3.0/go.mod h1:Q3GuJjnorKbt43ea1lqg2cc2tlX/k5C5VWyTuAkzwws=
+github.com/llehouerou/go-faad2 v0.3.1 h1:tl9Bl5aXzB4s/NEBR9jbk5VxBmaTqVmSJ2L9sLCT+qE=
+github.com/llehouerou/go-faad2 v0.3.1/go.mod h1:Q3GuJjnorKbt43ea1lqg2cc2tlX/k5C5VWyTuAkzwws=
 github.com/lucasb-eyer/go-colorful v1.4.1 h1:1EO+WB73+EH8EVbzlrG3KLAfEypQWVHIBqlTf+2hNss=
 github.com/lucasb-eyer/go-colorful v1.4.1/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/mattn/go-runewidth v0.0.30 h1:+KUuiDA4fF0R1p5FeueHefjDm+GIM+kWfFnDjybOPgk=

@@ -17,7 +17,7 @@ require (
 	github.com/jfreymuth/vorbis v1.0.2
 	github.com/jj11hh/opus v1.0.1
 	github.com/llehouerou/alac v0.2.0
-	github.com/llehouerou/go-faad2 v0.3.0
+	github.com/llehouerou/go-faad2 v0.3.1
 	github.com/mholt/archives v0.1.5
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/spf13/cobra v1.10.2

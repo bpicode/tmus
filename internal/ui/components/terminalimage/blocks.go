@@ -37,8 +37,7 @@ func (m *Model) renderImageTruecolor(box rect, img image.Image) string {
 		return m.renderPlaceholder("Image")
 	}
 
-	pixelWidth := box.width
-	pixelHeight := box.height * 2
+	pixelWidth, pixelHeight := box.width, box.height*2
 	resized := resizeImage(img, pixelWidth, pixelHeight)
 
 	lines := make([]string, m.height)
@@ -91,8 +90,7 @@ func (m *Model) renderImage256(box rect, img image.Image) string {
 		return m.renderPlaceholder("Image")
 	}
 
-	pixelWidth := box.width
-	pixelHeight := box.height * 2
+	pixelWidth, pixelHeight := box.width, box.height*2
 	resized := resizeImage(img, pixelWidth, pixelHeight)
 
 	lines := make([]string, m.height)
@@ -145,8 +143,7 @@ func (m *Model) renderImageMono(box rect, img image.Image) string {
 		return m.renderPlaceholder("Image")
 	}
 
-	pixelWidth := box.width
-	pixelHeight := box.height * 2
+	pixelWidth, pixelHeight := box.width, box.height*2
 	resized := resizeImage(img, pixelWidth, pixelHeight)
 
 	ramps := []rune{' ', '░', '▒', '▓', '█'}
@@ -195,8 +192,7 @@ func resizeImage(src image.Image, width, height int) []color.RGBA {
 		return nil
 	}
 	b := src.Bounds()
-	srcW := b.Dx()
-	srcH := b.Dy()
+	srcW, srcH := b.Dx(), b.Dy()
 	if srcW < 1 || srcH < 1 {
 		return nil
 	}

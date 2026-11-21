@@ -103,8 +103,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 }
 
 func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
-	m.width = msg.Width
-	m.height = msg.Height
+	m.width, m.height = msg.Width, msg.Height
 	return m, nil, false
 }
 

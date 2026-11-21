@@ -9,8 +9,7 @@ const headerHeight = 3
 // frame. Negative dimensions are treated as zero. The parent controls sizing;
 // Update does not automatically apply terminal window size messages.
 func (m *Model) SetSize(width, height int) {
-	m.width = max(0, width)
-	m.height = max(0, height)
+	m.width, m.height = max(0, width), max(0, height)
 }
 
 // ContentSize returns the space inside Render's frame, after reserving two

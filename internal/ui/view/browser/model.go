@@ -222,8 +222,7 @@ func (m *Model) handleRemaining(msg tea.Msg) (*Model, tea.Cmd, bool) {
 }
 
 func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
-	m.height = msg.Height
-	m.width = msg.Width
+	m.width, m.height = msg.Width, msg.Height
 	m.updateLayout()
 	return m, nil, false
 }

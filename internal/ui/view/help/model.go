@@ -70,8 +70,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 }
 
 func (m *Model) handleSizeMsg(msg tea.WindowSizeMsg) (*Model, tea.Cmd, bool) {
-	m.width = msg.Width
-	m.height = msg.Height
+	m.width, m.height = msg.Width, msg.Height
 	m.viewport.SetWidth(max(min(m.maxLineLength, m.width-m.styles.padding.GetHorizontalFrameSize()), 0))
 	// Reserve one row for the separator and one for the scroll hint.
 	m.viewport.SetHeight(max(m.height-m.styles.padding.GetVerticalFrameSize()-2, 0))

@@ -36,8 +36,7 @@ func (m *Model) SetSize(width, height int) string {
 		return ""
 	}
 	oldUploadedID := m.uploadedID
-	m.width = width
-	m.height = height
+	m.width, m.height = width, height
 	if width < 1 || height < 1 {
 		return m.deleteKitty(oldUploadedID)
 	}

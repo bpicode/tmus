@@ -13,15 +13,14 @@ import (
 
 type Model struct {
 	label  string
-	app    *core.App
 	width  int
 	styles styles
 }
 
-func NewModel(label string, appRef *core.App, th theme.Theme) *Model {
+// NewModel creates a playback status display.
+func NewModel(label string, th theme.Theme) *Model {
 	return &Model{
 		label:  label,
-		app:    appRef,
 		styles: newStyles(th),
 	}
 }
@@ -38,8 +37,8 @@ func (m *Model) Height() int {
 	return 1
 }
 
-func (m *Model) View() string {
-	appState := m.app.State()
+// View renders playback status from the supplied snapshot.
+func (m *Model) View(appState core.State) string {
 	playState := appState.Playback.State
 	truncateLeft := truncate.Left{}.MaxWidth(m.width)
 	if playState == core.PlaybackStopped {

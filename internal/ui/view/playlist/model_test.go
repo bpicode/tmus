@@ -2,7 +2,9 @@ package playlist
 
 import (
 	"errors"
+	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/bpicode/tmus/internal/app/core"
@@ -66,6 +68,28 @@ func TestHeaderLinesIncludePlaylistError(t *testing.T) {
 
 	assert.Len(t, m.headerLines(core.State{}, 80), 2)
 	assert.Len(t, m.headerLines(core.State{PlaylistErr: errors.New("test")}, 80), 3)
+}
+
+func TestFooterRendersFromPlaylistSnapshot(t *testing.T) {
+	m, _ := newSpectrumCommandTestModel(t)
+	_, _, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+	started := time.Unix(100, 0)
+	state := core.State{
+		Playlist: []core.Track{{Name: "Snapshot track"}},
+		Playing:  0,
+		Volume:   37,
+		Playback: core.Playback{
+			State:     core.PlaybackPaused,
+			StartedAt: started,
+			PausedAt:  started.Add(7 * time.Second),
+			Duration:  time.Minute,
+		},
+	}
+
+	view := strings.Join(m.footerLines(state), "\n")
+	assert.Contains(t, view, "Snapshot track")
+	assert.Contains(t, view, "[00:07/01:00]")
+	assert.Contains(t, view, "37%")
 }
 
 func TestBodyLinesFillEmptyBody(t *testing.T) {

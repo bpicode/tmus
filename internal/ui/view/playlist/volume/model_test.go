@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
-	"github.com/bpicode/tmus/internal/app/core"
 	"github.com/bpicode/tmus/internal/ui/theme"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,11 +22,10 @@ func TestModelView(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			state := &stubStateReader{state: core.State{Volume: 50}}
-			m := NewModel("Volume: ", state, testTheme())
+			m := NewModel("Volume: ", testTheme())
 			m.UpdateSize(tt.width)
 
-			view := m.View()
+			view := m.View(50)
 
 			if tt.wantLabel {
 				assert.Contains(t, view, "Volume: ")
@@ -40,14 +38,6 @@ func TestModelView(t *testing.T) {
 			}
 		})
 	}
-}
-
-type stubStateReader struct {
-	state core.State
-}
-
-func (s *stubStateReader) State() core.State {
-	return s.state
 }
 
 func testTheme() theme.Theme {

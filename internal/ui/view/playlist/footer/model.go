@@ -47,7 +47,7 @@ func NewModel(cfg Config) *Model {
 	return &Model{
 		spectrum: spectrum.NewModel(formatLabel(spectrumLabel), cfg.App, cfg.FPS, cfg.Theme),
 		status:   status.NewModel(formatLabel(playingLabel), cfg.App, cfg.Theme),
-		volume:   volume.NewModel(formatLabel(volumeLabel), cfg.App, cfg.Theme),
+		volume:   volume.NewModel(formatLabel(volumeLabel), cfg.Theme),
 	}
 }
 
@@ -79,7 +79,7 @@ func (m *Model) Height() int {
 }
 
 // View renders the footer content.
-func (m *Model) View() string {
+func (m *Model) View(volume int) string {
 	if m.layout.height == 0 {
 		return ""
 	}
@@ -92,7 +92,7 @@ func (m *Model) View() string {
 		lines = append(lines, m.status.View())
 	}
 	if m.layout.showVolume {
-		lines = append(lines, m.volume.View())
+		lines = append(lines, m.volume.View(volume))
 	}
 	return strings.Join(lines, "\n")
 }

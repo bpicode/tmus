@@ -42,7 +42,7 @@ func (r *httpResolver) resolvePlaylist(ctx context.Context, uri string, depth in
 		return AudioSource{}, errors.New("playlist recursion limit exceeded")
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
 	if err != nil {
 		return AudioSource{}, err
 	}

@@ -2,6 +2,7 @@ package player
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"testing/synctest"
 
@@ -41,16 +42,11 @@ func TestEngineCloseAndWaitFinishesCleanup(t *testing.T) {
 func TestEngineCloseAndWaitConcurrentCalls(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		e := NewEngine(Options{SampleRate: 44100})
-		finished := make(chan struct{}, 3)
+		var wg sync.WaitGroup
 		for range 3 {
-			go func() {
-				e.CloseAndWait()
-				finished <- struct{}{}
-			}()
+			wg.Go(e.CloseAndWait)
 		}
-		for range 3 {
-			<-finished
-		}
+		wg.Wait()
 		_, open := <-e.Events()
 		assert.False(t, open)
 	})

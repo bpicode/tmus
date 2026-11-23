@@ -1,6 +1,7 @@
 package core
 
 import (
+	"cmp"
 	"fmt"
 	"net/url"
 	"path"
@@ -32,11 +33,8 @@ func (t Track) DisplayName() string {
 	if t.Artist != "" && t.Title != "" {
 		return fmt.Sprintf("%s - %s", t.Artist, t.Title)
 	}
-	if t.Title != "" {
-		return t.Title
-	}
-	if t.Name != "" {
-		return t.Name
+	if name := cmp.Or(t.Title, t.Name); name != "" {
+		return name
 	}
 	if t.Path != "" {
 		if entry, err := library.EntryFromPath(t.Path); err == nil {

@@ -30,12 +30,11 @@ type Model struct {
 	list   list.Model
 	footer *footer.Model
 
-	playing   int
-	playState core.PlaybackState
-	rows      []playlistRow
-	posWidth  int
-	styles    styles
-	layout    layout
+	state    core.State
+	rows     []playlistRow
+	posWidth int
+	styles   styles
+	layout   layout
 }
 
 type layout struct {
@@ -87,9 +86,7 @@ func NewModel(cfg Config) *Model {
 }
 
 func (m *Model) Init() tea.Cmd {
-	_, cmd, _ := m.syncState()
-	m.updateLayout()
-	return tea.Batch(cmd, m.footer.Init())
+	return m.footer.Init()
 }
 
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
@@ -104,12 +101,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd, bool) {
 		m, cmd, stop = m.handleSizeMsg(msg)
 	case tea.KeyPressMsg:
 		m, cmd, stop = m.handleKeyPressMsg(msg)
-	case core.StateEvent:
-		m, cmd, stop = m.syncState()
-		m.updateLayout()
-	case core.MetadataEvent:
-		m, cmd, stop = m.syncState()
-		m.updateLayout()
+	case core.StateEvent, core.MetadataEvent:
+		return m, cmd, false
 	default:
 		m, cmd, stop = m.handleRemaining(msg)
 	}
@@ -127,7 +120,7 @@ func (m *Model) updateLayout() {
 	innerWidth := max(0, m.width-m.styles.panel.GetHorizontalFrameSize())
 	innerHeight := max(0, m.height-m.styles.panel.GetVerticalFrameSize())
 
-	headerHeight := len(m.headerLines(m.app.State(), innerWidth))
+	headerHeight := len(m.headerLines(m.state, innerWidth))
 	remainingHeight := max(0, innerHeight-headerHeight)
 
 	// Reserve the parent-owned separator before sizing the footer. If the footer
@@ -228,10 +221,9 @@ func (m *Model) handleRemaining(msg tea.Msg) (*Model, tea.Cmd, bool) {
 }
 
 func (m *Model) View() string {
-	state := m.app.State()
-	lines := m.headerLines(state, m.layout.innerWidth)
+	lines := m.headerLines(m.state, m.layout.innerWidth)
 	lines = append(lines, m.bodyLines()...)
-	lines = append(lines, m.footerLines(state)...)
+	lines = append(lines, m.footerLines(m.state)...)
 	return m.styles.panel.Width(m.width).Height(m.height).Render(strings.Join(lines, "\n"))
 }
 
@@ -317,25 +309,25 @@ func (m *Model) Show(show bool) {
 	}
 }
 
-func (m *Model) syncState() (*Model, tea.Cmd, bool) {
-	state := m.app.State()
-	m.playing = state.Playing
-	m.playState = state.Playback.State
+// ApplyState synchronizes the playlist display with the supplied snapshot.
+func (m *Model) ApplyState(state core.State) {
+	changes := core.DiffState(m.state, state)
+	m.state = state
+	if changes == core.StateChangeNone {
+		return
+	}
 	m.updateItems(state)
 
 	cursor := selectedTrack(state)
-	if m.filterActive() {
+	switch {
+	case m.filterActive():
 		m.ensureFilteredSelection(state)
-		return m, nil, false
-	}
-	if cursor >= 0 {
+	case cursor >= 0:
 		m.selectTrack(cursor)
-		return m, nil, false
-	}
-	if len(m.list.VisibleItems()) > 0 {
+	case len(m.list.VisibleItems()) > 0:
 		m.list.Select(0)
 	}
-	return m, nil, false
+	m.updateLayout()
 }
 
 func (m *Model) updateNav(msg tea.KeyMsg, state core.State) (tea.Cmd, bool) {
@@ -535,11 +527,11 @@ func (d playlistDelegate) Render(w io.Writer, m list.Model, index int, item list
 	}
 	name := sanitize.TerminalText(playlistItem.track.DisplayName())
 	prefix := "  "
-	isPlaying := playlistItem.index == d.model.playing && d.model.playState == core.PlaybackPlaying
+	isPlaying := playlistItem.index == d.model.state.Playing && d.model.state.Playback.State == core.PlaybackPlaying
 	if isPlaying {
 		prefix = "▶︎ "
 	}
-	isPaused := playlistItem.index == d.model.playing && d.model.playState == core.PlaybackPaused
+	isPaused := playlistItem.index == d.model.state.Playing && d.model.state.Playback.State == core.PlaybackPaused
 	if isPaused {
 		prefix = "⏸ "
 	}

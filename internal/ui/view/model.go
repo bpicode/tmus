@@ -79,6 +79,7 @@ func (m *Model) Init() tea.Cmd {
 	m.events.state, m.events.unsubState = m.app.SubscribeStateEvents()
 	m.events.metadata, m.events.unsubMetadata = m.app.SubscribeMetadataEvents()
 	m.events.lyrics, m.events.unsubLyrics = m.app.SubscribeLyricsEvents()
+	m.playlist.ApplyState(m.app.State())
 	return tea.Batch(m.tabs.Init(), playlistCmd(m.playlist.Init()), m.trackInfo.Init(), m.lyrics.Init(),
 		browserCmd(m.browser.Init()), m.help.Init(),
 		m.listenForStateEvent(), m.listenForMetadataEvent(), m.listenForLyricsEvent(), tickCmd())
@@ -217,20 +218,25 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 	case core.StateEvent:
 		cmds = append(cmds, m.listenForStateEvent())
+		state := m.app.State()
 		if m.tabs.ActiveID() == "track" {
 			cmds = append(cmds, m.trackInfo.Show(true))
 		}
 		if m.tabs.ActiveID() == "lyrics" {
-			hasTracks := len(m.app.State().Playlist) > 0
+			hasTracks := len(state.Playlist) > 0
 			if !hasTracks || !m.lyrics.Visible() {
 				m.lyrics.Show(hasTracks)
 			}
 		}
+		m.playlist.ApplyState(state)
 	case core.MetadataEvent:
 		cmds = append(cmds, m.listenForMetadataEvent())
+		m.playlist.ApplyState(m.app.State())
 	case core.LyricsEvent:
 		cmds = append(cmds, m.listenForLyricsEvent())
 	case tickMsg:
+		// Recover if the app's event buffer dropped a playlist update.
+		m.playlist.ApplyState(m.app.State())
 		cmds = append(cmds, tickCmd())
 	case playlist.ToggleTrackInfoMsg:
 		_ = m.tabs.Select("track")

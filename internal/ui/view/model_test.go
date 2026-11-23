@@ -175,6 +175,23 @@ func TestModelOpensAudioArguments(t *testing.T) {
 	assert.Equal(t, path, app.State().Playlist[0].Path)
 }
 
+func TestModelAppliesPlaylistSnapshotSynchronously(t *testing.T) {
+	m, app := newModelTest(t)
+	app.SetVolume(37)
+	m.Init()
+	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	assert.Contains(t, m.View().Content, "37%")
+
+	app.SetVolume(59)
+	assert.Contains(t, m.View().Content, "37%")
+	_, _ = m.Update(core.StateEvent{Changes: core.StateChangeVolume})
+	assert.Contains(t, m.View().Content, "59%")
+
+	app.SetVolume(42)
+	_, _ = m.Update(core.MetadataEvent{})
+	assert.Contains(t, m.View().Content, "42%")
+}
+
 func TestModelUpdatesPlaylistWhileHidden(t *testing.T) {
 	m, app := newModelTest(t)
 	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})

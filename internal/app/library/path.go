@@ -26,11 +26,11 @@ func isArchivePath(value string) bool {
 }
 
 func splitArchiveURI(value string) (scheme, archivePath, inner string, err error) {
-	if !isArchivePath(value) {
+	trimmed, ok := strings.CutPrefix(value, "arch://")
+	if !ok {
 		return "", "", "", fmt.Errorf("not an archive path")
 	}
-	trimmed, _ := strings.CutPrefix(value, "arch://")
-	scheme, _, ok := strings.Cut(trimmed, ":")
+	scheme, _, ok = strings.Cut(trimmed, ":")
 	if !ok || scheme == "" {
 		return "", "", "", fmt.Errorf("invalid archive path")
 	}
@@ -47,10 +47,10 @@ func buildArchivePath(scheme, archivePath, inner string) string {
 }
 
 func entryExt(value string) string {
-	if !isArchivePath(value) {
+	trimmed, ok := strings.CutPrefix(value, "arch://")
+	if !ok {
 		return ""
 	}
-	trimmed, _ := strings.CutPrefix(value, "arch://")
 	_, inner, ok := strings.Cut(trimmed, "::")
 	if !ok {
 		return ""

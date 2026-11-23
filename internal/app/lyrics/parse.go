@@ -65,23 +65,23 @@ func isLrcTagLine(line string) bool {
 }
 
 func parseLrcLine(line string) ([]time.Duration, string, bool) {
-	if !strings.HasPrefix(line, "[") {
-		return nil, "", false
-	}
 	rest := line
-	times := make([]time.Duration, 0, 1)
-	for strings.HasPrefix(rest, "[") {
-		end := strings.Index(rest, "]")
-		if end == -1 {
+	var times []time.Duration
+	for {
+		trimmed, ok := strings.CutPrefix(rest, "[")
+		if !ok {
 			break
 		}
-		token := rest[1:end]
+		token, text, ok := strings.Cut(trimmed, "]")
+		if !ok {
+			break
+		}
 		ts, ok := parseTimestamp(token)
 		if !ok {
 			break
 		}
 		times = append(times, ts)
-		rest = rest[end+1:]
+		rest = text
 	}
 	if len(times) == 0 {
 		return nil, "", false

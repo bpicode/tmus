@@ -6,9 +6,6 @@ import "charm.land/lipgloss/v2"
 // text attributes such as color, bold, and italic. They must not set dimensions,
 // padding, margins, borders, or introduce line breaks. The component controls
 // layout and visible border edges.
-//
-// With Lip Gloss v2.0.6, underline and strikethrough can corrupt ANSI escape
-// sequences in precolored labels. Use other text attributes for those labels.
 type Styles struct {
 	ActiveTab   lipgloss.Style
 	InactiveTab lipgloss.Style

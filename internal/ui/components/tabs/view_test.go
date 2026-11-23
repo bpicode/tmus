@@ -71,6 +71,24 @@ func TestViewPreservesLabelColors(t *testing.T) {
 	assert.Contains(t, view, label)
 	require.NoError(t, m.Select("two"))
 	assert.Contains(t, m.View(), label, "inactive labels retain embedded colors too")
+
+	for _, tt := range []struct {
+		name  string
+		style lipgloss.Style
+	}{
+		{name: "underline", style: lipgloss.NewStyle().Underline(true)},
+		{name: "strikethrough", style: lipgloss.NewStyle().Strikethrough(true)},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			m, err := tabs.New([]tabs.Tab{{ID: "one", Label: label}, {ID: "two", Label: "Go"}})
+			require.NoError(t, err)
+			m.SetSize(16, 3)
+			m.Styles.ActiveTab = tt.style
+			view := m.View()
+			assert.Equal(t, "┌─────────┬────┐\n│ 音楽 🎵 │ Go │\n├─────────┴────┤", ansi.Strip(view))
+			assert.Contains(t, view, "\x1b[31m")
+		})
+	}
 }
 
 func TestRender(t *testing.T) {

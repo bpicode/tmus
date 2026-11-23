@@ -275,12 +275,9 @@ func (m *Model) footerLines(state core.State) []string {
 		m.styles.separator.Render("]"),
 	)
 	hBar := bar.Horizontal(m.layout.innerWidth, bar.WithStyle(m.styles.separator), bar.WithText(barText, bar.PlacementRight))
-	remaining := strings.Split(m.footer.View(state), "\n")
-
-	lines := make([]string, 0, 1+len(remaining))
-	lines = append(lines, hBar.View())
-	lines = append(lines, remaining...)
-	return lines
+	lines := make([]string, 1, m.layout.footerHeight)
+	lines[0] = hBar.View()
+	return slices.AppendSeq(lines, strings.SplitSeq(m.footer.View(state), "\n"))
 }
 
 func (m *Model) ToggleFocus() {

@@ -447,14 +447,7 @@ func (o *OggReader) ScanLastGranule() error {
 	}
 	buf = buf[:n]
 
-	// Find last "OggS" occurrence
-	lastOggS := -1
-	for i := len(buf) - 4; i >= 0; i-- {
-		if string(buf[i:i+4]) == oggMagic {
-			lastOggS = i
-			break
-		}
-	}
+	lastOggS := bytes.LastIndex(buf, []byte(oggMagic))
 
 	if lastOggS == -1 {
 		return errors.New("ogg: no page found at end of file")

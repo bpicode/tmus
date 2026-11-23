@@ -44,9 +44,9 @@ func (l *lrcLibProvider) name() Source {
 }
 
 func cacheKey(track TrackInfo) string {
-	h := sha256.New()
-	h.Write(fmt.Appendf(nil, "%s|%s|%s|%s|%v", track.Artist, track.Title, track.Album, track.Name, track.Duration.Seconds()))
-	return hex.EncodeToString(h.Sum(nil))
+	input := fmt.Appendf(nil, "%s|%s|%s|%s|%v", track.Artist, track.Title, track.Album, track.Name, track.Duration.Seconds())
+	sum := sha256.Sum256(input)
+	return hex.EncodeToString(sum[:])
 }
 
 // Find implements [Provider].

@@ -1,6 +1,7 @@
 package view
 
 import (
+	"cmp"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,10 +11,7 @@ import (
 )
 
 func initialBrowserDir(lib *library.Library, startDir, savedDir string) string {
-	cwd := startDir
-	if cwd == "" {
-		cwd = savedDir
-	}
+	cwd := cmp.Or(startDir, savedDir)
 	if cwd == "" {
 		cwd, _ = os.Getwd()
 	}

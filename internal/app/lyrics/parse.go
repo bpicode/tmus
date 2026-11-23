@@ -44,15 +44,12 @@ func normalize(value string) string {
 }
 
 func isLrcTagLine(line string) bool {
-	if !strings.HasPrefix(line, "[") {
+	line, ok := strings.CutPrefix(line, "[")
+	if !ok {
 		return false
 	}
-	end := strings.Index(line, "]")
-	if end == -1 {
-		return false
-	}
-	tag := line[1:end]
-	if tag == "" {
+	tag, _, ok := strings.Cut(line, "]")
+	if !ok {
 		return false
 	}
 	name, _, ok := strings.Cut(tag, ":")
@@ -104,12 +101,7 @@ func parseTimestamp(raw string) (time.Duration, bool) {
 	if err != nil {
 		return 0, false
 	}
-	secStr := secPart
-	fracStr := ""
-	if before, after, ok := strings.Cut(secPart, "."); ok {
-		secStr = before
-		fracStr = after
-	}
+	secStr, fracStr, _ := strings.Cut(secPart, ".")
 	sec, err := strconv.Atoi(secStr)
 	if err != nil {
 		return 0, false

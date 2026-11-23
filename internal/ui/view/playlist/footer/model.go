@@ -84,17 +84,17 @@ func (m *Model) View(state core.State) string {
 		return ""
 	}
 
-	lines := make([]string, 0, m.layout.height)
+	sections := make([]string, 0, 3)
 	if m.layout.spectrumRows > 0 {
-		lines = append(lines, strings.Split(m.spectrum.View(m.layout.spectrumRows), "\n")...)
+		sections = append(sections, m.spectrum.View(m.layout.spectrumRows))
 	}
 	if m.layout.showStatus {
-		lines = append(lines, m.status.View(state))
+		sections = append(sections, m.status.View(state))
 	}
 	if m.layout.showVolume {
-		lines = append(lines, m.volume.View(state.Volume))
+		sections = append(sections, m.volume.View(state.Volume))
 	}
-	return strings.Join(lines, "\n")
+	return strings.Join(sections, "\n")
 }
 
 func (m *Model) calculateLayout(availableHeight, statusHeight, volumeHeight int) footerLayout {

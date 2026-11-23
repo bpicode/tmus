@@ -128,7 +128,7 @@ func (s *Service) emitPlayerChanges() {
 
 func (s *Service) emitSeeked() {
 	state := s.app.State()
-	pos := toMicroseconds(state.Elapsed())
+	pos := state.Elapsed().Microseconds()
 	_ = s.conn.Emit(objectPath, ifacePlayer+".Seeked", pos)
 }
 
@@ -364,7 +364,7 @@ func (s *Service) playerPropertyMap(state core.State) map[string]dbus.Variant {
 		"LoopStatus":     dbus.MakeVariant(loop),
 		"Shuffle":        dbus.MakeVariant(shuffle),
 		"Volume":         dbus.MakeVariant(float64(state.Volume) / 100.0),
-		"Position":       dbus.MakeVariant(toMicroseconds(state.Elapsed())),
+		"Position":       dbus.MakeVariant(state.Elapsed().Microseconds()),
 		"MinimumRate":    dbus.MakeVariant(1.0),
 		"MaximumRate":    dbus.MakeVariant(1.0),
 		"Rate":           dbus.MakeVariant(1.0),
@@ -406,7 +406,7 @@ func (s *Service) metadataMap(state core.State) map[string]dbus.Variant {
 		metadata["xesam:album"] = dbus.MakeVariant(album)
 	}
 	if state.Playback.Duration > 0 {
-		metadata["mpris:length"] = dbus.MakeVariant(toMicroseconds(state.Playback.Duration))
+		metadata["mpris:length"] = dbus.MakeVariant(state.Playback.Duration.Microseconds())
 	}
 	if track.Path != "" {
 		trackURI := track.Path
@@ -479,10 +479,6 @@ func diffProperties(prev, next map[string]dbus.Variant) map[string]dbus.Variant 
 
 func equalVariant(a, b dbus.Variant) bool {
 	return reflect.DeepEqual(a.Value(), b.Value())
-}
-
-func toMicroseconds(dur time.Duration) int64 {
-	return dur.Nanoseconds() / 1000
 }
 
 func microsecondsToDuration(value int64) time.Duration {

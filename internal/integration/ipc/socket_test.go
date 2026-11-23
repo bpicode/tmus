@@ -3,11 +3,13 @@ package ipc
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/bpicode/tmus/internal/app/core"
@@ -54,59 +56,59 @@ func TestUnixSocketEncodesHandlerError(t *testing.T) {
 }
 
 func TestUnixSocketSessionCloseWaitsForActiveHandler(t *testing.T) {
-	server, client := net.Pipe()
-	t.Cleanup(func() { _ = client.Close() })
+	synctest.Test(t, func(t *testing.T) {
+		server, client := net.Pipe()
+		t.Cleanup(func() { _ = client.Close() })
 
-	listenerClosed := make(chan struct{})
-	closeListener := sync.OnceFunc(func() { close(listenerClosed) })
-	accepted := false
-	ln := stubListener{
-		accept: func() (net.Conn, error) {
-			if !accepted {
-				accepted = true
-				return server, nil
-			}
-			<-listenerClosed
-			return nil, net.ErrClosed
-		},
-		close: func() error {
-			closeListener()
-			return nil
-		},
-	}
-
-	handling := make(chan struct{})
-	release := make(chan struct{})
-	released := false
-	t.Cleanup(func() {
-		if !released {
-			close(release)
+		listenerClosed := make(chan struct{})
+		closeListener := sync.OnceFunc(func() { close(listenerClosed) })
+		defer closeListener()
+		accepted := false
+		ln := stubListener{
+			accept: func() (net.Conn, error) {
+				if !accepted {
+					accepted = true
+					return server, nil
+				}
+				<-listenerClosed
+				return nil, net.ErrClosed
+			},
+			close: func() error {
+				closeListener()
+				return nil
+			},
 		}
+
+		handling := make(chan struct{})
+		release := make(chan struct{})
+		releaseHandler := sync.OnceFunc(func() { close(release) })
+		defer releaseHandler()
+		session := newUnixSocketSession(ln)
+		require.NoError(t, session.Serve(func(request) error {
+			close(handling)
+			<-release
+			return nil
+		}))
+
+		require.NoError(t, json.NewEncoder(client).Encode(request{}))
+		<-handling
+		require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
+
+		closed := make(chan error, 1)
+		go func() { closed <- session.Close() }()
+		synctest.Wait()
+
+		var resp unixSocketResponse
+		require.ErrorIs(t, json.NewDecoder(client).Decode(&resp), io.EOF)
+		select {
+		case err := <-closed:
+			t.Fatalf("Close returned while the handler was active: %v", err)
+		default:
+		}
+
+		releaseHandler()
+		assert.NoError(t, <-closed)
 	})
-	session := newUnixSocketSession(ln)
-	require.NoError(t, session.Serve(func(request) error {
-		close(handling)
-		<-release
-		return nil
-	}))
-
-	require.NoError(t, json.NewEncoder(client).Encode(request{}))
-	<-handling
-	closed := make(chan error, 1)
-	go func() { closed <- session.Close() }()
-
-	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
-	var resp unixSocketResponse
-	assert.Error(t, json.NewDecoder(client).Decode(&resp))
-	select {
-	case err := <-closed:
-		t.Fatalf("Close returned while the handler was active: %v", err)
-	default:
-	}
-
-	close(release)
-	released = true
-	assert.NoError(t, <-closed)
 }
 
 func TestUnixSocketSessionCloseReportsAcceptError(t *testing.T) {

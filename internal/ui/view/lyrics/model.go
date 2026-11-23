@@ -29,6 +29,7 @@ type Model struct {
 	lineTickGeneration uint64
 	lineTickCancel     chan struct{}
 	app                *core.App
+	state              core.State
 	errorView          *errorview.Model
 	styles             styles
 }
@@ -56,11 +57,15 @@ func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
+// ApplyState supplies the app state used for the lyrics display and timing.
+func (m *Model) ApplyState(state core.State) {
+	m.state = state
+}
+
 func (m *Model) View() string {
 	if m.width < 1 || m.height < 1 {
 		return ""
 	}
-	state := m.app.State()
 	innerWidth, innerHeight := m.innerSize()
 
 	availableWidth := innerWidth
@@ -68,11 +73,11 @@ func (m *Model) View() string {
 	m.lyricsViewport.SetWidth(availableWidth)
 	m.lyricsViewport.SetHeight(viewportHeight)
 
-	trackName := sanitize.TerminalText(displayNameForTrack(state, m.trackID, m.trackPath))
+	trackName := sanitize.TerminalText(displayNameForTrack(m.state, m.trackID, m.trackPath))
 	track := truncate.Right{Style: m.styles.track}.MaxWidth(availableWidth).Render(trackName)
 	headers := track + "\n"
 
-	lines, highlightIndex := m.bodyLines(availableWidth, state)
+	lines, highlightIndex := m.bodyLines(availableWidth, m.state)
 	m.lyricsViewport.SetContentLines(lines)
 	if highlightIndex >= 0 && highlightIndex < len(lines) && m.followLine {
 		highlightLine := lines[highlightIndex]
@@ -169,8 +174,7 @@ func (m *Model) handleStateEvent(event core.StateEvent) (*Model, tea.Cmd, bool) 
 	if event.Changes&(core.StateChangePlaying|core.StateChangePlayback) == 0 {
 		return m, nil, false
 	}
-	state := m.app.State()
-	track, ok := lyricsPlayingTrack(state)
+	track, ok := lyricsPlayingTrack(m.state)
 	if !ok || track.ID == 0 || track.Path == "" {
 		m.invalidateLineTick()
 		return m, nil, false
@@ -203,8 +207,7 @@ func (m *Model) handleLineTick(msg lineTickMsg) (*Model, tea.Cmd, bool) {
 func (m *Model) Show(show bool) {
 	m.invalidateLineTick()
 	if show {
-		state := m.app.State()
-		track, index, ok := lyricsTrackForOpen(state)
+		track, index, ok := lyricsTrackForOpen(m.state)
 		if !ok {
 			return
 		}
@@ -214,7 +217,7 @@ func (m *Model) Show(show bool) {
 		m.show = true
 		m.trackID = track.ID
 		m.trackPath = track.Path
-		m.followPlay = index == state.Playing && index >= 0
+		m.followPlay = index == m.state.Playing && index >= 0
 		m.loading = true
 		m.errorView.SetErr(nil)
 		m.lyricsViewport.GotoTop()
@@ -345,11 +348,10 @@ func (m *Model) scheduleLineTick() tea.Cmd {
 		return nil
 	}
 
-	state := m.app.State()
-	if state.Playback.State != core.PlaybackPlaying || !m.matchesPlaying(state) {
+	if m.state.Playback.State != core.PlaybackPlaying || !m.matchesPlaying(m.state) {
 		return nil
 	}
-	delay, ok := nextLyricDelay(m.data.Lines, state.Elapsed())
+	delay, ok := nextLyricDelay(m.data.Lines, m.state.Elapsed())
 	if !ok {
 		return nil
 	}

@@ -116,6 +116,22 @@ func TestModelLyricsScrollAndFollowSetting(t *testing.T) {
 	assert.False(t, saved.Lyrics.FollowLine)
 }
 
+func TestModelLyricsUsesLastSnapshot(t *testing.T) {
+	m, app := newModelTest(t)
+	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	track := core.Track{ID: 1, Path: "/music/one.flac", Name: "Original track name"}
+	app.Restore([]core.Track{track}, 0, core.QueueModeLinear)
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	assert.Contains(t, m.View().Content, "Original track name")
+
+	track.Title = "Updated track title"
+	app.Restore([]core.Track{track}, 0, core.QueueModeLinear)
+	assert.Contains(t, m.View().Content, "Original track name")
+	_, _ = m.Update(core.MetadataEvent{TrackID: track.ID, Path: track.Path})
+	assert.Contains(t, m.View().Content, "Updated track title")
+}
+
 func TestModelLyricsEmptyAndResize(t *testing.T) {
 	m, app := newModelTest(t)
 	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
